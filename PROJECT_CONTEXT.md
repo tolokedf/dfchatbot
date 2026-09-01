@@ -72,6 +72,7 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 - **Dedicated User Database Folder (`User database/`)**:
   - `User database/users_and_chats.db`: SQLite database storing user credentials, chat tabs, and multi-turn message histories.
   - `User database/profile_pictures/`: Stores user-uploaded profile picture avatars (`avatar_u<id>_<timestamp>.<ext>`).
+  - `User database/uploaded_attachments/`: Stores user-uploaded chat photos and PDF attachments (`att_u<id>_<timestamp>_<name>`).
 - **User Authentication (`auth_and_chat_db.py`)**:
   - Validates `username` (Name) and `password` with strict no-spaces rules.
   - Registration includes re-enter password confirmation.
@@ -84,6 +85,13 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
   - Each user has independent chat tabs stored in SQLite (`User database/users_and_chats.db`).
   - Users can create new tabs (`+ New Tab`) or delete unwanted tabs (`🗑️`).
   - **Conversational Memory**: Chatbot conditioning includes prior turns from that specific tab to seamlessly understand follow-up questions.
+- **Conversational Fast Path (Zero-Vector Latency Optimization)**:
+  - Greetings, pleasantries, small talk, and general capability queries ("Hi", "How are you", "What can you do", "I have a problem, what can I do") bypass vector embedding and ChromaDB retrieval.
+  - Instantly answered directly by Gemini with warm introduction and dynamic listing of available manuals (< 1.5s latency).
+- **Multimodal User Attachments (Photos & PDFs - Max 5 Files)**:
+  - Users can attach up to 5 images (PNG, JPG, WEBP) or PDF documents directly to any chat question.
+  - User-uploaded photos and PDF pages are loaded/rendered as PIL Images and passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.
+  - Chat transcript bubbles render attached photo thumbnails with click-to-enlarge lightbox and interactive PDF badges.
 - **Compact Top-K Results Pill (`#topKModal`)**:
   - Clean compact pill button underneath assistant response (`Top-K Result (N pages) - View more`).
   - Click opens candidate page inspector modal without cluttering the chat stream.
@@ -102,16 +110,17 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 ├── query_test.py                   # CLI diagnostic tool to query ChromaDB and rank pages
 ├── auth_and_chat_db.py             # User authentication, chat tabs & message history SQLite manager
 ├── pipeline_service.py             # Re-embedding, page deletion, metadata editor, SSE progress
-├── app.py                          # Flask web application, REST APIs, profile picture upload & Admin session auth
+├── app.py                          # Flask web app, fast-path intent classifier, multimodal uploads & REST APIs
 ├── templates/
-│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic, Top-K, Citations)
+│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic, Attachments, Top-K, Citations)
 │   ├── admin.html                  # Password-protected Admin Console (Auth gate ID: df / Pass: df, PDF manager)
 │   └── pdf_viewer.html             # Dedicated PDF page citation viewer
 ├── requirements.txt                # Python package dependencies (google-genai, PyMuPDF, chromadb, flask, etc.)
 ├── .env                            # Environment secrets (GEMINI_API_KEY, ADMIN_ID, ADMIN_PASSWORD)
 ├── User database/                  # Dedicated directory for user credentials, tabs, history & avatars
 │   ├── users_and_chats.db          # Persistent SQLite database (users, chat_tabs, chat_messages)
-│   └── profile_pictures/           # User-uploaded avatar images
+│   ├── profile_pictures/           # User-uploaded avatar images
+│   └── uploaded_attachments/       # User-uploaded chat photos & PDF files
 ├── embedders/
 │   ├── __init__.py
 │   └── gemini_multimodal_embedder.py # Google GenAI SDK wrapper for image & query embeddings

@@ -338,19 +338,35 @@
 
         <!-- Chat Input Form (Sticky Bottom) -->
         <div class="p-3 sm:p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur pb-safe">
-            <form id="chatForm" class="max-w-4xl mx-auto flex items-center space-x-2 sm:space-x-3">
-                <div class="relative flex-1">
-                    <input type="text" id="userInput" placeholder="Ask a question about the manual (conversational follow-ups supported)..." autocomplete="off"
-                           class="w-full bg-slate-800/90 text-slate-100 placeholder-slate-400 text-sm sm:text-base rounded-xl pl-3.5 sm:pl-4 pr-12 py-3 sm:py-3.5 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition shadow-inner">
-                    <button type="submit" id="sendBtn" 
-                            class="absolute right-1.5 top-1.5 bottom-1.5 w-9 sm:w-10 rounded-lg bg-sky-600 hover:bg-sky-500 text-white transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
-                        <i class="fa-solid fa-paper-plane text-xs sm:text-sm"></i>
-                    </button>
+            <div class="max-w-4xl mx-auto space-y-2">
+                <!-- Attachment Preview Bar (Shown when files are selected) -->
+                <div id="attachmentPreviewBar" class="hidden flex flex-wrap items-center gap-2 p-2 bg-slate-950/80 rounded-xl border border-slate-800 shadow-inner">
+                    <!-- Dynamic File Chips -->
                 </div>
-            </form>
-            <p class="text-center text-[11px] text-slate-500 mt-1.5 truncate px-2">
-                Click any citation button <strong>[📄 Manual, p.XX]</strong> to open that exact PDF page in a new browser tab.
-            </p>
+
+                <!-- Input form with Attachment Button -->
+                <form id="chatForm" class="flex items-center space-x-2 sm:space-x-3">
+                    <input type="file" id="chatFileInput" multiple accept="image/png, image/jpeg, image/webp, image/gif, .pdf" class="hidden" onchange="handleChatFileSelect(event)">
+                    
+                    <button type="button" onclick="triggerChatFileInput()" id="attachBtn" class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-sky-400 border border-slate-700 flex items-center justify-center transition shrink-0 shadow-sm" title="Attach photos or PDFs (max 5)">
+                        <i class="fa-solid fa-paperclip text-sm sm:text-base"></i>
+                    </button>
+
+                    <div class="relative flex-1">
+                        <input type="text" id="userInput" placeholder="Ask a question or describe your attached photo/PDF..." autocomplete="off"
+                               class="w-full bg-slate-800/90 text-slate-100 placeholder-slate-400 text-sm sm:text-base rounded-xl pl-3.5 sm:pl-4 pr-12 py-3 sm:py-3.5 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition shadow-inner">
+                        <button type="submit" id="sendBtn" 
+                                class="absolute right-1.5 top-1.5 bottom-1.5 w-9 sm:w-10 rounded-lg bg-sky-600 hover:bg-sky-500 text-white transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
+                            <i class="fa-solid fa-paper-plane text-xs sm:text-sm"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                    <span class="truncate"><i class="fa-solid fa-bolt text-sky-400 mr-1"></i> Fast direct responses & Multimodal Gemini vision</span>
+                    <span class="text-slate-400 shrink-0"><i class="fa-solid fa-paperclip text-sky-400 mr-0.5"></i> Max 5 photos/PDFs</span>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -536,6 +552,7 @@
         let activeTabId = null;
         let chatMessagesHistory = []; // Current active tab messages
         let messageSeedsMap = {}; // msgId -> seeds array
+        let attachedFiles = []; // Currently attached files (max 5 photos/PDFs)
 
         const chatContainer = document.getElementById('chatContainer');
         const chatForm = document.getElementById('chatForm');
@@ -550,6 +567,8 @@
         const pdfFilterSelect = document.getElementById('pdfFilterSelect');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const chatFileInput = document.getElementById('chatFileInput');
+        const attachmentPreviewBar = document.getElementById('attachmentPreviewBar');
 
         topKSlider.addEventListener('input', (e) => {
             topKValue.textContent = e.target.value;
@@ -557,6 +576,79 @@
 
         function cleanNoSpaces(inputEl) {
             inputEl.value = inputEl.value.replace(/\s+/g, '');
+        }
+
+        // =====================================================================
+        // Chat File Attachment Handlers (Max 5 Photos / PDFs)
+        // =====================================================================
+        function triggerChatFileInput() {
+            chatFileInput.click();
+        }
+
+        function handleChatFileSelect(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            if (attachedFiles.length + files.length > 5) {
+                alert(`You can attach at most 5 photos or PDFs per question. (Selected: ${files.length}, already attached: ${attachedFiles.length})`);
+                const remainingSlots = Math.max(0, 5 - attachedFiles.length);
+                files.splice(remainingSlots);
+            }
+
+            files.forEach(f => {
+                const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+                if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.pdf'].includes(ext)) {
+                    attachedFiles.push(f);
+                } else {
+                    alert(`File "${f.name}" is not supported. Please choose PNG, JPG, WEBP, or PDF.`);
+                }
+            });
+
+            chatFileInput.value = '';
+            renderAttachmentPreview();
+        }
+
+        function removeAttachedFile(index) {
+            attachedFiles.splice(index, 1);
+            renderAttachmentPreview();
+        }
+
+        function renderAttachmentPreview() {
+            if (!attachmentPreviewBar) return;
+            if (attachedFiles.length === 0) {
+                attachmentPreviewBar.classList.add('hidden');
+                attachmentPreviewBar.innerHTML = '';
+                return;
+            }
+
+            attachmentPreviewBar.classList.remove('hidden');
+            attachmentPreviewBar.innerHTML = `
+                <div class="w-full flex items-center justify-between text-[11px] text-slate-400 pb-1 mb-1 border-b border-slate-800">
+                    <span class="font-semibold text-slate-300"><i class="fa-solid fa-paperclip text-sky-400 mr-1"></i> Attached Files (${attachedFiles.length}/5)</span>
+                    <button type="button" onclick="clearAllAttachments()" class="text-slate-500 hover:text-rose-400 transition text-[10px]">Clear all</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    ${attachedFiles.map((file, idx) => {
+                        const isPdf = file.name.toLowerCase().endsWith('.pdf');
+                        const sizeKb = (file.size / 1024).toFixed(0);
+                        return `
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80 text-xs text-slate-200 shadow-sm animate-fade-in">
+                                <i class="fa-solid ${isPdf ? 'fa-file-pdf text-rose-400' : 'fa-file-image text-sky-400'} text-xs"></i>
+                                <span class="truncate max-w-[120px] sm:max-w-[160px] font-mono text-[11px]" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                                <span class="text-[10px] text-slate-500 font-mono">${sizeKb}KB</span>
+                                <button type="button" onclick="removeAttachedFile(${idx})" class="text-slate-400 hover:text-rose-400 p-0.5 ml-1 transition" title="Remove">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function clearAllAttachments() {
+            attachedFiles = [];
+            renderAttachmentPreview();
         }
 
         // =====================================================================
@@ -977,7 +1069,7 @@
                     } else {
                         messages.forEach(m => {
                             if (m.role === 'user') {
-                                appendUserMessage(m.content);
+                                appendUserMessage(m.content, m.attachments || []);
                             } else {
                                 appendAssistantResponse({
                                     answer: m.content,
@@ -1004,11 +1096,11 @@
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-3.5 sm:p-4 text-xs sm:text-sm text-slate-200 max-w-3xl shadow-sm space-y-2">
                         <p class="font-semibold text-white">Welcome to ${escapeHtml(title)}!</p>
                         <p class="text-slate-300 leading-relaxed">
-                            Ask any questions regarding technical software, parameter configurations, hardware deployment procedures, or troubleshooting guides. I will search the manual pages with <strong>Gemini Embedding 2 + ChromaDB</strong>, expand context along logical chapter boundaries, and provide grounded answers with direct page citation buttons.
+                            Ask any technical questions regarding navigation software, parameter configurations, hardware deployment, or troubleshooting. You can also <strong>attach photos or PDFs</strong> (up to 5) of error codes or equipment screens for instant visual analysis.
                         </p>
                         <div class="text-[11px] text-slate-400 border-t border-slate-800 pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
-                            <span><i class="fa-solid fa-brain text-sky-400 mr-1"></i> Multi-Turn Memory</span>
-                            <span><i class="fa-solid fa-image text-sky-400 mr-1"></i> Visual Top-K Inspector</span>
+                            <span><i class="fa-solid fa-bolt text-sky-400 mr-1"></i> Fast Direct Answers</span>
+                            <span><i class="fa-solid fa-camera text-sky-400 mr-1"></i> Multimodal Photo & PDF Analysis</span>
                             <span><i class="fa-solid fa-book-bookmark text-sky-400 mr-1"></i> Direct Page Citations</span>
                         </div>
                     </div>
@@ -1130,6 +1222,7 @@
                 closeImageModal();
                 closeTopKModal();
                 closeAuthModal();
+                closeProfilePicModal();
                 closeMobileSidebar();
             }
         });
@@ -1158,34 +1251,55 @@
         }
 
         // =====================================================================
-        // Chat Form Submission & Message Rendering
+        // Chat Form Submission & Message Rendering (with Attachments Support)
         // =====================================================================
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = userInput.value.trim();
-            if (!message) return;
+            if (!message && attachedFiles.length === 0) return;
 
-            // Render user bubble
-            appendUserMessage(message);
+            const filesToSend = [...attachedFiles];
+            
+            // Create temporary attachment objects for immediate visual rendering
+            const tempAttachments = filesToSend.map(f => {
+                const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                return {
+                    name: f.name,
+                    type: isPdf ? 'pdf' : 'image',
+                    url: URL.createObjectURL(f)
+                };
+            });
+
+            // Render user bubble immediately
+            appendUserMessage(message || "(Attached files)", tempAttachments);
 
             userInput.value = '';
             userInput.disabled = true;
             sendBtn.disabled = true;
+            const attachBtn = document.getElementById('attachBtn');
+            if (attachBtn) attachBtn.disabled = true;
+
+            // Clear attachments from input bar
+            clearAllAttachments();
 
             // Render assistant loader
             const loaderId = appendAssistantLoader();
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             try {
+                const formData = new FormData();
+                formData.append('message', message);
+                formData.append('tab_id', activeTabId || '');
+                formData.append('top_k', topKSlider.value);
+                formData.append('pdf_filter', pdfFilterSelect.value);
+
+                filesToSend.forEach(f => {
+                    formData.append('files', f);
+                });
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: message,
-                        tab_id: activeTabId,
-                        top_k: parseInt(topKSlider.value),
-                        pdf_filter: pdfFilterSelect.value
-                    })
+                    body: formData
                 });
 
                 const data = await response.json();
@@ -1214,17 +1328,48 @@
             } finally {
                 userInput.disabled = false;
                 sendBtn.disabled = false;
+                if (attachBtn) attachBtn.disabled = false;
                 userInput.focus();
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         });
 
-        function appendUserMessage(text) {
+        function appendUserMessage(text, attachments = []) {
             const div = document.createElement('div');
             div.className = "flex items-start justify-end space-x-2.5 sm:space-x-3 max-w-4xl mx-auto";
+
+            let attachmentsHtml = '';
+            if (attachments && attachments.length > 0) {
+                attachmentsHtml = `
+                    <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-sky-500/30">
+                        ${attachments.map(att => {
+                            if (att.type === 'pdf') {
+                                return `
+                                    <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-950/80 hover:bg-sky-900 border border-sky-400/40 text-sky-100 text-xs font-semibold shadow-sm transition">
+                                        <i class="fa-solid fa-file-pdf text-rose-300"></i>
+                                        <span class="truncate max-w-[140px]">${escapeHtml(att.name || 'Document.pdf')}</span>
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
+                                    </a>
+                                `;
+                            } else {
+                                return `
+                                    <div class="relative group max-w-[120px] max-h-[100px] rounded-lg overflow-hidden border border-sky-400/40 cursor-pointer shadow-sm" onclick="openImageModal('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
+                                        <img src="${att.url}" alt="${escapeAttr(att.name || 'Uploaded photo')}" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                        <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white text-[10px]">
+                                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                `;
+            }
+
             div.innerHTML = `
                 <div class="bg-sky-600 text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 text-xs sm:text-sm max-w-[88%] sm:max-w-xl md:max-w-2xl shadow-md break-words">
-                    <p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(text)}</p>
+                    ${attachmentsHtml}
+                    ${text ? `<p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(text)}</p>` : ''}
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
                     <i class="fa-solid fa-user text-xs sm:text-sm"></i>
@@ -1245,7 +1390,7 @@
                 </div>
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-3.5 sm:p-4 text-xs sm:text-sm text-slate-300 max-w-3xl shadow-sm flex items-center space-x-2.5">
                     <i class="fa-solid fa-circle-notch fa-spin text-sky-400"></i>
-                    <span>Searching ChromaDB vector store & reading manual pages...</span>
+                    <span>Searching manuals & analyzing visual context...</span>
                 </div>
             `;
             chatContainer.appendChild(div);

@@ -70,10 +70,17 @@ def init_db():
                 citations_json TEXT DEFAULT '[]',
                 top_k_json TEXT DEFAULT '[]',
                 expanded_count INTEGER DEFAULT 0,
+                attachments_json TEXT DEFAULT '[]',
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(tab_id) REFERENCES chat_tabs(id) ON DELETE CASCADE
             );
         """)
+
+        # Gracefully add attachments_json column if table was previously created without it
+        try:
+            cursor.execute("ALTER TABLE chat_messages ADD COLUMN attachments_json TEXT DEFAULT '[]';")
+        except sqlite3.OperationalError:
+            pass
         
         # Seed default admin user 'df' (ID: df, Password: df)
         cursor.execute("SELECT id FROM users WHERE username = 'df'")
@@ -317,7 +324,7 @@ def get_tab_messages(tab_id: str, user_id: int) -> List[dict]:
             return []
 
         cursor.execute("""
-            SELECT id, tab_id, role, content, citations_json, top_k_json, expanded_count, timestamp
+            SELECT id, tab_id, role, content, citations_json, top_k_json, expanded_count, attachments_json, timestamp
             FROM chat_messages
             WHERE tab_id = ?
             ORDER BY id ASC
@@ -335,6 +342,10 @@ def get_tab_messages(tab_id: str, user_id: int) -> List[dict]:
                 item["top_k"] = json.loads(item.get("top_k_json") or "[]")
             except Exception:
                 item["top_k"] = []
+            try:
+                item["attachments"] = json.loads(item.get("attachments_json") or "[]")
+            except Exception:
+                item["attachments"] = []
             results.append(item)
         return results
 
@@ -345,18 +356,20 @@ def add_chat_message(
     content: str,
     citations: Optional[List[dict]] = None,
     top_k: Optional[List[dict]] = None,
-    expanded_count: int = 0
+    expanded_count: int = 0,
+    attachments: Optional[List[dict]] = None
 ) -> int:
     """Appends a user or assistant message to the tab history and updates tab timestamp."""
     citations_str = json.dumps(citations or [])
     top_k_str = json.dumps(top_k or [])
+    attachments_str = json.dumps(attachments or [])
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO chat_messages (tab_id, role, content, citations_json, top_k_json, expanded_count)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (tab_id, role, content, citations_str, top_k_str, expanded_count))
+            INSERT INTO chat_messages (tab_id, role, content, citations_json, top_k_json, expanded_count, attachments_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (tab_id, role, content, citations_str, top_k_str, expanded_count, attachments_str))
         msg_id = cursor.lastrowid
         cursor.execute("UPDATE chat_tabs SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (tab_id,))
         conn.commit()

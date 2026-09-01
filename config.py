@@ -22,6 +22,7 @@ CHROMA_COLLECTION_NAME = "pdf_pages"
 USER_DB_DIR = PROJECT_ROOT / "User database"
 USER_DB_PATH = USER_DB_DIR / "users_and_chats.db"
 USER_AVATAR_DIR = USER_DB_DIR / "profile_pictures"
+USER_UPLOADS_DIR = USER_DB_DIR / "uploaded_attachments"
 
 SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -29,6 +30,7 @@ IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CHROMA_DIR.mkdir(parents=True, exist_ok=True)
 USER_DB_DIR.mkdir(parents=True, exist_ok=True)
 USER_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+USER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Page rendering (PDF -> image)
