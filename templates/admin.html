@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Admin Console — Multimodal PDF RAG</title>
+    <title>DFleet 4.0 — Admin Management Console</title>
+    <link rel="icon" type="image/png" href="/static/df_logo_badge.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -13,6 +14,11 @@
             theme: {
                 extend: {
                     colors: {
+                        df: {
+                            500: '#00b5b8',
+                            600: '#00979b',
+                            700: '#00787c'
+                        },
                         slate: {
                             850: '#151f32',
                             950: '#070b14'
@@ -43,7 +49,7 @@
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+            background: #00b5b8;
         }
     </style>
 </head>
@@ -53,20 +59,24 @@
     <!-- Admin Login / Lock Screen (Shown when unauthenticated) -->
     <!-- ===================================================================== -->
     <div id="loginGateScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-sky-950/40 relative overflow-hidden">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-[#00b5b8]/10 relative overflow-hidden">
             <!-- Decorative ambient glow -->
-            <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-[#00b5b8]/15 rounded-full blur-3xl pointer-events-none"></div>
             <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="relative z-10 space-y-6">
                 <!-- Icon & Header -->
                 <div class="text-center space-y-2">
-                    <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-sky-500 p-0.5 shadow-lg shadow-sky-500/20">
-                        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-400 text-2xl">
-                            <i class="fa-solid fa-lock"></i>
-                        </div>
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-[#00b5b8] p-2.5 shadow-lg shadow-[#00b5b8]/30 flex items-center justify-center">
+                        <img src="/static/df_logo_white.png" alt="DF Automation Logo" class="w-full h-full object-contain">
                     </div>
-                    <h2 class="text-xl font-bold text-slate-100 tracking-tight">Admin Console Access</h2>
+                    <div class="pt-1">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <span class="font-extrabold text-xl tracking-tight text-[#00b5b8]">DFleet</span>
+                            <span class="font-black text-xl text-white">4.0</span>
+                        </div>
+                        <h2 class="text-sm font-semibold text-slate-300">Admin Console Access</h2>
+                    </div>
                     <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
                         Please enter the administrator password to manage source PDF manuals, vector indices, and API settings.
                     </p>
@@ -79,7 +89,7 @@
                             Admin ID / Username
                         </label>
                         <input type="text" id="adminIdInput" value="df" placeholder="Enter ID (default: df)" autocomplete="username"
-                               class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-mono">
+                               class="w-full bg-slate-950 border border-slate-700 focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-mono">
                     </div>
 
                     <div>
@@ -88,7 +98,7 @@
                         </label>
                         <div class="relative flex items-center">
                             <input type="password" id="adminPassInput" placeholder="Enter password (default: df)" autocomplete="current-password" autofocus
-                                   class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition pr-12 font-mono">
+                                   class="w-full bg-slate-950 border border-slate-700 focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition pr-12 font-mono">
                             <button type="button" onclick="toggleLoginPassVisibility()" class="absolute right-3 text-slate-400 hover:text-slate-200 p-1 text-sm transition" title="Toggle password visibility">
                                 <i id="loginEyeIcon" class="fa-solid fa-eye"></i>
                             </button>
@@ -99,7 +109,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" id="loginSubmitBtn" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-sky-600 hover:from-amber-500 hover:to-sky-500 text-white text-sm font-semibold shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-2 active:scale-[0.99]">
+                    <button type="submit" id="loginSubmitBtn" class="w-full py-3 px-4 rounded-xl bg-[#00b5b8] hover:bg-[#00979b] text-white text-sm font-bold shadow-lg shadow-[#00b5b8]/30 transition flex items-center justify-center gap-2 active:scale-[0.99]">
                         <i class="fa-solid fa-key text-xs"></i>
                         <span>Unlock Admin Console</span>
                     </button>
@@ -107,8 +117,8 @@
 
                 <!-- Footer link back to Chat -->
                 <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <span class="text-slate-500">Default: ID <code class="text-amber-400 font-mono font-semibold">df</code> / Pass <code class="text-amber-400 font-mono font-semibold">df</code></span>
-                    <a href="/" class="text-sky-400 hover:text-sky-300 font-medium transition flex items-center gap-1">
+                    <span class="text-slate-500">Default: ID <code class="text-[#00b5b8] font-mono font-semibold">df</code> / Pass <code class="text-[#00b5b8] font-mono font-semibold">df</code></span>
+                    <a href="/" class="text-[#00b5b8] hover:text-sky-300 font-medium transition flex items-center gap-1">
                         <i class="fa-solid fa-comments"></i>
                         Back to Chat
                     </a>
@@ -126,21 +136,21 @@
         <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-3 sm:py-3.5 z-20 shrink-0">
             <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold shrink-0">
-                        <i class="fa-solid fa-sliders text-sm sm:text-base"></i>
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/20 shrink-0">
+                        <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                     </div>
                     <div>
                         <h1 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                            Admin Management Console
+                            DFleet 4.0 Admin Console
                             <span class="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
                         </h1>
-                        <p class="text-[11px] sm:text-xs text-slate-400">PDF Ingestion, Vector DB Sync & API Settings</p>
+                        <p class="text-[11px] sm:text-xs text-slate-400">DF Automation • PDF Ingestion, Vector DB Sync & API Settings</p>
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
                     <a href="/" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 sm:gap-2">
-                        <i class="fa-solid fa-comments text-sky-400"></i>
+                        <i class="fa-solid fa-comments text-[#00b5b8]"></i>
                         <span class="hidden xs:inline">Switch to</span> Chat
                     </a>
                     <button onclick="logoutAdmin()" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">

@@ -33,7 +33,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = config.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200 MB max upload limit
 
@@ -101,6 +101,102 @@ def admin_page():
     return render_template("admin.html")
 
 
+def find_best_matching_pdf(target_name: str) -> Path | None:
+    """
+    Fuzzy and semantic matcher that accurately maps any manual citation, query string,
+    or variation (e.g., 'NavWiz 3.0 User Manual', 'NavWiz 4.0', 'NavWiz', 'DFleet', 
+    'Field Deployment Handbook', 'Lanxin') to the correct underlying PDF Path in config.SOURCE_DIR.
+    """
+    if not config.SOURCE_DIR.exists():
+        return None
+
+    all_pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
+    if not all_pdfs:
+        return None
+
+    if not target_name or not target_name.strip():
+        return all_pdfs[0]
+
+    clean_target = target_name.strip()
+    # Strip brackets, quotes, and .pdf extension
+    clean_target = re.sub(r"^[\[\"']|[\]\"']$", "", clean_target).strip()
+    clean_target_no_ext = clean_target[:-4] if clean_target.lower().endswith(".pdf") else clean_target
+
+    # 1. Exact match (case-insensitive) on filename or stem
+    for f in all_pdfs:
+        if (
+            f.name.lower() == clean_target.lower()
+            or f.stem.lower() == clean_target.lower()
+            or f.stem.lower() == clean_target_no_ext.lower()
+        ):
+            return f
+
+    # Helper for alphanumeric normalization
+    def normalize_str(s: str) -> str:
+        s_low = s.lower().replace("copy of", "").replace(".pdf", "")
+        return re.sub(r"[^a-z0-9]", "", s_low)
+
+    target_norm = normalize_str(clean_target)
+    if target_norm:
+        for f in all_pdfs:
+            if normalize_str(f.stem) == target_norm:
+                return f
+
+    # 2. Key brand/product keyword matching
+    target_lower = clean_target.lower()
+    if "navwiz" in target_lower or "nav wiz" in target_lower or "nav" in target_lower.split():
+        for f in all_pdfs:
+            if "navwiz" in f.name.lower():
+                return f
+
+    if "dfleet" in target_lower or "d fleet" in target_lower or "df" in target_lower.split():
+        for f in all_pdfs:
+            if "dfleet" in f.name.lower():
+                return f
+
+    if "lanxin" in target_lower or "lx" in target_lower.split():
+        for f in all_pdfs:
+            if "lanxin" in f.name.lower():
+                return f
+
+    if "deployment" in target_lower or "handbook" in target_lower or "field" in target_lower:
+        for f in all_pdfs:
+            if "deployment" in f.name.lower() or "handbook" in f.name.lower() or "field" in f.name.lower():
+                return f
+
+    # 3. Token overlap scoring
+    target_tokens = set(re.findall(r"\w+", target_lower))
+    stop_words = {"copy", "of", "the", "manual", "user", "pdf", "v", "ver", "version"}
+    meaningful_target = target_tokens - stop_words
+    if not meaningful_target:
+        meaningful_target = target_tokens
+
+    best_pdf = None
+    best_score = -1.0
+
+    for f in all_pdfs:
+        f_tokens = set(re.findall(r"\w+", f.stem.lower()))
+        meaningful_f = f_tokens - stop_words
+        if not meaningful_f:
+            meaningful_f = f_tokens
+
+        intersection = meaningful_target & meaningful_f
+        union = meaningful_target | meaningful_f
+        score = (len(intersection) / len(union)) if union else 0.0
+
+        if normalize_str(f.stem) in target_norm or target_norm in normalize_str(f.stem):
+            score += 0.5
+
+        if score > best_score:
+            best_score = score
+            best_pdf = f
+
+    if best_pdf and best_score > 0.1:
+        return best_pdf
+
+    return all_pdfs[0]
+
+
 @app.route("/pdf-viewer")
 def pdf_viewer_page():
     """Renders a dedicated page citation viewer jumping directly to the requested manual page."""
@@ -110,21 +206,10 @@ def pdf_viewer_page():
     except (ValueError, TypeError):
         page_num = 1
 
-    # Match against source PDF files
-    found_pdf = None
-    if target_file:
-        for f in config.SOURCE_DIR.glob("*.pdf"):
-            if f.name.lower() == target_file.lower() or f.stem.lower() == target_file.lower():
-                found_pdf = f
-                break
-
+    # Match against source PDF files using fuzzy & keyword matching
+    found_pdf = find_best_matching_pdf(target_file)
     if not found_pdf:
-        # Fallback to first available PDF
-        pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
-        if pdfs:
-            found_pdf = pdfs[0]
-        else:
-            return "No PDF manuals available in source directory.", 404
+        return "No PDF manuals available in source directory.", 404
 
     filename = found_pdf.name
     stem = found_pdf.stem
@@ -150,20 +235,13 @@ def pdf_viewer_page():
 @app.route("/api/pdf/raw/<path:filename>")
 def serve_raw_pdf(filename: str):
     """Serves the raw PDF file with inline disposition so browsers natively open the PDF at #page=X."""
-    pdf_path = config.SOURCE_DIR / filename
-    if not pdf_path.exists():
-        for f in config.SOURCE_DIR.glob("*.pdf"):
-            if f.name.lower() == filename.lower() or f.stem.lower() == filename.lower():
-                pdf_path = f
-                filename = f.name
-                break
-
-    if not pdf_path.exists():
+    found_pdf = find_best_matching_pdf(filename)
+    if not found_pdf or not found_pdf.exists():
         return jsonify({"status": "error", "error": f"PDF '{filename}' not found."}), 404
 
     return send_from_directory(
         config.SOURCE_DIR,
-        filename,
+        found_pdf.name,
         mimetype="application/pdf",
         as_attachment=False
     )
@@ -499,21 +577,43 @@ def chat():
     # Support both JSON payload and multipart/form-data with file attachments
     if request.is_json:
         data = request.get_json(force=True, silent=True) or {}
+    # Extract multi-manual filters
+    raw_filters = []
+    if request.is_json:
+        data = request.get_json(force=True, silent=True) or {}
         user_prompt = str(data.get("message") or data.get("prompt") or data.get("query") or "").strip()
         tab_id = str(data.get("tab_id", "")).strip()
-        pdf_filter = str(data.get("pdf_filter", "all")).strip()
+        f_val = data.get("pdf_filters") or data.get("pdf_filter")
+        if isinstance(f_val, list):
+            raw_filters = [str(x).strip() for x in f_val if str(x).strip()]
+        elif isinstance(f_val, str) and f_val.strip():
+            raw_filters = [x.strip() for x in f_val.split(",") if x.strip()]
         try:
             top_k = max(1, min(int(data.get("top_k", 5)), 25))
         except (ValueError, TypeError):
             top_k = 5
+        visual_mode = str(data.get("visual_mode") or "strict").strip().lower()
     else:
         user_prompt = str(request.form.get("message") or request.form.get("prompt") or request.form.get("query") or "").strip()
         tab_id = str(request.form.get("tab_id", "")).strip()
-        pdf_filter = str(request.form.get("pdf_filter", "all")).strip()
+        f_list = request.form.getlist("pdf_filters") or request.form.getlist("pdf_filter")
+        if f_list:
+            for item in f_list:
+                for part in str(item).split(","):
+                    if part.strip():
+                        raw_filters.append(part.strip())
+        else:
+            f_single = request.form.get("pdf_filter", "").strip()
+            if f_single:
+                raw_filters = [x.strip() for x in f_single.split(",") if x.strip()]
         try:
             top_k = max(1, min(int(request.form.get("top_k", 5)), 25))
         except (ValueError, TypeError):
             top_k = 5
+        visual_mode = str(request.form.get("visual_mode") or "strict").strip().lower()
+
+    if visual_mode not in ["strict", "nearest", "off"]:
+        visual_mode = "strict"
 
     # Process up to 5 user-uploaded files (Images & PDFs)
     uploaded_files = request.files.getlist("files") or request.files.getlist("attachments")
@@ -524,6 +624,30 @@ def chat():
 
     if not user_prompt and uploaded_files:
         user_prompt = "Please analyze the attached image(s) or document(s) and explain any findings, error messages, or instructions."
+
+    # Validate manual selection: If explicitly empty or "none", block query
+    if "none" in [x.lower() for x in raw_filters] or (len(raw_filters) == 1 and raw_filters[0].lower() in ["none", "empty"]):
+        return jsonify({"error": "You should choose at least one source to ask a question."}), 400
+
+    # Resolve manual filter stems
+    selected_stems = []
+    is_search_all = False
+    for rf in raw_filters:
+        if rf.lower() == "all":
+            is_search_all = True
+            continue
+        matched_pdf = find_best_matching_pdf(rf)
+        if matched_pdf:
+            selected_stems.append(matched_pdf.stem)
+        else:
+            selected_stems.append(rf)
+
+    # Deduplicate stems
+    selected_stems = list(dict.fromkeys(selected_stems))
+
+    # If raw_filters was provided non-empty but not 'all' and no stems resolved
+    if raw_filters and not is_search_all and not selected_stems:
+        return jsonify({"error": "You should choose at least one source to ask a question."}), 400
 
     try:
         api_key = config.get_gemini_api_key()
@@ -596,10 +720,10 @@ def chat():
             # Fetch active manuals list for dynamic help response
             pdfs_info = pipeline_service.get_all_pdfs_status()
             manual_stems = [p["stem"] for p in pdfs_info if p["status"] == "embedded"]
-            manual_list_str = ", ".join(manual_stems) if manual_stems else "NavWiz 4.0 User Manual, DFleet 4.0 User Manual, Field Deployment Handbook"
+            manual_list_str = ", ".join(manual_stems) if manual_stems else "NavWiz 4.0 User Manual 1.0, DFleet 4.0 User Manual, Copy of Field Deployment Handbook"
 
             meta_prompt = (
-                "You are the friendly, expert NavWiz & DFleet Multimodal Technical Assistant.\n"
+                "You are the friendly, expert NavWiz & DFleet Multimodal Technical Assistant by DF Automation.\n"
                 f"You have access to high-resolution technical manuals including: {manual_list_str}.\n"
                 "Respond in a friendly, helpful, and concise manner.\n"
                 "- If the user greets you or asks how you are doing, greet them back warmly and explain what you can help with.\n"
@@ -635,6 +759,8 @@ def chat():
                 "expanded_count": 0,
                 "citations": [],
                 "attachments": saved_attachments_meta,
+                "visual_mode": visual_mode,
+                "visual_previews": [],
                 "is_conversational": True
             })
 
@@ -648,7 +774,6 @@ def chat():
 
         retrieved_seed_info = []
         sorted_pages = []
-        manual_pil_images = []
 
         if total_indexed > 0:
             # Embed query with Gemini Embedding 2
@@ -656,16 +781,26 @@ def chat():
             embed_res = embedder.embed_query_text(embedder_client, user_prompt)
             qvec = embed_res["vector"]
 
-            # Build ChromaDB filter
-            if pdf_filter and pdf_filter.lower() != "all":
-                where_clause = {
-                    "$and": [
-                        {"is_front_matter": False},
-                        {"pdf_stem": pdf_filter}
-                    ]
-                }
+            # Build ChromaDB filter with Multi-Manual support
+            if selected_stems and not is_search_all:
+                if len(selected_stems) == 1:
+                    where_clause = {
+                        "$and": [
+                            {"is_front_matter": False},
+                            {"pdf_stem": selected_stems[0]}
+                        ]
+                    }
+                else:
+                    where_clause = {
+                        "$and": [
+                            {"is_front_matter": False},
+                            {"pdf_stem": {"$in": selected_stems}}
+                        ]
+                    }
             else:
                 where_clause = {"is_front_matter": False}
+
+            logger.info(f"Querying ChromaDB with where_clause: {where_clause}")
 
             # Query ChromaDB
             query_res = collection.query(
@@ -735,16 +870,29 @@ def chat():
 
             sorted_pages = sorted(list(pages_to_load), key=sort_key)
 
+        # 5. Build Interleaved Multimodal Input with Explicit PDF Page Labels
+        multimodal_contents = []
+
+        if user_pil_images:
+            multimodal_contents.append("=== USER ATTACHED IMAGES / SCREENSHOTS ===")
+            for idx, u_img in enumerate(user_pil_images, 1):
+                multimodal_contents.append(f"[User Uploaded Image #{idx}]")
+                multimodal_contents.append(u_img)
+
+        if sorted_pages:
+            multimodal_contents.append("=== GROUNDING TECHNICAL MANUAL PAGES ===")
             for page_file in sorted_pages:
                 img_path = config.IMAGE_CACHE_DIR / page_file
                 if img_path.exists():
+                    stem, p_num = parse_page_filename(page_file)
+                    # Critical: Explicit label associating the image with its physical PDF document page number
+                    multimodal_contents.append(
+                        f"[DOCUMENT SOURCE: \"{stem}\" | EXACT PDF PAGE NUMBER: {p_num} (File: {page_file})]"
+                    )
                     with Image.open(img_path) as img:
-                        manual_pil_images.append(img.copy())
+                        multimodal_contents.append(img.copy())
 
-        # Combine all visual inputs: User Uploads + Retrieved Manual Pages
-        all_visual_contents = user_pil_images + manual_pil_images
-
-        # 5. Build System Prompt with Citations & User Attachment Guidance
+        # 6. Build System Prompt with Exact Manual Titles & Citations Guidance
         attachment_notice = ""
         if user_pil_images:
             attachment_notice = (
@@ -753,16 +901,23 @@ def chat():
                 "verify configurations, and relate them to the manual instructions.\n"
             )
 
+        # Dynamic exact list of indexed source manuals
+        active_source_pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
+        manual_names_bullet_list = "\n".join([f'- "{p.stem}"' for p in active_source_pdfs]) if active_source_pdfs else '- "DFleet 4.0 User Manual"\n- "NavWiz 4.0 User Manual 1.0"'
+
         system_prompt = (
-            "You are an expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals.\n"
-            "Answer the user's question accurately, thoroughly, and concisely using the provided images and documents.\n\n"
+            "You are an expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals by DF Automation.\n"
+            "Answer the user's question accurately, thoroughly, and concisely using the provided manual page images and user uploads.\n\n"
             f"{attachment_notice}"
-            "CITATION INSTRUCTIONS:\n"
-            "- In each section, row, or step of your answer referencing the manual, attach direct citations indicating the exact manual and page number where that information is found.\n"
-            "- Format citations as: `[Manual Name, p.XX]` (e.g. `[DFleet 4.0 User Manual, p.45]`, `[NavWiz 4.0 User Manual 1.0, p.12]`, `[Field Deployment Handbook, p.8]`).\n"
-            "- Provide citations consistently throughout the explanation.\n\n"
+            "CRITICAL CITATION RULES:\n"
+            "- In each section, row, or step referencing the manual, attach direct citations indicating the exact manual and PDF page number.\n"
+            "- Always use the EXACT PDF PAGE NUMBER provided in the `[DOCUMENT SOURCE: \"<Manual>\" | EXACT PDF PAGE NUMBER: N]` label directly preceding each page image above.\n"
+            "- DO NOT use the printed page number written inside the page text or footer (e.g. if the footer says '22' but the document label says 'EXACT PDF PAGE NUMBER: 23', you MUST cite page 23).\n"
+            "- Format every citation strictly as: `[Exact Manual Title, p.N]` (e.g. `[NavWiz 4.0 User Manual 1.0, p.23]`, `[DFleet 4.0 User Manual, p.45]`, `[Copy of Field Deployment Handbook, p.8]`).\n"
+            "- Available manual titles:\n"
+            f"{manual_names_bullet_list}\n\n"
             "CONVERSATION MEMORY:\n"
-            "- Use the conversation history in this tab to understand follow-up questions, pronouns, or references to previously discussed steps.\n\n"
+            "- Use the prior conversation history in this tab for context.\n\n"
             "STRICT GUARDRAIL: If the user's question is gibberish, meaningless text, or completely unrelated to "
             "robotics/manual software, and cannot be answered by the provided images, respond EXACTLY with:\n"
             "\"I am not sure about that.\""
@@ -770,7 +925,7 @@ def chat():
 
         genai_client = embedder.get_client()
         full_text_prompt = f"{system_prompt}\n\n{memory_context_str}Current User Question: {user_prompt}"
-        contents = all_visual_contents + [full_text_prompt]
+        contents = multimodal_contents + [full_text_prompt]
 
         response = genai_client.models.generate_content(
             model=config.GEMINI_QA_MODEL,
@@ -779,16 +934,18 @@ def chat():
 
         answer_text = response.text.strip() if response.text else "I am not sure about that."
 
-        # 6. Extract structured citations from text or fallback to seeds
+        # 7. Extract structured citations from text and resolve to canonical stems
         citation_matches = re.findall(r"\[(.*?),\s*p\.?\s*(\d+)\]", answer_text, re.IGNORECASE)
         structured_citations = []
         for manual_title, p_str in citation_matches:
             try:
                 p_num = int(p_str)
+                matched_pdf = find_best_matching_pdf(manual_title)
+                canonical_stem = matched_pdf.stem if matched_pdf else manual_title.strip()
                 structured_citations.append({
-                    "manual": manual_title.strip(),
+                    "manual": canonical_stem,
                     "page_number": p_num,
-                    "url": f"/pdf-viewer?file={manual_title.strip()}&page={p_num}"
+                    "url": f"/pdf-viewer?file={encodeURIComponent(canonical_stem)}&page={p_num}"
                 })
             except Exception:
                 pass
@@ -801,7 +958,59 @@ def chat():
                     "url": f"/pdf-viewer?file={s['pdf_stem']}&page={s['page_number']}"
                 })
 
-        # 7. Persist messages in database if tab_id & user session exists
+        # 8. Build Visual Preview Cards based on User's Visual Mode
+        visual_previews = []
+        if visual_mode == "strict":
+            # Show photo if available: preview pages directly cited in the answer
+            seen_previews = set()
+            for cit in structured_citations:
+                c_manual = cit.get("manual", "")
+                c_page = cit.get("page_number", 1)
+                key = (c_manual, c_page)
+                if key not in seen_previews:
+                    seen_previews.add(key)
+                    padded = f"{c_page:03d}"
+                    img_name = f"{c_manual}_page_{padded}.png"
+                    img_path = config.IMAGE_CACHE_DIR / img_name
+                    if img_path.exists():
+                        visual_previews.append({
+                            "manual": c_manual,
+                            "page_number": c_page,
+                            "page_image": img_name,
+                            "image_url": f"/rendered_pages/{img_name}",
+                            "caption": f"Cited: {c_manual}, Page {c_page}",
+                            "is_direct_citation": True
+                        })
+            # Fallback to top seed if no direct citation image exists
+            if not visual_previews and retrieved_seed_info:
+                top_s = retrieved_seed_info[0]
+                visual_previews.append({
+                    "manual": top_s["pdf_stem"],
+                    "page_number": top_s["page_number"],
+                    "page_image": top_s["page_image"],
+                    "image_url": top_s["image_url"],
+                    "caption": f"Top Match: {top_s['pdf_stem']}, Page {top_s['page_number']}",
+                    "similarity": top_s.get("similarity", 0.0),
+                    "is_direct_citation": False
+                })
+        elif visual_mode == "nearest":
+            # Show photo as near as possible (might have hallucination): include all candidate seeds
+            seen_previews = set()
+            for s in retrieved_seed_info:
+                key = (s["pdf_stem"], s["page_number"])
+                if key not in seen_previews:
+                    seen_previews.add(key)
+                    visual_previews.append({
+                        "manual": s["pdf_stem"],
+                        "page_number": s["page_number"],
+                        "page_image": s["page_image"],
+                        "image_url": s["image_url"],
+                        "caption": f"{s['pdf_stem']}, Page {s['page_number']}",
+                        "similarity": s.get("similarity", 0.0),
+                        "is_direct_citation": False
+                    })
+
+        # 9. Persist messages in database if tab_id & user session exists
         if tab_id and session.get("user_id"):
             auth_and_chat_db.add_chat_message(
                 tab_id=tab_id,
@@ -833,7 +1042,9 @@ def chat():
             "seed_count": len(retrieved_seed_info),
             "expanded_count": len(sorted_pages),
             "citations": structured_citations,
-            "attachments": saved_attachments_meta
+            "attachments": saved_attachments_meta,
+            "visual_mode": visual_mode,
+            "visual_previews": visual_previews
         })
 
     except Exception as e:
