@@ -91,6 +91,9 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 - **Conversational Fast Path (Zero-Vector Latency Optimization)**:
   - Greetings, pleasantries, small talk, and general capability queries ("Hi", "How are you", "What can you do", "I have a problem, what can I do") bypass vector embedding and ChromaDB retrieval.
   - Instantly answered directly by Gemini with warm introduction and dynamic listing of available manuals (< 1.5s latency).
+- **Target Manual Filtering & Fast Selection Bar**:
+  - Comprehensive source manual detection in `/api/status` returning all source PDFs and ChromaDB indexed documents (even if partially embedded or missing non-content front-matter pages).
+  - Quick Manual dropdown bar placed directly above the chat input box alongside the sidebar dropdown with automatic bidirectional synchronization.
 - **Multimodal User Attachments (Photos & PDFs - Max 5 Files)**:
   - Users can attach up to 5 images (PNG, JPG, WEBP) or PDF documents directly to any chat question.
   - User-uploaded photos and PDF pages are loaded/rendered as PIL Images and passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.

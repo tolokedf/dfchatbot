@@ -466,13 +466,28 @@ def get_status():
         collection = pipeline_service.get_chroma_collection()
         total_docs = collection.count()
         pdfs_info = pipeline_service.get_all_pdfs_status()
+        
+        # Collect all manuals available in source/ directory or indexed in ChromaDB
+        all_stems = set()
+        for p in pdfs_info:
+            all_stems.add(p["stem"])
+
+        if total_docs > 0:
+            try:
+                metas = collection.get(include=["metadatas"])["metadatas"]
+                for m in metas:
+                    if m and m.get("pdf_stem"):
+                        all_stems.add(m.get("pdf_stem"))
+            except Exception:
+                pass
+
         return jsonify({
             "status": "ok",
             "collection": config.CHROMA_COLLECTION_NAME,
             "total_indexed_pages": total_docs,
             "embed_model": config.GEMINI_EMBED_MODEL,
             "qa_model": config.GEMINI_QA_MODEL,
-            "sources": [p["stem"] for p in pdfs_info if p["status"] == "embedded"]
+            "sources": sorted(list(all_stems))
         })
     except Exception as e:
         logger.error(f"Error in /api/status: {e}", exc_info=True)
@@ -484,7 +499,7 @@ def chat():
     # Support both JSON payload and multipart/form-data with file attachments
     if request.is_json:
         data = request.get_json(force=True, silent=True) or {}
-        user_prompt = str(data.get("message", "")).strip()
+        user_prompt = str(data.get("message") or data.get("prompt") or data.get("query") or "").strip()
         tab_id = str(data.get("tab_id", "")).strip()
         pdf_filter = str(data.get("pdf_filter", "all")).strip()
         try:
@@ -492,7 +507,7 @@ def chat():
         except (ValueError, TypeError):
             top_k = 5
     else:
-        user_prompt = str(request.form.get("message", "")).strip()
+        user_prompt = str(request.form.get("message") or request.form.get("prompt") or request.form.get("query") or "").strip()
         tab_id = str(request.form.get("tab_id", "")).strip()
         pdf_filter = str(request.form.get("pdf_filter", "all")).strip()
         try:

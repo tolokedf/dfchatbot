@@ -239,7 +239,7 @@
                 
                 <div>
                     <label for="pdfFilterSelect" class="block text-xs text-slate-300 mb-1">Target Manual:</label>
-                    <select id="pdfFilterSelect" class="w-full bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500">
+                    <select id="pdfFilterSelect" onchange="syncManualFilter(this.value)" class="w-full bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500 cursor-pointer">
                         <option value="all">🔍 Search All Manuals</option>
                     </select>
                 </div>
@@ -339,6 +339,20 @@
         <!-- Chat Input Form (Sticky Bottom) -->
         <div class="p-3 sm:p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur pb-safe">
             <div class="max-w-4xl mx-auto space-y-2">
+                <!-- Quick Manual Filter & Attachment Bar -->
+                <div class="flex items-center justify-between text-xs px-0.5 pb-0.5">
+                    <div class="flex items-center space-x-1.5 min-w-0">
+                        <i class="fa-solid fa-book-bookmark text-sky-400 text-xs"></i>
+                        <span class="text-[11px] font-semibold text-slate-300 hidden xs:inline">Manual:</span>
+                        <select id="quickManualSelect" onchange="syncManualFilter(this.value)" class="bg-slate-800 hover:bg-slate-750 text-[11px] text-slate-200 border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-sky-500 max-w-[220px] sm:max-w-xs truncate cursor-pointer font-medium shadow-sm transition">
+                            <option value="all">🔍 Search All Manuals</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-2 text-[11px] text-slate-400">
+                        <span class="hidden sm:inline"><i class="fa-solid fa-paperclip text-sky-400 mr-0.5"></i> Max 5 files</span>
+                    </div>
+                </div>
+
                 <!-- Attachment Preview Bar (Shown when files are selected) -->
                 <div id="attachmentPreviewBar" class="hidden flex flex-wrap items-center gap-2 p-2 bg-slate-950/80 rounded-xl border border-slate-800 shadow-inner">
                     <!-- Dynamic File Chips -->
@@ -1223,6 +1237,17 @@
             userInput.focus();
         }
 
+        function syncManualFilter(val) {
+            const sidebarSelect = document.getElementById('pdfFilterSelect');
+            const quickSelect = document.getElementById('quickManualSelect');
+            if (sidebarSelect && sidebarSelect.value !== val) {
+                sidebarSelect.value = val;
+            }
+            if (quickSelect && quickSelect.value !== val) {
+                quickSelect.value = val;
+            }
+        }
+
         // Fetch ChromaDB status on load
         async function fetchStatus() {
             try {
@@ -1236,15 +1261,35 @@
                     qaModelName.title = data.qa_model;
                 }
                 if (data.sources && Array.isArray(data.sources)) {
-                    const currentVal = pdfFilterSelect.value;
-                    pdfFilterSelect.innerHTML = '<option value="all">🔍 Search All Manuals</option>';
-                    data.sources.forEach(src => {
-                        const opt = document.createElement('option');
-                        opt.value = src;
-                        opt.textContent = `📖 ${src}`;
-                        pdfFilterSelect.appendChild(opt);
-                    });
-                    if (currentVal) pdfFilterSelect.value = currentVal;
+                    const sidebarSelect = document.getElementById('pdfFilterSelect');
+                    const quickSelect = document.getElementById('quickManualSelect');
+                    const currentVal = (sidebarSelect ? sidebarSelect.value : null) || (quickSelect ? quickSelect.value : 'all');
+
+                    const buildOptionsHtml = () => {
+                        let html = '<option value="all">🔍 Search All Manuals</option>';
+                        data.sources.forEach(src => {
+                            html += `<option value="${escapeAttr(src)}">📖 ${escapeHtml(src)}</option>`;
+                        });
+                        return html;
+                    };
+
+                    if (sidebarSelect) {
+                        sidebarSelect.innerHTML = buildOptionsHtml();
+                        if (currentVal && data.sources.includes(currentVal)) {
+                            sidebarSelect.value = currentVal;
+                        } else {
+                            sidebarSelect.value = 'all';
+                        }
+                    }
+
+                    if (quickSelect) {
+                        quickSelect.innerHTML = buildOptionsHtml();
+                        if (currentVal && data.sources.includes(currentVal)) {
+                            quickSelect.value = currentVal;
+                        } else {
+                            quickSelect.value = 'all';
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching status:", err);
