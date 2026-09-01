@@ -15,10 +15,6 @@ __pycache__/
 *$py.class
 .pytest_cache/
 
-# Generated Pipeline Outputs & Database
-output/chroma_db/
-output/rendered_pages/
-output/pipeline_state.json
 
 # IDE / Editor Files
 .vscode/
