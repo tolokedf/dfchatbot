@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NavWiz & DFleet Multimodal RAG Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                            900: '#082f49',
+                        },
+                        surface: {
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .prose pre {
+            background-color: #0f172a;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid #334155;
+        }
+        .prose code {
+            color: #38bdf8;
+            font-family: monospace;
+        }
+        .prose p {
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+        .prose ul, .prose ol {
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .prose ul { list-style-type: disc; }
+        .prose ol { list-style-type: decimal; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex h-screen overflow-hidden font-sans antialiased">
+
+    <!-- Sidebar -->
+    <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+        <div class="p-5 flex flex-col h-full overflow-y-auto">
+            <!-- Brand Header -->
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-robot text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight text-white">NavWiz & DFleet</h1>
+                    <p class="text-xs text-sky-400 font-medium">Multimodal RAG (ChromaDB)</p>
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3.5 mb-5 shadow-sm">
+                <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="text-slate-400 font-medium">Vector Store Status</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+                        Active
+                    </span>
+                </div>
+                <div class="text-xs text-slate-300 flex justify-between py-1 border-t border-slate-700/40">
+                    <span class="text-slate-400">Indexed Pages:</span>
+                    <span id="indexedPagesCount" class="font-semibold text-sky-300">...</span>
+                </div>
+                <div class="text-xs text-slate-300 flex justify-between py-1 border-t border-slate-700/40">
+                    <span class="text-slate-400">Embed Model:</span>
+                    <span class="font-mono text-slate-300">gemini-embedding-2</span>
+                </div>
+                <div class="text-xs text-slate-300 flex justify-between py-1 border-t border-slate-700/40">
+                    <span class="text-slate-400">QA Model:</span>
+                    <span class="font-mono text-slate-300">gemini-3.5-flash</span>
+                </div>
+            </div>
+
+            <!-- Retrieval Controls -->
+            <div class="space-y-4 mb-6">
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Retrieval Settings</h2>
+                
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                        <label for="topKSlider">Top-K Seed Pages:</label>
+                        <span id="topKValue" class="font-semibold text-sky-400">5</span>
+                    </div>
+                    <input type="range" id="topKSlider" min="1" max="15" value="5" 
+                           class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <label for="showScoresToggle" class="text-xs text-slate-300 cursor-pointer">Show Similarity Scores</label>
+                    <input type="checkbox" id="showScoresToggle" checked 
+                           class="w-4 h-4 rounded text-sky-600 bg-slate-800 border-slate-700 focus:ring-sky-500 focus:ring-offset-slate-900 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="mb-4">
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">Sample Questions</h2>
+                <div class="space-y-2">
+                    <button onclick="setQuery('How do I calibrate the sensor array?')" 
+                            class="w-full text-left text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded-lg border border-slate-700/50 transition">
+                        <i class="fa-solid fa-compass text-sky-400 mr-1.5"></i> How do I calibrate the sensor array?
+                    </button>
+                    <button onclick="setQuery('How to troubleshoot pallet docking issues?')" 
+                            class="w-full text-left text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded-lg border border-slate-700/50 transition">
+                        <i class="fa-solid fa-wrench text-sky-400 mr-1.5"></i> Pallet docking troubleshooting?
+                    </button>
+                    <button onclick="setQuery('Explain critical NavWiz parameters for AGV obstacle sensors.')" 
+                            class="w-full text-left text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded-lg border border-slate-700/50 transition">
+                        <i class="fa-solid fa-sliders text-sky-400 mr-1.5"></i> Critical NavWiz obstacle sensor parameters?
+                    </button>
+                </div>
+            </div>
+
+            <!-- Clear Chat Button -->
+            <div class="mt-auto pt-4 border-t border-slate-800">
+                <button id="clearChatBtn" class="w-full py-2 px-3 text-xs font-medium text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 rounded-lg border border-slate-700/50 hover:border-red-500/30 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Clear Conversation</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Chat Workspace -->
+    <main class="flex-1 flex flex-col h-full bg-slate-950">
+        
+        <!-- Header -->
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/60 backdrop-blur">
+            <div class="flex items-center space-x-3">
+                <div class="h-2.5 w-2.5 rounded-full bg-sky-400 animate-ping"></div>
+                <span class="text-sm font-semibold text-slate-200">Outline-Aware Chapter Expansion Pipeline</span>
+            </div>
+            <div class="text-xs text-slate-400 flex items-center space-x-2">
+                <i class="fa-solid fa-database text-sky-400"></i>
+                <span>ChromaDB Vector Backend</span>
+            </div>
+        </header>
+
+        <!-- Chat History Window -->
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Welcome message -->
+            <div class="flex items-start space-x-3.5 max-w-4xl mx-auto">
+                <div class="w-8 h-8 rounded-lg bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-200 max-w-3xl shadow-sm">
+                    <p class="font-medium text-white mb-1.5">Welcome to the NavWiz & DFleet Multimodal Technical Assistant!</p>
+                    <p class="text-slate-300 leading-relaxed mb-3">
+                        Ask any questions regarding technical software, parameter configurations, hardware deployment procedures, or troubleshooting guides. I will search the manual pages with <strong>Gemini Embedding 2 + ChromaDB</strong>, expand context along logical chapter boundaries, and provide grounded answers with page citations.
+                    </p>
+                    <div class="text-xs text-slate-400 border-t border-slate-800 pt-2 flex items-center space-x-4">
+                        <span><i class="fa-solid fa-image text-sky-400 mr-1"></i> Visual Page Embedding</span>
+                        <span><i class="fa-solid fa-book-bookmark text-sky-400 mr-1"></i> Chapter Expansion</span>
+                        <span><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i> Hallucination Guardrails</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur">
+            <form id="chatForm" class="max-w-4xl mx-auto flex items-center space-x-3">
+                <div class="relative flex-1">
+                    <input type="text" id="userInput" placeholder="Ask a question about the manual..." autocomplete="off"
+                           class="w-full bg-slate-800/90 text-slate-100 placeholder-slate-400 text-sm rounded-xl pl-4 pr-12 py-3.5 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition shadow-inner">
+                    <button type="submit" id="sendBtn" 
+                            class="absolute right-2 top-2 bottom-2 px-3.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </div>
+            </form>
+            <p class="text-center text-xs text-slate-500 mt-2">
+                Grounding answers directly from technical PDF page images with Gemini 3.5 Flash.
+            </p>
+        </div>
+    </main>
+
+    <!-- Full Image Modal / Lightbox -->
+    <div id="imageModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="relative max-w-5xl max-h-[92vh] bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-3 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
+                <span id="modalImageTitle" class="text-xs font-semibold text-slate-200 truncate">Page Inspection</span>
+                <button onclick="closeImageModal()" class="text-slate-400 hover:text-white p-1 rounded transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto p-2 bg-slate-950 flex items-center justify-center">
+                <img id="modalImage" src="" alt="Manual Page" class="max-h-[80vh] max-w-full object-contain rounded">
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const topKSlider = document.getElementById('topKSlider');
+        const topKValue = document.getElementById('topKValue');
+        const showScoresToggle = document.getElementById('showScoresToggle');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+        const indexedPagesCount = document.getElementById('indexedPagesCount');
+
+        topKSlider.addEventListener('input', (e) => {
+            topKValue.textContent = e.target.value;
+        });
+
+        // Fetch ChromaDB status on load
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                if (data.total_indexed_pages !== undefined) {
+                    indexedPagesCount.textContent = `${data.total_indexed_pages} pages`;
+                }
+            } catch (err) {
+                console.error("Error fetching status:", err);
+                indexedPagesCount.textContent = "Error";
+            }
+        }
+        fetchStatus();
+
+        function setQuery(text) {
+            userInput.value = text;
+            userInput.focus();
+        }
+
+        function openImageModal(imgSrc, title) {
+            document.getElementById('modalImage').src = imgSrc;
+            document.getElementById('modalImageTitle').textContent = title;
+            document.getElementById('imageModal').classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.add('hidden');
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeImageModal();
+        });
+
+        clearChatBtn.addEventListener('click', () => {
+            chatContainer.innerHTML = `
+                <div class="flex items-start space-x-3.5 max-w-4xl mx-auto">
+                    <div class="w-8 h-8 rounded-lg bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                        <i class="fa-solid fa-robot text-sm"></i>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-200 max-w-3xl shadow-sm">
+                        <p class="font-medium text-white mb-1.5">Conversation cleared.</p>
+                        <p class="text-slate-300">Ask any questions to begin a new session.</p>
+                    </div>
+                </div>
+            `;
+        });
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Render user bubble
+            appendUserMessage(message);
+            userInput.value = '';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // Render assistant loader
+            const loaderId = appendAssistantLoader();
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        top_k: parseInt(topKSlider.value)
+                    })
+                });
+
+                const data = await response.json();
+                removeElement(loaderId);
+
+                if (!response.ok) {
+                    appendErrorMessage(data.error || "An error occurred during retrieval.");
+                } else {
+                    appendAssistantResponse(data);
+                }
+            } catch (err) {
+                removeElement(loaderId);
+                appendErrorMessage("Network error: Failed to connect to Flask server.");
+                console.error(err);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+
+        function appendUserMessage(text) {
+            const div = document.createElement('div');
+            div.className = "flex items-start justify-end space-x-3 max-w-4xl mx-auto";
+            div.innerHTML = `
+                <div class="bg-sky-600 text-white rounded-2xl rounded-tr-sm p-4 text-sm max-w-2xl shadow-md">
+                    <p class="whitespace-pre-wrap">${escapeHtml(text)}</p>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function appendAssistantLoader() {
+            const id = 'loader-' + Date.now();
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = "flex items-start space-x-3.5 max-w-4xl mx-auto";
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-lg bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-300 max-w-3xl shadow-sm flex items-center space-x-3">
+                    <i class="fa-solid fa-circle-notch fa-spin text-sky-400"></i>
+                    <span>Searching ChromaDB and analyzing manual topology...</span>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            return id;
+        }
+
+        function appendAssistantResponse(data) {
+            const showScores = showScoresToggle.checked;
+            const parsedHtml = marked.parse(data.answer || "");
+
+            let seedCardsHtml = '';
+            if (data.seeds && data.seeds.length > 0) {
+                seedCardsHtml = `
+                    <div class="mt-4 pt-3 border-t border-slate-800">
+                        <div class="text-xs font-semibold text-slate-400 mb-2.5 flex items-center justify-between">
+                            <span><i class="fa-solid fa-file-lines text-sky-400 mr-1"></i> Top Retrieved Seed Pages:</span>
+                            <span class="text-[11px] bg-slate-800 text-sky-300 px-2 py-0.5 rounded-full border border-slate-700">
+                                Expanded to ${data.expanded_count} continuous pages
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                            ${data.seeds.map((s, idx) => `
+                                <div class="bg-slate-950 border border-slate-800 hover:border-sky-500/50 rounded-lg p-1.5 transition cursor-pointer group"
+                                     onclick="openImageModal('${s.image_url}', '${escapeHtml(s.page_image)}')">
+                                    <div class="aspect-[3/4] bg-slate-900 rounded overflow-hidden mb-1.5 relative">
+                                        <img src="${s.image_url}" alt="Page" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
+                                        ${showScores ? `
+                                            <span class="absolute bottom-1 right-1 bg-slate-950/90 text-sky-300 text-[10px] px-1 py-0.5 rounded font-mono border border-slate-700">
+                                                ${s.similarity.toFixed(3)}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    <p class="text-[11px] font-semibold text-slate-300 truncate" title="${escapeHtml(s.page_image)}">${escapeHtml(s.page_image)}</p>
+                                    <p class="text-[10px] text-slate-500 truncate" title="${escapeHtml(s.chapter)}">Ch: ${escapeHtml(s.chapter)}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const div = document.createElement('div');
+            div.className = "flex items-start space-x-3.5 max-w-4xl mx-auto";
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-lg bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-200 max-w-3xl shadow-sm flex-1">
+                    <div class="prose text-slate-200 text-sm">
+                        ${parsedHtml}
+                    </div>
+                    ${seedCardsHtml}
+                </div>
+            `;
+            chatContainer.appendChild(div);
+        }
+
+        function appendErrorMessage(errorMsg) {
+            const div = document.createElement('div');
+            div.className = "flex items-start space-x-3.5 max-w-4xl mx-auto";
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-red-900/50 rounded-2xl rounded-tl-sm p-4 text-sm text-red-300 max-w-3xl shadow-sm">
+                    <p class="font-semibold text-red-200 mb-1">Retrieval Error</p>
+                    <p class="text-xs text-red-300 leading-relaxed">${escapeHtml(errorMsg)}</p>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+        }
+
+        function removeElement(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function escapeHtml(string) {
+            return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>

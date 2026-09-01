@@ -1,0 +1,28 @@
+# Environment & Secrets (NEVER commit your real API keys)
+.env
+*.env
+!.env.example
+
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Generated Pipeline Outputs & Database
+output/chroma_db/
+output/rendered_pages/
+output/pipeline_state.json
+
+# IDE / Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
