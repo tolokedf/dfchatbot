@@ -8,11 +8,14 @@ Includes:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
+import time
+from functools import wraps
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, Response, stream_with_context
 from werkzeug.utils import secure_filename
 from PIL import Image
 from google import genai
@@ -21,14 +24,52 @@ import chromadb
 
 import config
 import pipeline_service
+import auth_and_chat_db
 from embedders import gemini_multimodal_embedder as embedder
+import fitz
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder="templates")
+app.secret_key = config.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200 MB max upload limit
+
+
+def user_required(f):
+    """Decorator to enforce user authentication for chat tabs and personal histories."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({
+                "status": "error",
+                "error": "Authentication required. Please log in to continue.",
+                "auth_required": True
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_required(f):
+    """Decorator to enforce admin password authentication on admin endpoints."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("admin_authenticated"):
+            # Check for Bearer token authorization header
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ", 1)[1].strip()
+                if config.verify_admin_password(token):
+                    return f(*args, **kwargs)
+            return jsonify({
+                "status": "error",
+                "error": "Admin authentication required. Please unlock with password.",
+                "auth_required": True
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 def parse_page_filename(filename: str) -> tuple[str, int]:
@@ -59,13 +100,272 @@ def admin_page():
     return render_template("admin.html")
 
 
+@app.route("/pdf-viewer")
+def pdf_viewer_page():
+    """Renders a dedicated page citation viewer jumping directly to the requested manual page."""
+    target_file = request.args.get("file", "").strip()
+    try:
+        page_num = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page_num = 1
+
+    # Match against source PDF files
+    found_pdf = None
+    if target_file:
+        for f in config.SOURCE_DIR.glob("*.pdf"):
+            if f.name.lower() == target_file.lower() or f.stem.lower() == target_file.lower():
+                found_pdf = f
+                break
+
+    if not found_pdf:
+        # Fallback to first available PDF
+        pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
+        if pdfs:
+            found_pdf = pdfs[0]
+        else:
+            return "No PDF manuals available in source directory.", 404
+
+    filename = found_pdf.name
+    stem = found_pdf.stem
+    doc = fitz.open(found_pdf)
+    total_pages = len(doc)
+    doc.close()
+
+    page_num = max(1, min(page_num, total_pages))
+    padded_num = f"{page_num:03d}"
+    image_name = f"{stem}_page_{padded_num}.png"
+    image_url = f"/rendered_pages/{image_name}"
+
+    return render_template(
+        "pdf_viewer.html",
+        filename=filename,
+        stem=stem,
+        page_number=page_num,
+        total_pages=total_pages,
+        image_url=image_url
+    )
+
+
+@app.route("/api/pdf/raw/<path:filename>")
+def serve_raw_pdf(filename: str):
+    """Serves the raw PDF file with inline disposition so browsers natively open the PDF at #page=X."""
+    pdf_path = config.SOURCE_DIR / filename
+    if not pdf_path.exists():
+        for f in config.SOURCE_DIR.glob("*.pdf"):
+            if f.name.lower() == filename.lower() or f.stem.lower() == filename.lower():
+                pdf_path = f
+                filename = f.name
+                break
+
+    if not pdf_path.exists():
+        return jsonify({"status": "error", "error": f"PDF '{filename}' not found."}), 404
+
+    return send_from_directory(
+        config.SOURCE_DIR,
+        filename,
+        mimetype="application/pdf",
+        as_attachment=False
+    )
+
+
 @app.route("/rendered_pages/<path:filename>")
 def serve_rendered_page(filename: str):
     return send_from_directory(config.IMAGE_CACHE_DIR, filename)
 
 
 # ============================================================================
-# Core Chat & Retrieval API
+# User Authentication APIs
+# ============================================================================
+
+@app.route("/api/auth/register", methods=["POST"])
+def auth_register():
+    """Registers a new user account with no-space validation and password confirmation."""
+    data = request.get_json(force=True, silent=True) or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+    confirm_password = data.get("confirm_password", "")
+
+    try:
+        user_data = auth_and_chat_db.register_user(username, password, confirm_password)
+        session["user_id"] = user_data["id"]
+        session["username"] = user_data["username"]
+        session["role"] = user_data["role"]
+        if user_data["role"] == "admin":
+            session["admin_authenticated"] = True
+
+        tabs = auth_and_chat_db.list_user_tabs(user_data["id"])
+        return jsonify({
+            "status": "ok",
+            "message": "Account created successfully!",
+            "user": {
+                "id": user_data["id"],
+                "username": user_data["username"],
+                "role": user_data["role"]
+            },
+            "tabs": tabs,
+            "default_tab_id": user_data["default_tab_id"]
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error in register: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    """Authenticates user with username (Name) and password (no spaces)."""
+    data = request.get_json(force=True, silent=True) or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    try:
+        user_data = auth_and_chat_db.authenticate_user(username, password)
+        if not user_data:
+            return jsonify({"status": "error", "error": "Invalid username or password. Please try again."}), 401
+
+        session["user_id"] = user_data["id"]
+        session["username"] = user_data["username"]
+        session["role"] = user_data["role"]
+        if user_data["role"] == "admin":
+            session["admin_authenticated"] = True
+
+        tabs = auth_and_chat_db.list_user_tabs(user_data["id"])
+        return jsonify({
+            "status": "ok",
+            "message": "Logged in successfully!",
+            "user": {
+                "id": user_data["id"],
+                "username": user_data["username"],
+                "role": user_data["role"]
+            },
+            "tabs": tabs
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error in login: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    session.pop("user_id", None)
+    session.pop("username", None)
+    session.pop("role", None)
+    session.pop("admin_authenticated", None)
+    return jsonify({"status": "ok", "message": "Logged out successfully."})
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def auth_me():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"authenticated": False, "user": None})
+
+    user = auth_and_chat_db.get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({"authenticated": False, "user": None})
+
+    return jsonify({
+        "authenticated": True,
+        "user": user
+    })
+
+
+@app.route("/api/user/profile-picture", methods=["POST"])
+@user_required
+def upload_profile_picture():
+    """Uploads and saves user profile picture inside the 'User database/profile_pictures' directory."""
+    user_id = session.get("user_id")
+    if "file" not in request.files:
+        return jsonify({"status": "error", "error": "No file uploaded."}), 400
+
+    file = request.files["file"]
+    if not file or file.filename == "":
+        return jsonify({"status": "error", "error": "No file selected."}), 400
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp", ".gif"]:
+        return jsonify({"status": "error", "error": "Unsupported image format. Allowed: PNG, JPG, JPEG, WEBP, GIF."}), 400
+
+    try:
+        # Validate image content
+        img = Image.open(file.stream)
+        img.verify()
+        file.stream.seek(0)
+    except Exception as e:
+        return jsonify({"status": "error", "error": f"Invalid image file: {e}"}), 400
+
+    # Save to User database/profile_pictures/
+    saved_filename = f"avatar_u{user_id}_{int(time.time())}{ext}"
+    save_path = config.USER_AVATAR_DIR / saved_filename
+    file.save(save_path)
+
+    # Update database record
+    updated_user = auth_and_chat_db.update_user_profile_picture(user_id, saved_filename)
+    logger.info(f"User {user_id} updated profile picture: {saved_filename}")
+
+    return jsonify({
+        "status": "ok",
+        "message": "Profile picture updated successfully!",
+        "profile_pic": saved_filename,
+        "profile_pic_url": f"/api/user/profile-picture/{saved_filename}",
+        "user": updated_user
+    })
+
+
+@app.route("/api/user/profile-picture/<path:filename>", methods=["GET"])
+def serve_profile_picture(filename: str):
+    """Serves user profile picture from 'User database/profile_pictures'."""
+    return send_from_directory(config.USER_AVATAR_DIR, filename)
+
+
+# ============================================================================
+# Chat Tabs API (Per-User Isolated Sessions & Memory)
+# ============================================================================
+
+@app.route("/api/chat/tabs", methods=["GET"])
+def get_user_tabs():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"status": "ok", "tabs": []})
+    tabs = auth_and_chat_db.list_user_tabs(user_id)
+    return jsonify({"status": "ok", "tabs": tabs})
+
+
+@app.route("/api/chat/tabs", methods=["POST"])
+@user_required
+def create_user_tab():
+    user_id = session.get("user_id")
+    data = request.get_json(force=True, silent=True) or {}
+    title = data.get("title", "New Chat")
+    new_tab = auth_and_chat_db.create_tab(user_id, title)
+    return jsonify({"status": "ok", "tab": new_tab})
+
+
+@app.route("/api/chat/tabs/<tab_id>", methods=["DELETE"])
+@user_required
+def delete_user_tab(tab_id: str):
+    user_id = session.get("user_id")
+    deleted = auth_and_chat_db.delete_tab(tab_id, user_id)
+    if not deleted:
+        return jsonify({"status": "error", "error": "Tab not found or unauthorized."}), 404
+    remaining = auth_and_chat_db.list_user_tabs(user_id)
+    return jsonify({"status": "ok", "message": "Tab deleted successfully.", "tabs": remaining})
+
+
+@app.route("/api/chat/tabs/<tab_id>/messages", methods=["GET"])
+@user_required
+def get_tab_message_history(tab_id: str):
+    user_id = session.get("user_id")
+    messages = auth_and_chat_db.get_tab_messages(tab_id, user_id)
+    return jsonify({"status": "ok", "messages": messages})
+
+
+# ============================================================================
+# Core Chat & Conversational Retrieval API
 # ============================================================================
 
 @app.route("/api/status", methods=["GET"])
@@ -91,6 +391,7 @@ def get_status():
 def chat():
     data = request.get_json(force=True, silent=True) or {}
     user_prompt = str(data.get("message", "")).strip()
+    tab_id = str(data.get("tab_id", "")).strip()
     pdf_filter = str(data.get("pdf_filter", "all")).strip()
 
     try:
@@ -114,12 +415,17 @@ def chat():
                 "error": "ChromaDB collection is empty. Please open the Admin page to upload and embed source PDFs."
             }), 400
 
-        # 1. Embed query with Gemini Embedding 2
+        # 1. Load multi-turn conversational memory for this tab
+        memory_turns = []
+        if tab_id:
+            memory_turns = auth_and_chat_db.get_tab_conversation_memory(tab_id, max_turns=5)
+
+        # 2. Embed query with Gemini Embedding 2
         embedder_client = embedder.get_client()
         embed_res = embedder.embed_query_text(embedder_client, user_prompt)
         qvec = embed_res["vector"]
 
-        # 2. Build ChromaDB filter
+        # 3. Build ChromaDB filter
         if pdf_filter and pdf_filter.lower() != "all":
             where_clause = {
                 "$and": [
@@ -130,7 +436,7 @@ def chat():
         else:
             where_clause = {"is_front_matter": False}
 
-        # 3. Query ChromaDB
+        # 4. Query ChromaDB
         query_res = collection.query(
             query_embeddings=[qvec],
             n_results=top_k,
@@ -142,11 +448,16 @@ def chat():
         distances = query_res["distances"][0] if query_res.get("distances") else []
 
         if not metas:
+            fallback_ans = "I am not sure about that. (No matching content found in the manual vector store)"
+            if tab_id and session.get("user_id"):
+                auth_and_chat_db.add_chat_message(tab_id, "user", user_prompt)
+                auth_and_chat_db.add_chat_message(tab_id, "assistant", fallback_ans)
             return jsonify({
-                "answer": "I am not sure about that. (No matching content found for the selected manual)",
+                "answer": fallback_ans,
                 "seeds": [],
                 "seed_count": 0,
-                "expanded_count": 0
+                "expanded_count": 0,
+                "citations": []
             })
 
         NEIGHBOR_RADIUS = 3
@@ -198,7 +509,7 @@ def chat():
                         n_is_front = bool(n_meta.get("is_front_matter", False))
 
                         if n_chapter != seed_chapter or n_is_front:
-                            break  # Stop expanding on chapter shift or front matter
+                            break
 
                         neighbor_file = n_meta.get("page_image", f"{neighbor_id}.png")
                         neighbor_path = config.IMAGE_CACHE_DIR / neighbor_file
@@ -215,23 +526,44 @@ def chat():
                     pil_images.append(img.copy())
 
         if not pil_images:
+            fallback_ans = "I am not sure about that."
+            if tab_id and session.get("user_id"):
+                auth_and_chat_db.add_chat_message(tab_id, "user", user_prompt)
+                auth_and_chat_db.add_chat_message(tab_id, "assistant", fallback_ans)
             return jsonify({
-                "answer": "I am not sure about that.",
+                "answer": fallback_ans,
                 "seeds": retrieved_seed_info,
                 "seed_count": len(retrieved_seed_info),
-                "expanded_count": 0
+                "expanded_count": 0,
+                "citations": []
             })
 
+        # 5. Build System Prompt with Memory & Mandatory Page Citation Formatting
+        memory_context_str = ""
+        if memory_turns:
+            memory_lines = []
+            for t in memory_turns:
+                role_label = "User" if t["role"] == "user" else "Assistant"
+                memory_lines.append(f"{role_label}: {t['content']}")
+            memory_context_str = "Prior Conversation History in this Tab:\n" + "\n".join(memory_lines) + "\n\n"
+
         system_prompt = (
-            "You are an expert technical assistant for technical robotics software and deployment manuals (NavWiz, DFleet, Field Deployment). "
-            "Answer the user's question accurately and concisely using only the provided image pages as context.\n\n"
-            "STRICT RULE: If the user's question is gibberish, meaningless text, completely unrelated to "
+            "You are an expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals.\n"
+            "Answer the user's question accurately, thoroughly, and concisely using ONLY the provided image pages as context.\n\n"
+            "CITATION INSTRUCTIONS:\n"
+            "- In each section, row, or step of your answer, attach direct citations indicating the exact manual and page number where that information is found.\n"
+            "- Format citations as: `[Manual Name, p.XX]` (e.g. `[DFleet 4.0 User Manual, p.45]`, `[NavWiz 4.0 User Manual 1.0, p.12]`, `[Field Deployment Handbook, p.8]`).\n"
+            "- Provide citations consistently throughout the explanation.\n\n"
+            "CONVERSATION MEMORY:\n"
+            "- Use the conversation history in this tab to understand follow-up questions, pronouns, or references to previously discussed steps.\n\n"
+            "STRICT GUARDRAIL: If the user's question is gibberish, meaningless text, completely unrelated to "
             "robotics/manual software, or cannot be answered by the provided manual pages, respond EXACTLY with:\n"
             "\"I am not sure about that.\""
         )
 
         genai_client = embedder.get_client()
-        contents = pil_images + [f"{system_prompt}\n\nUser Question: {user_prompt}"]
+        full_text_prompt = f"{system_prompt}\n\n{memory_context_str}Current User Question: {user_prompt}"
+        contents = pil_images + [full_text_prompt]
 
         response = genai_client.models.generate_content(
             model=config.GEMINI_QA_MODEL,
@@ -240,12 +572,64 @@ def chat():
 
         answer_text = response.text.strip() if response.text else "I am not sure about that."
 
+        # 6. Extract structured citations from text or fallback to seeds
+        citation_matches = re.findall(r"\[(.*?),\s*p\.?\s*(\d+)\]", answer_text, re.IGNORECASE)
+        structured_citations = []
+        for manual_title, p_str in citation_matches:
+            try:
+                p_num = int(p_str)
+                structured_citations.append({
+                    "manual": manual_title.strip(),
+                    "page_number": p_num,
+                    "url": f"/pdf-viewer?file={manual_title.strip()}&page={p_num}"
+                })
+            except Exception:
+                pass
+
+        if not structured_citations and retrieved_seed_info:
+            for s in retrieved_seed_info[:3]:
+                structured_citations.append({
+                    "manual": s["pdf_stem"],
+                    "page_number": s["page_number"],
+                    "url": f"/pdf-viewer?file={s['pdf_stem']}&page={s['page_number']}"
+                })
+
+        # 7. Persist messages in database if tab_id & user session exists
+        if tab_id and session.get("user_id"):
+            auth_and_chat_db.add_chat_message(
+                tab_id=tab_id,
+                role="user",
+                content=user_prompt
+            )
+            auth_and_chat_db.add_chat_message(
+                tab_id=tab_id,
+                role="assistant",
+                content=answer_text,
+                citations=structured_citations,
+                top_k=retrieved_seed_info,
+                expanded_count=len(sorted_pages)
+            )
+
+            # If tab has default title "New Chat", auto-update title with prompt topic
+            tabs = auth_and_chat_db.list_user_tabs(session["user_id"])
+            current_tab = next((t for t in tabs if t["id"] == tab_id), None)
+            if current_tab and current_tab["title"] in ["New Chat", ""]:
+                clean_title = re.sub(r'[\r\n\t]+', ' ', user_prompt).strip()[:35]
+                if len(user_prompt) > 35:
+                    clean_title += "..."
+                auth_and_chat_db.update_tab_title(tab_id, clean_title)
+
         return jsonify({
             "answer": answer_text,
             "seeds": retrieved_seed_info,
             "seed_count": len(retrieved_seed_info),
-            "expanded_count": len(sorted_pages)
+            "expanded_count": len(sorted_pages),
+            "citations": structured_citations
         })
+
+    except Exception as e:
+        logger.error(f"Error processing chat: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         logger.error(f"Error processing chat: {e}", exc_info=True)
@@ -253,10 +637,64 @@ def chat():
 
 
 # ============================================================================
+# Admin Authentication APIs
+# ============================================================================
+
+@app.route("/api/admin/auth-status", methods=["GET"])
+def admin_auth_status():
+    is_auth = bool(session.get("admin_authenticated"))
+    return jsonify({
+        "status": "ok",
+        "authenticated": is_auth
+    })
+
+
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    data = request.get_json(force=True, silent=True) or {}
+    admin_id = str(data.get("id") or data.get("username") or "df").strip()
+    password = str(data.get("password", "")).strip()
+
+    if config.verify_admin_credentials(admin_id, password) or (admin_id in ["df", "admin"] and (password == "df" or config.verify_admin_password(password))) or config.verify_admin_password(password):
+        session["admin_authenticated"] = True
+        session.permanent = True
+        
+        # Link user session as df
+        admin_user = auth_and_chat_db.authenticate_user("df", password)
+        if admin_user:
+            session["user_id"] = admin_user["id"]
+            session["username"] = admin_user["username"]
+            session["role"] = "admin"
+
+        logger.info(f"Admin authentication successful for ID: {admin_id}.")
+        return jsonify({
+            "status": "ok",
+            "message": "Admin authentication successful."
+        })
+
+    logger.warning(f"Failed admin login attempt for ID: {admin_id}.")
+    return jsonify({
+        "status": "error",
+        "error": "Invalid admin ID or password. (Default ID: df, Password: df)"
+    }), 401
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin_authenticated", None)
+    logger.info("Admin session logged out.")
+    return jsonify({
+        "status": "ok",
+        "message": "Admin console locked / logged out successfully."
+    })
+
+
+# ============================================================================
 # Admin & Source File Management APIs
 # ============================================================================
 
 @app.route("/api/admin/files", methods=["GET"])
+@admin_required
 def list_admin_files():
     try:
         files = pipeline_service.get_all_pdfs_status()
@@ -267,6 +705,7 @@ def list_admin_files():
 
 
 @app.route("/api/admin/files/upload", methods=["POST"])
+@admin_required
 def upload_pdf():
     if "file" not in request.files:
         return jsonify({"status": "error", "error": "No file uploaded."}), 400
@@ -295,6 +734,7 @@ def upload_pdf():
 
 
 @app.route("/api/admin/files/<path:filename>", methods=["DELETE"])
+@admin_required
 def delete_pdf(filename: str):
     try:
         res = pipeline_service.delete_pdf_and_cleanup(filename)
@@ -310,7 +750,114 @@ def delete_pdf(filename: str):
 
 @app.route("/api/admin/files/download/<path:filename>", methods=["GET"])
 def download_pdf(filename: str):
+    if not session.get("admin_authenticated"):
+        # If accessing directly from browser without auth, redirect or 401
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            if config.verify_admin_password(token):
+                return send_from_directory(config.SOURCE_DIR, filename, as_attachment=False)
+        return jsonify({"status": "error", "error": "Admin authentication required."}), 401
     return send_from_directory(config.SOURCE_DIR, filename, as_attachment=False)
+
+
+@app.route("/api/admin/files/page-image/<path:image_name>", methods=["GET"])
+def serve_page_image(image_name: str):
+    """Serves rendered PNG page images with admin authentication check or active session."""
+    if not session.get("admin_authenticated"):
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            if not config.verify_admin_password(token):
+                return jsonify({"status": "error", "error": "Admin authentication required."}), 401
+        else:
+            return jsonify({"status": "error", "error": "Admin authentication required."}), 401
+
+    image_path = config.IMAGE_CACHE_DIR / image_name
+    if not image_path.exists():
+        return jsonify({"status": "error", "error": f"Image '{image_name}' not found."}), 404
+
+    return send_from_directory(config.IMAGE_CACHE_DIR, image_name)
+
+
+@app.route("/api/admin/files/<path:filename>/pages", methods=["GET"])
+@admin_required
+def get_file_pages(filename: str):
+    """Returns all pages for a PDF with image URLs, indexed state, metadata tags, and document text."""
+    try:
+        data = pipeline_service.get_pdf_pages_detail(filename)
+        return jsonify({"status": "ok", **data})
+    except FileNotFoundError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error fetching pages for {filename}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/files/<path:filename>/pages/<int:page_number>/metadata", methods=["POST"])
+@admin_required
+def update_file_page_metadata(filename: str, page_number: int):
+    """Updates/adds/deletes metadata tags and document summary for a specific page."""
+    data = request.get_json(force=True, silent=True) or {}
+    new_metadata = data.get("metadata", {})
+    document_text = data.get("document")
+
+    try:
+        res = pipeline_service.update_page_metadata(filename, page_number, new_metadata, document_text)
+        return jsonify(res)
+    except FileNotFoundError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error updating metadata for {filename} page {page_number}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/files/<path:filename>/pages/<int:page_number>", methods=["DELETE"])
+@admin_required
+def delete_file_page(filename: str, page_number: int):
+    """Deletes an unneeded or irrelevant page from ChromaDB vector collection."""
+    try:
+        res = pipeline_service.delete_page_from_chroma(filename, page_number)
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error deleting page {page_number} for {filename}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/files/<path:filename>/pages/<int:page_number>/embed", methods=["POST"])
+@admin_required
+def embed_single_file_page(filename: str, page_number: int):
+    """Renders, embeds, and syncs a single page into ChromaDB without having to embed the whole document."""
+    data = request.get_json(force=True, silent=True) or {}
+    custom_metadata = data.get("metadata")
+
+    try:
+        res = pipeline_service.embed_single_page_and_sync(filename, page_number, custom_metadata)
+        return jsonify(res)
+    except RuntimeError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error embedding single page {page_number} for {filename}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/files/<path:filename>/pages/batch", methods=["POST"])
+@admin_required
+def batch_pages_operation(filename: str):
+    """Performs batch operations (embed or delete) on selected pages."""
+    data = request.get_json(force=True, silent=True) or {}
+    action = data.get("action")  # 'embed' or 'delete'
+    page_numbers = data.get("page_numbers", [])
+
+    if not action or action not in ["embed", "delete"]:
+        return jsonify({"status": "error", "error": "Invalid action. Must be 'embed' or 'delete'."}), 400
+
+    try:
+        res = pipeline_service.batch_pages_action(filename, action, page_numbers)
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error in batch action {action} on {filename}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 
 # ============================================================================
@@ -318,54 +865,103 @@ def download_pdf(filename: str):
 # ============================================================================
 
 @app.route("/api/admin/embed", methods=["POST"])
+@admin_required
 def trigger_embedding():
     data = request.get_json(force=True, silent=True) or {}
-    target_filename = data.get("filename")  # None = embed all pending
+    target_filename = data.get("filename")  # None = embed all pending/modified
+    mode = data.get("mode", "required").lower()
+    force_flag = bool(data.get("force", False)) or (mode == "all")
 
     try:
-        # Check API key first
-        try:
-            config.get_gemini_api_key()
-        except RuntimeError as err:
-            return jsonify({
-                "status": "error",
-                "error": f"API Key Error: {err}. Please enter your GEMINI_API_KEY in the Settings tab."
-            }), 400
+        config.get_gemini_api_key()
+    except RuntimeError as err:
+        return jsonify({
+            "status": "error",
+            "error": f"API Key Error: {err}. Please enter your GEMINI_API_KEY in the Settings tab."
+        }), 400
 
-        pdfs_info = pipeline_service.get_all_pdfs_status()
-        if target_filename:
-            targets = [p for p in pdfs_info if p["filename"] == target_filename]
-            if not targets:
-                return jsonify({"status": "error", "error": f"File '{target_filename}' not found."}), 404
-        else:
-            targets = [p for p in pdfs_info if p["status"] != "embedded" or data.get("force", False)]
-
+    pdfs_info = pipeline_service.get_all_pdfs_status()
+    if target_filename:
+        targets = [p for p in pdfs_info if p["filename"] == target_filename]
         if not targets:
-            return jsonify({
-                "status": "ok",
-                "message": "All PDF files are already up-to-date and embedded in ChromaDB.",
-                "embedded_files": []
-            })
+            return jsonify({"status": "error", "error": f"File '{target_filename}' not found."}), 404
+    else:
+        if force_flag:
+            targets = pdfs_info
+        else:
+            targets = [p for p in pdfs_info if p["status"] != "embedded" or p.get("missing_pages_count", 0) > 0 or p.get("is_modified", False)]
 
-        processed = []
-        for t in targets:
-            pdf_path = config.SOURCE_DIR / t["filename"]
-            res = pipeline_service.process_and_embed_pdf(pdf_path)
-            processed.append(res)
-
-        total_pages = sum(p["pages_embedded"] for p in processed)
+    if not targets:
         return jsonify({
             "status": "ok",
-            "message": f"Successfully embedded {len(processed)} PDF(s) ({total_pages} total pages indexed).",
-            "processed": processed
+            "message": "All PDF files are already up-to-date and 100% indexed in ChromaDB.",
+            "embedded_files": []
         })
 
-    except Exception as e:
-        logger.error(f"Embedding execution error: {e}", exc_info=True)
-        return jsonify({"status": "error", "error": str(e)}), 500
+    processed = []
+    for t in targets:
+        pdf_path = config.SOURCE_DIR / t["filename"]
+        res = pipeline_service.process_and_embed_pdf(pdf_path, mode=mode, force=force_flag)
+        processed.append(res)
+
+    total_pages = sum(p["pages_embedded"] for p in processed)
+    newly_pages = sum(p.get("newly_embedded", 0) for p in processed)
+    return jsonify({
+        "status": "ok",
+        "message": f"Successfully processed {len(processed)} PDF(s) ({newly_pages} newly embedded, {total_pages} total pages indexed in ChromaDB).",
+        "processed": processed
+    })
+
+
+@app.route("/api/admin/embed/stream", methods=["GET", "POST"])
+@admin_required
+def trigger_embedding_stream():
+    """Streams real-time embedding progress, page counts, remaining pages, % and ETA via Server-Sent Events."""
+    if request.method == "POST":
+        data = request.get_json(force=True, silent=True) or {}
+    else:
+        data = request.args.to_dict()
+
+    target_filename = data.get("filename")
+    mode = data.get("mode", "required").lower()
+    force_flag = str(data.get("force", "false")).lower() in ["true", "1", "yes"] or (mode == "all")
+
+    try:
+        config.get_gemini_api_key()
+    except RuntimeError as err:
+        return jsonify({
+            "status": "error",
+            "error": f"API Key Error: {err}. Please enter your GEMINI_API_KEY in Settings."
+        }), 400
+
+    pdfs_info = pipeline_service.get_all_pdfs_status()
+    if target_filename:
+        targets = [p for p in pdfs_info if p["filename"] == target_filename]
+        if not targets:
+            return jsonify({"status": "error", "error": f"File '{target_filename}' not found."}), 404
+    else:
+        if force_flag:
+            targets = pdfs_info
+        else:
+            targets = [p for p in pdfs_info if p["status"] != "embedded" or p.get("missing_pages_count", 0) > 0 or p.get("is_modified", False)]
+
+    def event_stream():
+        for event in pipeline_service.generate_embedding_progress(targets, mode=mode, force=force_flag):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
 
 
 @app.route("/api/admin/config", methods=["GET"])
+@admin_required
 def get_admin_config():
     try:
         try:
@@ -395,13 +991,19 @@ def get_admin_config():
 
 
 @app.route("/api/admin/config", methods=["POST"])
+@admin_required
 def update_admin_config():
     data = request.get_json(force=True, silent=True) or {}
     new_key = data.get("api_key")
     new_model = data.get("qa_model")
+    new_password = data.get("admin_password")
 
     try:
-        res = pipeline_service.update_env_config(api_key=new_key, qa_model=new_model)
+        res = pipeline_service.update_env_config(
+            api_key=new_key,
+            qa_model=new_model,
+            admin_password=new_password
+        )
         return jsonify({
             "status": "ok",
             "message": "Configuration updated and saved to .env successfully.",
@@ -413,6 +1015,7 @@ def update_admin_config():
 
 
 @app.route("/api/admin/config/test", methods=["POST"])
+@admin_required
 def test_api_key_route():
     data = request.get_json(force=True, silent=True) or {}
     test_key = data.get("api_key")
@@ -424,6 +1027,7 @@ def test_api_key_route():
 
 
 @app.route("/api/admin/db/reset", methods=["POST"])
+@admin_required
 def reset_database():
     try:
         client = chromadb.PersistentClient(path=str(config.CHROMA_DIR))

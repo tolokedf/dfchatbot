@@ -18,10 +18,17 @@ IMAGE_CACHE_DIR = OUTPUT_DIR / "rendered_pages"
 CHROMA_DIR = OUTPUT_DIR / "chroma_db"
 CHROMA_COLLECTION_NAME = "pdf_pages"
 
+# User database and profile pictures folder
+USER_DB_DIR = PROJECT_ROOT / "User database"
+USER_DB_PATH = USER_DB_DIR / "users_and_chats.db"
+USER_AVATAR_DIR = USER_DB_DIR / "profile_pictures"
+
 SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+USER_DB_DIR.mkdir(parents=True, exist_ok=True)
+USER_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Page rendering (PDF -> image)
@@ -35,6 +42,28 @@ MAX_IMAGE_DIMENSION = 2000
 GEMINI_EMBED_MODEL = "gemini-embedding-2"
 GEMINI_QA_MODEL = os.environ.get("GEMINI_QA_MODEL", "gemini-3.5-flash-lite")
 EMBED_OUTPUT_DIMENSIONALITY = 3072
+
+# ---------------------------------------------------------------------------
+# Security & Authentication
+# ---------------------------------------------------------------------------
+ADMIN_ID = os.environ.get("ADMIN_ID", "df")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "df")
+SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "df-rag-multimodal-secret-key-2026")
+
+def verify_admin_password(password: str) -> bool:
+    """Verifies if the provided password matches the configured ADMIN_PASSWORD."""
+    if not password:
+        return False
+    current_pass = os.environ.get("ADMIN_PASSWORD", "df").strip()
+    return password.strip() == current_pass
+
+def verify_admin_credentials(admin_id: str, admin_password: str) -> bool:
+    """Verifies if the provided ID and password match the admin credentials (df / df)."""
+    if not admin_id or not admin_password:
+        return False
+    current_id = os.environ.get("ADMIN_ID", "df").strip()
+    current_pass = os.environ.get("ADMIN_PASSWORD", "df").strip()
+    return admin_id.strip() == current_id and admin_password.strip() == current_pass
 
 def get_gemini_api_key() -> str:
     """
@@ -61,3 +90,12 @@ EMBED_INSTRUCTION_QUERY = (
 )
 
 REQUEST_TIMEOUT_SECONDS = 120
+
+# ---------------------------------------------------------------------------
+# Rate Limiting & Resilient Retry Settings
+# ---------------------------------------------------------------------------
+EMBED_MAX_RETRIES = int(os.environ.get("EMBED_MAX_RETRIES", 20))
+EMBED_INITIAL_BACKOFF = float(os.environ.get("EMBED_INITIAL_BACKOFF", 5.0))
+EMBED_MAX_BACKOFF = float(os.environ.get("EMBED_MAX_BACKOFF", 60.0))
+EMBED_BACKOFF_FACTOR = float(os.environ.get("EMBED_BACKOFF_FACTOR", 1.5))
+EMBED_INTER_PAGE_DELAY = float(os.environ.get("EMBED_INTER_PAGE_DELAY", 0.3))

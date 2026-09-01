@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Page Citation Viewer - {{ filename }}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            950: '#070b14'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-full overflow-hidden font-sans antialiased">
+
+    <!-- Top Navigation Toolbar -->
+    <header class="h-14 sm:h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-3 sm:px-6 shrink-0 z-10 shadow-md">
+        <!-- Manual Title & Badge -->
+        <div class="flex items-center space-x-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-file-pdf"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-xs sm:text-sm font-bold text-slate-100 truncate" id="docTitle" title="{{ filename }}">{{ filename }}</h1>
+                <p class="text-[11px] text-sky-400 font-mono truncate">
+                    Cited Reference • Page <span id="headerPageNum" class="font-bold">{{ page_number }}</span> of <span id="headerTotalPages">{{ total_pages }}</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Page Navigator Controls -->
+        <div class="flex items-center space-x-1.5 sm:space-x-3">
+            <button onclick="prevPage()" id="prevBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed text-xs font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span class="hidden sm:inline">Prev</span>
+            </button>
+
+            <div class="flex items-center space-x-1 text-xs">
+                <span class="text-slate-400 hidden xs:inline">Page</span>
+                <input type="number" id="pageInput" min="1" max="{{ total_pages }}" value="{{ page_number }}" 
+                       onchange="goToPage(this.value)" onkeydown="if(event.key==='Enter') goToPage(this.value)"
+                       class="w-14 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-center font-mono font-bold text-sky-400 text-xs focus:outline-none focus:border-sky-500">
+                <span class="text-slate-400">/ {{ total_pages }}</span>
+            </div>
+
+            <button onclick="nextPage()" id="nextBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed text-xs font-semibold flex items-center gap-1">
+                <span class="hidden sm:inline">Next</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Right Actions: Zoom & Full PDF Link -->
+        <div class="flex items-center space-x-2">
+            <button onclick="zoomOut()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs" title="Zoom Out">
+                <i class="fa-solid fa-magnifying-glass-minus"></i>
+            </button>
+            <button onclick="resetZoom()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs" title="Reset Zoom">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+            <button onclick="zoomIn()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs" title="Zoom In">
+                <i class="fa-solid fa-magnifying-glass-plus"></i>
+            </button>
+            
+            <a href="/api/pdf/raw/{{ filename }}#page={{ page_number }}" target="_blank" class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Open Native PDF in Browser">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <span class="hidden md:inline">Native PDF</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Canvas / Image Page Viewer -->
+    <main class="flex-1 overflow-auto bg-slate-950 p-4 sm:p-6 flex items-center justify-center select-none" id="viewerContainer">
+        <div id="pageCardWrapper" class="transition-transform duration-150 ease-out origin-center flex flex-col items-center">
+            <!-- High-Res Page Image -->
+            <img id="pageImg" src="{{ image_url }}" alt="Page {{ page_number }}" 
+                 class="max-h-[85vh] max-w-[95vw] object-contain rounded-xl shadow-2xl border border-slate-800 bg-white"
+                 onload="handleImageLoaded()" onerror="handleImageError()">
+            
+            <div id="imgLoadingPlaceholder" class="hidden py-32 text-center text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-400 mb-3 block"></i>
+                <span>Loading Page Image...</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Status -->
+    <footer class="h-8 bg-slate-900/90 border-t border-slate-800 px-4 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+        <span>📖 NavWiz & DFleet Multimodal RAG Grounding</span>
+        <span>Use <kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">←</kbd> and <kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">→</kbd> arrow keys to turn pages</span>
+    </footer>
+
+    <script>
+        const filename = "{{ filename }}";
+        const pdfStem = "{{ stem }}";
+        const totalPages = parseInt("{{ total_pages }}") || 1;
+        let currentPage = parseInt("{{ page_number }}") || 1;
+        let currentZoom = 1.0;
+
+        function updateUI() {
+            document.getElementById("headerPageNum").textContent = currentPage;
+            document.getElementById("pageInput").value = currentPage;
+            document.getElementById("prevBtn").disabled = (currentPage <= 1);
+            document.getElementById("nextBtn").disabled = (currentPage >= totalPages);
+
+            const padded = String(currentPage).padStart(3, '0');
+            const newImgUrl = `/rendered_pages/${encodeURIComponent(pdfStem)}_page_${padded}.png`;
+            
+            const imgEl = document.getElementById("pageImg");
+            imgEl.src = newImgUrl;
+            imgEl.alt = `Page ${currentPage}`;
+
+            // Update URL query parameters without reloading
+            const url = new URL(window.location);
+            url.searchParams.set('page', currentPage);
+            window.history.replaceState({}, '', url);
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateUI();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateUI();
+            }
+        }
+
+        function goToPage(val) {
+            let p = parseInt(val);
+            if (isNaN(p)) return;
+            if (p < 1) p = 1;
+            if (p > totalPages) p = totalPages;
+            currentPage = p;
+            updateUI();
+        }
+
+        function zoomIn() {
+            if (currentZoom < 2.5) {
+                currentZoom += 0.2;
+                applyZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > 0.5) {
+                currentZoom -= 0.2;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            document.getElementById("pageCardWrapper").style.transform = `scale(${currentZoom})`;
+        }
+
+        function handleImageLoaded() {
+            document.getElementById("imgLoadingPlaceholder").classList.add("hidden");
+            document.getElementById("pageImg").classList.remove("hidden");
+        }
+
+        function handleImageError() {
+            document.getElementById("imgLoadingPlaceholder").innerHTML = `
+                <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 max-w-md mx-auto">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400 text-2xl mb-2 block"></i>
+                    <p class="font-bold text-sm text-slate-100">Page image preview not cached.</p>
+                    <p class="text-xs text-slate-400 mt-1 mb-3">You can view the full PDF directly in browser.</p>
+                    <a href="/api/pdf/raw/${encodeURIComponent(filename)}#page=${currentPage}" target="_blank" class="inline-block px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold">
+                        Open Native PDF at Page ${currentPage}
+                    </a>
+                </div>
+            `;
+            document.getElementById("imgLoadingPlaceholder").classList.remove("hidden");
+            document.getElementById("pageImg").classList.add("hidden");
+        }
+
+        // Keyboard arrow navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'ArrowLeft') prevPage();
+            if (e.key === 'ArrowRight') nextPage();
+            if (e.key === '+' || e.key === '=') zoomIn();
+            if (e.key === '-') zoomOut();
+            if (e.key === '0') resetZoom();
+        });
+
+        // Initialize button states
+        updateUI();
+    </script>
+</body>
+</html>

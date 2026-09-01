@@ -2,7 +2,7 @@
 <html lang="en" class="h-full bg-slate-950">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Admin Console — Multimodal PDF RAG</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,276 +17,681 @@
                             850: '#151f32',
                             950: '#070b14'
                         }
+                    },
+                    screens: {
+                        'xs': '480px'
                     }
                 }
             }
         }
     </script>
+    <style>
+        /* Safe area support for iOS notches */
+        .pb-safe {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b1120;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
 </head>
-<body class="h-full flex flex-col text-slate-100 antialiased font-sans">
+<body class="h-full flex flex-col text-slate-100 antialiased font-sans bg-slate-950">
 
-    <!-- Top Navigation -->
-    <header class="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 flex items-center justify-between px-6 z-20 shrink-0">
-        <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold">
-                <i class="fa-solid fa-sliders"></i>
-            </div>
-            <div>
-                <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                    Admin Management Console
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
-                </h1>
-                <p class="text-xs text-slate-400">PDF Ingestion, Vector DB Sync & API Settings</p>
-            </div>
-        </div>
+    <!-- ===================================================================== -->
+    <!-- Admin Login / Lock Screen (Shown when unauthenticated) -->
+    <!-- ===================================================================== -->
+    <div id="loginGateScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-sky-950/40 relative overflow-hidden">
+            <!-- Decorative ambient glow -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="flex items-center space-x-3">
-            <a href="/" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-2">
-                <i class="fa-solid fa-comments text-sky-400"></i>
-                Switch to Chat Assistant
-            </a>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full space-y-6">
-
-        <!-- Stat Cards Bar -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-                <div class="w-10 h-10 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-file-pdf"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-400">Source PDFs</p>
-                    <p id="statSourceCount" class="text-lg font-bold text-slate-100">...</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-database"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-400">Indexed Pages</p>
-                    <p id="statIndexedPages" class="text-lg font-bold text-slate-100">...</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-                <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-brain"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-400">QA Model</p>
-                    <p id="statQaModel" class="text-sm font-semibold font-mono text-purple-300">...</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-                <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-key"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-400">API Key Status</p>
-                    <p id="statKeyStatus" class="text-xs font-semibold text-slate-300">Checking...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 1: Source PDF File Management -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-            <div class="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-folder-open text-sky-400"></i>
-                        Source PDF Manuals (<span id="fileCountBadge">0</span>)
-                    </h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Manage source manuals in the <code class="text-sky-300">source/</code> folder and trigger ChromaDB vector embedding.</p>
-                </div>
-
-                <div class="flex items-center space-x-2">
-                    <button onclick="fetchFiles()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-rotate"></i>
-                        Refresh
-                    </button>
-                    <button onclick="triggerEmbeddingAll()" id="embedAllBtn" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-sky-600/30">
-                        <i class="fa-solid fa-bolt"></i>
-                        Embed All Pending PDFs
-                    </button>
-                </div>
-            </div>
-
-            <!-- Upload Dropzone -->
-            <div class="p-5 bg-slate-950/40 border-b border-slate-800">
-                <form id="uploadForm" class="flex flex-col sm:flex-row items-center gap-3">
-                    <label class="flex-1 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-700 hover:border-sky-500/60 rounded-xl cursor-pointer bg-slate-900/50 hover:bg-slate-800/40 transition group">
-                        <div class="flex items-center space-x-2 text-xs text-slate-400 group-hover:text-slate-200">
-                            <i class="fa-solid fa-cloud-arrow-up text-base text-sky-400"></i>
-                            <span class="font-medium" id="uploadFilename">Choose or drop a PDF manual here</span>
+            <div class="relative z-10 space-y-6">
+                <!-- Icon & Header -->
+                <div class="text-center space-y-2">
+                    <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-sky-500 p-0.5 shadow-lg shadow-sky-500/20">
+                        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-400 text-2xl">
+                            <i class="fa-solid fa-lock"></i>
                         </div>
-                        <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="handleFileSelected(event)">
-                    </label>
-                    <button type="submit" id="uploadBtn" disabled class="px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition flex items-center justify-center gap-2 whitespace-nowrap">
-                        <i class="fa-solid fa-upload"></i>
-                        Upload to Source
-                    </button>
-                </form>
-            </div>
-
-            <!-- Table of Source PDFs -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-300">
-                    <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
-                        <tr>
-                            <th class="px-5 py-3">Document Name</th>
-                            <th class="px-4 py-3">File Size</th>
-                            <th class="px-4 py-3">Pages (PDF / Indexed)</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Last Modified</th>
-                            <th class="px-5 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="filesTableBody" class="divide-y divide-slate-800/60 font-normal">
-                        <tr>
-                            <td colspan="6" class="px-5 py-8 text-center text-slate-500">
-                                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading source manuals...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Section 2: API & Model Configuration (.env Manager) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            <!-- Card: API Key & Model -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                            <i class="fa-solid fa-key text-amber-400"></i>
-                            Google Gemini API Settings
-                        </h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Manage your Gemini API key and QA generation model without editing code.</p>
                     </div>
+                    <h2 class="text-xl font-bold text-slate-100 tracking-tight">Admin Console Access</h2>
+                    <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                        Please enter the administrator password to manage source PDF manuals, vector indices, and API settings.
+                    </p>
                 </div>
 
-                <div class="space-y-3">
+                <!-- Admin ID & Password Form -->
+                <form id="loginForm" class="space-y-4" onsubmit="handleAdminLogin(event)">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">
-                            Google Gemini API Key
+                        <label for="adminIdInput" class="block text-xs font-semibold text-slate-300 mb-1.5">
+                            Admin ID / Username
+                        </label>
+                        <input type="text" id="adminIdInput" value="df" placeholder="Enter ID (default: df)" autocomplete="username"
+                               class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-mono">
+                    </div>
+
+                    <div>
+                        <label for="adminPassInput" class="block text-xs font-semibold text-slate-300 mb-1.5">
+                            Admin Password
                         </label>
                         <div class="relative flex items-center">
-                            <input type="password" id="apiKeyInput" placeholder="Paste your GEMINI_API_KEY here..." 
-                                   class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 pr-20 font-mono">
-                            <div class="absolute right-2 flex items-center space-x-1">
-                                <button type="button" onclick="toggleKeyVisibility()" class="text-slate-400 hover:text-slate-200 p-1 text-xs" title="Toggle visibility">
-                                    <i id="eyeIcon" class="fa-solid fa-eye"></i>
-                                </button>
-                            </div>
+                            <input type="password" id="adminPassInput" placeholder="Enter password (default: df)" autocomplete="current-password" autofocus
+                                   class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition pr-12 font-mono">
+                            <button type="button" onclick="toggleLoginPassVisibility()" class="absolute right-3 text-slate-400 hover:text-slate-200 p-1 text-sm transition" title="Toggle password visibility">
+                                <i id="loginEyeIcon" class="fa-solid fa-eye"></i>
+                            </button>
                         </div>
-                        <p class="text-[11px] text-slate-500 mt-1">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-sky-400 hover:underline">Google AI Studio</a>. Saved directly into <code class="text-slate-400">.env</code>.</p>
+                        <div id="loginErrorMsg" class="hidden mt-2 text-xs text-rose-400 flex items-center gap-1.5 bg-rose-950/40 border border-rose-900/50 rounded-lg p-2.5 animate-pulse">
+                            <i class="fa-solid fa-circle-exclamation text-sm shrink-0"></i>
+                            <span id="loginErrorText">Incorrect ID or password. Please try again.</span>
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">
-                            Generation QA Model
-                        </label>
-                        <select id="qaModelSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
-                            <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recommended: High Quota, Fast Latency)</option>
-                            <option value="gemini-3.5-flash">gemini-3.5-flash (Standard: Complex Schematics)</option>
-                            <option value="gemini-3.6-flash">gemini-3.6-flash</option>
-                            <option value="gemini-3.7-flash">gemini-3.7-flash</option>
-                        </select>
-                    </div>
+                    <button type="submit" id="loginSubmitBtn" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-sky-600 hover:from-amber-500 hover:to-sky-500 text-white text-sm font-semibold shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-2 active:scale-[0.99]">
+                        <i class="fa-solid fa-key text-xs"></i>
+                        <span>Unlock Admin Console</span>
+                    </button>
+                </form>
 
-                    <div class="flex items-center space-x-3 pt-2">
-                        <button onclick="testApiKey()" id="testApiBtn" class="flex-1 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-vial"></i>
-                            Test API Connection
-                        </button>
-                        <button onclick="saveApiSettings()" id="saveConfigBtn" class="flex-1 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30">
-                            <i class="fa-solid fa-floppy-disk"></i>
-                            Save to .env
-                        </button>
-                    </div>
+                <!-- Footer link back to Chat -->
+                <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span class="text-slate-500">Default: ID <code class="text-amber-400 font-mono font-semibold">df</code> / Pass <code class="text-amber-400 font-mono font-semibold">df</code></span>
+                    <a href="/" class="text-sky-400 hover:text-sky-300 font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-comments"></i>
+                        Back to Chat
+                    </a>
                 </div>
-            </div>
-
-            <!-- Card: ChromaDB Database Management -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                            <i class="fa-solid fa-server text-sky-400"></i>
-                            ChromaDB Vector Store Maintenance
-                        </h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Database storage topology and re-indexing operations.</p>
-                    </div>
-                </div>
-
-                <div class="space-y-3 text-xs text-slate-300">
-                    <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-800 space-y-1.5">
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">ChromaDB Path:</span>
-                            <span class="font-mono text-slate-300">output/chroma_db/</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">Collection Name:</span>
-                            <span class="font-mono text-sky-300">pdf_pages</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">Embedding Metric:</span>
-                            <span class="font-mono text-slate-300">Cosine (3072 dims)</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">Render Resolution:</span>
-                            <span class="font-mono text-slate-300">200 DPI PNG</span>
-                        </div>
-                    </div>
-
-                    <div class="pt-2">
-                        <button onclick="resetDatabasePrompt()" class="w-full px-3.5 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/60 text-xs font-semibold transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-trash-can"></i>
-                            Wipe & Reset ChromaDB Collection
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- Modal: Operation Logs / Progress -->
-    <div id="logModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col shadow-2xl">
-            <div class="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
-                <span id="logModalTitle" class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-cog fa-spin text-sky-400"></i>
-                    Embedding Pipeline in Progress...
-                </span>
-                <button onclick="closeLogModal()" id="closeLogModalBtn" class="text-slate-400 hover:text-white p-1 rounded transition">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-            <div class="p-4 bg-slate-950 font-mono text-xs text-slate-300 max-h-96 overflow-y-auto space-y-1.5" id="logModalContent">
-                <p class="text-slate-500">Initializing pipeline...</p>
             </div>
         </div>
     </div>
 
+    <!-- ===================================================================== -->
+    <!-- Authenticated Admin Content Area -->
+    <!-- ===================================================================== -->
+    <div id="adminContentContainer" class="flex-1 flex flex-col h-full overflow-hidden hidden">
+
+        <!-- Top Navigation -->
+        <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-3 sm:py-3.5 z-20 shrink-0">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold shrink-0">
+                        <i class="fa-solid fa-sliders text-sm sm:text-base"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+                            Admin Management Console
+                            <span class="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
+                        </h1>
+                        <p class="text-[11px] sm:text-xs text-slate-400">PDF Ingestion, Vector DB Sync & API Settings</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
+                    <a href="/" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 sm:gap-2">
+                        <i class="fa-solid fa-comments text-sky-400"></i>
+                        <span class="hidden xs:inline">Switch to</span> Chat
+                    </a>
+                    <button onclick="logoutAdmin()" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-lock text-rose-400"></i>
+                        <span>Lock</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Dashboard Content -->
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe">
+            <div class="max-w-7xl mx-auto space-y-5 sm:space-y-6">
+
+                <!-- Stat Cards Bar -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Source PDFs</p>
+                            <p id="statSourceCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Indexed Pages</p>
+                            <p id="statIndexedPages" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">QA Model</p>
+                            <p id="statQaModel" class="text-xs sm:text-sm font-semibold font-mono text-purple-300 truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">API Key Status</p>
+                            <p id="statKeyStatus" class="text-[11px] sm:text-xs font-semibold text-slate-300 truncate">Checking...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: Source PDF File Management -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-folder-open text-sky-400"></i>
+                                Source PDF Manuals (<span id="fileCountBadge">0</span>)
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Manage source manuals in the <code class="text-sky-300">source/</code> folder and trigger ChromaDB vector embedding.</p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="fetchFiles()" class="flex-1 sm:flex-none px-3 py-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-rotate"></i>
+                                <span>Refresh</span>
+                            </button>
+                            <button onclick="openEmbedModeModal(null)" id="embedAllBtn" class="flex-1 sm:flex-none px-3.5 py-2 sm:px-4 sm:py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-sky-600/30">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Embed Options</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Upload Dropzone -->
+                    <div class="p-4 sm:p-5 bg-slate-950/40 border-b border-slate-800">
+                        <form id="uploadForm" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            <label class="flex-1 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-700 hover:border-sky-500/60 rounded-xl cursor-pointer bg-slate-900/50 hover:bg-slate-800/40 transition group">
+                                <div class="flex items-center space-x-2 text-xs text-slate-400 group-hover:text-slate-200 text-center">
+                                    <i class="fa-solid fa-cloud-arrow-up text-base text-sky-400"></i>
+                                    <span class="font-medium truncate max-w-xs sm:max-w-md" id="uploadFilename">Choose or drop a PDF manual here</span>
+                                </div>
+                                <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="handleFileSelected(event)">
+                            </label>
+                            <button type="submit" id="uploadBtn" disabled class="px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition flex items-center justify-center gap-2 whitespace-nowrap">
+                                <i class="fa-solid fa-upload"></i>
+                                <span>Upload PDF</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Mobile Responsive Cards View (Visible on phones & small tablets) -->
+                    <div id="mobileFilesContainer" class="block md:hidden p-3 space-y-3">
+                        <div class="text-center py-6 text-slate-500 text-xs">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Loading source manuals...
+                        </div>
+                    </div>
+
+                    <!-- Desktop/Tablet Table View (Visible on md screens and up) -->
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                                <tr>
+                                    <th class="px-5 py-3">Document Name</th>
+                                    <th class="px-4 py-3">File Size</th>
+                                    <th class="px-4 py-3">Pages (PDF / Indexed)</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3">Last Modified</th>
+                                    <th class="px-5 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="filesTableBody" class="divide-y divide-slate-800/60 font-normal">
+                                <tr>
+                                    <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading source manuals...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Section 2: API & Model Configuration (.env Manager) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+
+                    <!-- Card: API Key & Model -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                                    <i class="fa-solid fa-key text-amber-400"></i>
+                                    Google Gemini & Auth Settings
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Manage your Gemini API key, QA model, and Admin password.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">
+                                    Google Gemini API Key
+                                </label>
+                                <div class="relative flex items-center">
+                                    <input type="password" id="apiKeyInput" placeholder="Paste your GEMINI_API_KEY here..." 
+                                           class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 pr-10 font-mono">
+                                    <button type="button" onclick="toggleKeyVisibility()" class="absolute right-2 text-slate-400 hover:text-slate-200 p-1 text-xs" title="Toggle visibility">
+                                        <i id="eyeIcon" class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-sky-400 hover:underline">Google AI Studio</a>. Saved directly into <code class="text-slate-400">.env</code>.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">
+                                    Generation QA Model
+                                </label>
+                                <select id="qaModelSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-sky-500">
+                                    <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recommended: High Quota, Fast Latency)</option>
+                                    <option value="gemini-3.5-flash">gemini-3.5-flash (Standard: Complex Schematics)</option>
+                                    <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+                                    <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">
+                                    Update Admin Password (Optional)
+                                </label>
+                                <input type="password" id="newAdminPasswordInput" placeholder="Leave blank to keep current (default: df)" 
+                                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono">
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
+                                <button onclick="testApiKey()" id="testApiBtn" class="flex-1 px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-vial"></i>
+                                    Test API Connection
+                                </button>
+                                <button onclick="saveApiSettings()" id="saveConfigBtn" class="flex-1 px-3.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    Save to .env
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card: ChromaDB Database Management -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                                    <i class="fa-solid fa-server text-sky-400"></i>
+                                    ChromaDB Vector Store Maintenance
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Database storage topology and re-indexing operations.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-xs text-slate-300">
+                            <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-800 space-y-1.5">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">ChromaDB Path:</span>
+                                    <span class="font-mono text-slate-300">output/chroma_db/</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Collection Name:</span>
+                                    <span class="font-mono text-sky-300">pdf_pages</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Embedding Metric:</span>
+                                    <span class="font-mono text-slate-300">Cosine (3072 dims)</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Render Resolution:</span>
+                                    <span class="font-mono text-slate-300">200 DPI PNG</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <button onclick="resetDatabasePrompt()" class="w-full px-3.5 py-2.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/60 text-xs font-semibold transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                    Wipe & Reset ChromaDB Collection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Embedding Mode Selection (1. Re-embed All Pages vs 2. Embed Required Pages) -->
+    <div id="embedModeModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="relative max-w-lg w-full bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-2xl">
+            <!-- Header -->
+            <div class="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100">Choose Embedding Option</h3>
+                        <p class="text-[11px] text-slate-400" id="embedModeTargetLabel">Select how you want to embed this document</p>
+                    </div>
+                </div>
+                <button onclick="closeEmbedModeModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Close">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Body Details -->
+            <div class="p-4 sm:p-5 space-y-4">
+                
+                <!-- Target Document Summary Pill -->
+                <div id="embedModeDocInfo" class="bg-slate-950/70 rounded-xl p-3 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+                    <!-- Injected dynamically via JS: Document Name, Total PDF Pages, Indexed, Missing, Modified -->
+                </div>
+
+                <!-- 2 Action Option Cards -->
+                <div class="space-y-3">
+                    
+                    <!-- Option 2: Embed Required (Smart Sync) -->
+                    <div onclick="executeEmbedChoice('required')" class="p-4 rounded-xl border border-sky-500/40 bg-sky-950/20 hover:bg-sky-900/30 hover:border-sky-500 cursor-pointer transition group relative">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-sky-300 transition">
+                                        Option 1: Embed Required Only
+                                    </h4>
+                                    <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 mt-0.5">
+                                        Recommended • Smart Sync
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="text-sky-400 text-xs font-semibold mt-1">Select <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2 pl-9 leading-relaxed">
+                            Scans for missing/lost pages or pages edited after embedding, and <strong>only embeds the required pages</strong>. Fast and preserves your Gemini API quota.
+                        </p>
+                    </div>
+
+                    <!-- Option 1: Re-embed All Pages (Full Overwrite) -->
+                    <div onclick="executeEmbedChoice('all')" class="p-4 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800/40 hover:border-slate-700 cursor-pointer transition group relative">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">
+                                        Option 2: Re-embed All Pages
+                                    </h4>
+                                    <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 mt-0.5">
+                                        Full Overwrite
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="text-slate-400 group-hover:text-amber-400 text-xs font-semibold mt-1">Select <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2 pl-9 leading-relaxed">
+                            Forces a complete re-rendering and re-embedding of <strong>all pages from page 1 to the end</strong>, completely refreshing all vectors in ChromaDB.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="p-3.5 bg-slate-850 border-t border-slate-800 flex justify-end">
+                <button onclick="closeEmbedModeModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Enhanced Embedding Progress & Live Loading Bar -->
+    <div id="logModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5 min-w-0">
+                    <div id="embedSpinnerIcon" class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-bolt fa-spin"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="logModalTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">Embedding in Progress...</h3>
+                        <p id="embedStatusText" class="text-[11px] text-sky-400 font-medium truncate">Initializing pipeline...</p>
+                    </div>
+                </div>
+                <button onclick="closeLogModal()" id="closeLogModalBtn" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Close">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body with Live Loading Bar & Metrics -->
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto">
+                
+                <!-- Hero Progress Bar Card -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bars-progress text-sky-400"></i>
+                            Overall Progress
+                        </span>
+                        <span id="embedPercentText" class="text-sm font-bold font-mono text-sky-400">0.0%</span>
+                    </div>
+
+                    <!-- Animated Progress Bar -->
+                    <div class="w-full bg-slate-900 rounded-full h-3.5 sm:h-4 overflow-hidden p-0.5 border border-slate-800 shadow-inner">
+                        <div id="embedProgressBar" class="h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm" style="width: 0%;"></div>
+                    </div>
+
+                    <!-- 4 Live Metric Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                        <!-- Total Pages -->
+                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Total Pages</p>
+                            <p id="statTotalPages" class="text-sm sm:text-base font-bold text-slate-100 font-mono mt-0.5">0</p>
+                        </div>
+                        <!-- Embedded Pages -->
+                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Embedded</p>
+                            <p id="statDonePages" class="text-sm sm:text-base font-bold text-emerald-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <!-- Remaining Pages -->
+                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Remaining</p>
+                            <p id="statRemainingPages" class="text-sm sm:text-base font-bold text-amber-400 font-mono mt-0.5">0</p>
+                        </div>
+                        <!-- Estimated Time Remaining -->
+                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Est. Time (ETA)</p>
+                            <p id="statEta" class="text-sm sm:text-base font-bold text-sky-400 font-mono mt-0.5">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Task Action Bar -->
+                <div class="bg-slate-950/50 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-300">
+                    <div class="flex items-center space-x-2 truncate">
+                        <i class="fa-solid fa-spinner fa-spin text-sky-400 shrink-0" id="embedActionSpinner"></i>
+                        <span id="embedCurrentActionText" class="truncate font-mono text-[11px] sm:text-xs">Preparing embedding engine...</span>
+                    </div>
+                </div>
+
+                <!-- Real-Time Log Terminal -->
+                <div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 px-0.5">
+                        <span class="font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-terminal text-slate-500"></i> Live Activity Log
+                        </span>
+                        <span class="text-slate-500">Auto-scrolling</span>
+                    </div>
+                    <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] text-slate-300 h-44 overflow-y-auto space-y-1" id="logModalContent">
+                        <p class="text-slate-500">Connecting to pipeline stream...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3.5 sm:p-4 bg-slate-850 border-t border-slate-800 flex items-center justify-between">
+                <span id="embedFooterSummary" class="text-xs text-slate-400 truncate max-w-[60%]">Embedding pages into ChromaDB vector database...</span>
+                <button onclick="closeLogModal()" id="doneProgressBtn" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-500 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-not-allowed opacity-60" disabled>
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Embedding...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Page & Metadata Manager (Inspect PNGs, Edit Tags, Delete Pages, Single-Page Sync) -->
+    <div id="pageManagerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
+        <div class="relative max-w-6xl w-full h-[95vh] bg-slate-900 border border-slate-700/80 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- Header -->
+            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0 text-base">
+                        <i class="fa-solid fa-images"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center space-x-2">
+                            <h3 class="text-sm sm:text-base font-bold text-slate-100 truncate">Pages & Metadata Manager</h3>
+                            <span id="pmFilenameBadge" class="hidden sm:inline-block px-2 py-0.5 rounded text-[11px] font-mono bg-sky-950 text-sky-300 border border-sky-800 truncate max-w-xs"></span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5 flex items-center space-x-2 truncate">
+                            <span>Total: <strong id="pmTotalCount" class="text-slate-200">0</strong></span>
+                            <span>•</span>
+                            <span class="text-emerald-400 font-semibold">Indexed in DB: <strong id="pmIndexedCount">0</strong></span>
+                            <span>•</span>
+                            <span class="text-amber-400 font-semibold">Missing/Excluded: <strong id="pmMissingCount">0</strong></span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshCurrentPageManager()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5" title="Reload Pages">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span class="hidden sm:inline">Refresh</span>
+                    </button>
+                    <button onclick="closePageManager()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition" title="Close">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter & Action Controls Toolbar -->
+            <div class="p-3 bg-slate-950/80 border-b border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shrink-0">
+                
+                <!-- Left: Filter Tabs & Search -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Filter Pills -->
+                    <div class="inline-flex rounded-lg bg-slate-900 p-0.5 border border-slate-800 text-xs">
+                        <button onclick="setPageFilter('all')" id="tabFilterAll" class="px-3 py-1.5 rounded-md font-semibold text-slate-200 bg-slate-800 shadow-sm transition">
+                            All (<span id="countFilterAll">0</span>)
+                        </button>
+                        <button onclick="setPageFilter('indexed')" id="tabFilterIndexed" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition">
+                            Indexed (<span id="countFilterIndexed">0</span>)
+                        </button>
+                        <button onclick="setPageFilter('missing')" id="tabFilterMissing" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition">
+                            Missing/Excluded (<span id="countFilterMissing">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="relative flex items-center min-w-[200px] flex-1 sm:flex-none">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 text-slate-500 text-xs"></i>
+                        <input type="text" id="pmSearchInput" oninput="handlePageSearch(event)" placeholder="Search chapter, section, tags..."
+                               class="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                    </div>
+                </div>
+
+                <!-- Right: Batch Selection & Actions -->
+                <div class="flex items-center space-x-2">
+                    <label class="flex items-center space-x-1.5 text-xs text-slate-400 cursor-pointer select-none bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:text-slate-200">
+                        <input type="checkbox" id="pmSelectAllCheckbox" onchange="toggleSelectAllPages(event)" class="rounded border-slate-700 text-sky-600 focus:ring-0">
+                        <span>Select All</span>
+                    </label>
+
+                    <button onclick="batchEmbedSelectedPages()" id="btnBatchEmbed" disabled class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Sync & Embed (<span id="pmSelectedEmbedCount">0</span>)</span>
+                    </button>
+
+                    <button onclick="batchDeleteSelectedPages()" id="btnBatchDelete" disabled class="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Delete (<span id="pmSelectedDeleteCount">0</span>)</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Page Cards Scroll Deck -->
+            <div id="pmCardsContainer" class="flex-1 overflow-y-auto p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 bg-slate-950/40">
+                <div class="col-span-full py-16 text-center text-slate-500 text-xs">
+                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base"></i> Loading pages & metadata...
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3 bg-slate-850 border-t border-slate-800 flex items-center justify-between shrink-0">
+                <p class="text-[11px] text-slate-400">
+                    💡 <span class="hidden sm:inline">Add custom key-value tags or exclude irrelevant pages.</span> Click <strong>"Sync & Embed"</strong> on any page to update vectors instantly.
+                </p>
+                <button onclick="closePageManager()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+                    Done & Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Image Lightbox Modal for High-Res Zoom -->
+    <div id="imageLightboxModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex items-center justify-center p-3 sm:p-6" onclick="closeImageLightbox()">
+        <div class="relative max-w-5xl max-h-[95vh] flex flex-col items-center" onclick="event.stopPropagation()">
+            <div class="absolute top-2 right-2 flex items-center space-x-2 z-10">
+                <a id="lightboxDownloadBtn" href="#" target="_blank" class="p-2 rounded-lg bg-slate-850/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition" title="Open Full Resolution">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+                <button onclick="closeImageLightbox()" class="p-2 rounded-lg bg-slate-850/80 hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <img id="lightboxImg" src="" alt="Page Preview" class="max-h-[85vh] max-w-full object-contain rounded-xl border border-slate-800 shadow-2xl bg-white">
+            <p id="lightboxCaption" class="mt-2 text-xs font-mono text-slate-300 text-center"></p>
+        </div>
+    </div>
+
     <!-- Toast Notification Box -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
-        <div id="toastIcon" class="text-base text-sky-400"></div>
-        <div class="flex-1 text-xs" id="toastMessage">Notification message</div>
+    <div id="toast" class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <div id="toastIcon" class="text-base text-sky-400 shrink-0"></div>
+        <div class="flex-1 text-xs break-words" id="toastMessage">Notification message</div>
     </div>
 
     <!-- Frontend Script -->
     <script>
         let currentKeyHidden = true;
+        let isUserAuthenticated = false;
 
         function showToast(msg, type = "info") {
             const toast = document.getElementById("toast");
@@ -296,23 +701,132 @@
             toastMessage.textContent = msg;
             if (type === "success") {
                 toastIcon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
-                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-emerald-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+                toast.className = "fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-emerald-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
             } else if (type === "error") {
                 toastIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
-                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-rose-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+                toast.className = "fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-rose-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
             } else {
                 toastIcon.innerHTML = '<i class="fa-solid fa-info-circle text-sky-400"></i>';
-                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-sky-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+                toast.className = "fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-sky-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
             }
 
             setTimeout(() => {
-                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none";
+                toast.className = "fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none";
             }, 5000);
         }
 
+        // =====================================================================
+        // Authentication Functions
+        // =====================================================================
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch("/api/admin/auth-status");
+                const data = await res.json();
+                if (data.authenticated) {
+                    showDashboard();
+                } else {
+                    showLoginGate();
+                }
+            } catch (err) {
+                console.error("Auth status check error:", err);
+                showLoginGate();
+            }
+        }
+
+        function showLoginGate() {
+            isUserAuthenticated = false;
+            document.getElementById("loginGateScreen").classList.remove("hidden");
+            document.getElementById("adminContentContainer").classList.add("hidden");
+            const passInput = document.getElementById("adminPassInput");
+            passInput.value = "";
+            setTimeout(() => passInput.focus(), 150);
+        }
+
+        function showDashboard() {
+            isUserAuthenticated = true;
+            document.getElementById("loginGateScreen").classList.add("hidden");
+            document.getElementById("adminContentContainer").classList.remove("hidden");
+            fetchConfig();
+            fetchFiles();
+        }
+
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            const idInput = document.getElementById("adminIdInput");
+            const passInput = document.getElementById("adminPassInput");
+            const submitBtn = document.getElementById("loginSubmitBtn");
+            const errorMsg = document.getElementById("loginErrorMsg");
+            const errorText = document.getElementById("loginErrorText");
+            const adminId = idInput ? idInput.value.trim() : "df";
+            const password = passInput.value.trim();
+
+            if (!password) {
+                errorText.textContent = "Please enter the admin password.";
+                errorMsg.classList.remove("hidden");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Authenticating...';
+            errorMsg.classList.add("hidden");
+
+            try {
+                const res = await fetch("/api/admin/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: adminId, password: password })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.status === "ok") {
+                    showToast("Admin access unlocked!", "success");
+                    showDashboard();
+                } else {
+                    errorText.textContent = data.error || "Incorrect ID or password. Please try again.";
+                    errorMsg.classList.remove("hidden");
+                    passInput.focus();
+                }
+            } catch (err) {
+                errorText.textContent = `Login error: ${err.message}`;
+                errorMsg.classList.remove("hidden");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-key text-xs mr-1"></i> Unlock Admin Console';
+            }
+        }
+
+        async function logoutAdmin() {
+            try {
+                await fetch("/api/admin/logout", { method: "POST" });
+            } catch (e) {
+                console.error("Logout error:", e);
+            }
+            showToast("Admin console locked.", "info");
+            showLoginGate();
+        }
+
+        function toggleLoginPassVisibility() {
+            const input = document.getElementById("adminPassInput");
+            const icon = document.getElementById("loginEyeIcon");
+            if (input.type === "password") {
+                input.type = "text";
+                icon.className = "fa-solid fa-eye-slash";
+            } else {
+                input.type = "password";
+                icon.className = "fa-solid fa-eye";
+            }
+        }
+
+        // =====================================================================
+        // Dashboard Data & Operations
+        // =====================================================================
         async function fetchConfig() {
             try {
                 const res = await fetch("/api/admin/config");
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (data.status === "ok") {
                     document.getElementById("statIndexedPages").textContent = `${data.total_indexed_pages} pgs`;
@@ -337,10 +851,17 @@
 
         async function fetchFiles() {
             const tbody = document.getElementById("filesTableBody");
+            const mobileContainer = document.getElementById("mobileFilesContainer");
+
             try {
                 const res = await fetch("/api/admin/files");
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (data.status === "ok") {
+                    window.currentFilesList = data.files || [];
                     document.getElementById("statSourceCount").textContent = `${data.files.length} PDFs`;
                     document.getElementById("fileCountBadge").textContent = data.files.length;
 
@@ -352,18 +873,28 @@
                                 </td>
                             </tr>
                         `;
+                        mobileContainer.innerHTML = `
+                            <div class="p-6 text-center text-slate-500 text-xs bg-slate-950/50 rounded-xl border border-slate-800">
+                                No PDF manuals found in <code class="text-slate-400">source/</code>. Upload a PDF above to get started.
+                            </div>
+                        `;
                         return;
                     }
 
+                    // Render Desktop Table
                     tbody.innerHTML = data.files.map(f => {
                         let statusBadge = "";
-                        if (f.status === "embedded") {
+                        if (f.is_modified) {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="File was modified after embedding">
+                                <i class="fa-solid fa-clock-rotate-left mr-1"></i> Modified
+                            </span>`;
+                        } else if (f.missing_pages_count > 0) {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="${f.missing_pages_count} pages missing from vector index">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Missing ${f.missing_pages_count} pg
+                            </span>`;
+                        } else if (f.status === "embedded") {
                             statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 <i class="fa-solid fa-check mr-1"></i> Embedded
-                            </span>`;
-                        } else if (f.status === "outdated") {
-                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Outdated
                             </span>`;
                         } else {
                             statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
@@ -376,7 +907,7 @@
                                 <td class="px-5 py-3 font-medium text-slate-200">
                                     <div class="flex items-center space-x-2">
                                         <i class="fa-solid fa-file-pdf text-rose-400"></i>
-                                        <span class="truncate max-w-xs" title="${f.filename}">${f.filename}</span>
+                                        <span class="truncate max-w-xs" title="${escapeHtml(f.filename)}">${escapeHtml(f.filename)}</span>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-slate-400 font-mono">${f.size_formatted}</td>
@@ -387,24 +918,86 @@
                                 </td>
                                 <td class="px-4 py-3">${statusBadge}</td>
                                 <td class="px-4 py-3 text-slate-400 text-[11px]">${f.modified_at}</td>
-                                <td class="px-5 py-3 text-right space-x-1">
-                                    <button onclick="triggerEmbeddingSingle('${f.filename}')" class="p-1.5 rounded-md hover:bg-sky-500/10 text-sky-400 hover:text-sky-300 transition" title="Embed this PDF">
+                                <td class="px-5 py-3 text-right space-x-1.5">
+                                    <button onclick="openPageManager('${escapeAttr(f.filename)}')" class="p-2 rounded-lg hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300 transition" title="Inspect PNGs, Edit Metatags & Sync Single Pages">
+                                        <i class="fa-solid fa-images"></i>
+                                    </button>
+                                    <button onclick="openEmbedModeModal('${escapeAttr(f.filename)}')" class="p-2 rounded-lg hover:bg-sky-500/10 text-sky-400 hover:text-sky-300 transition" title="Choose Embedding Options (1. Re-embed All vs 2. Embed Required)">
                                         <i class="fa-solid fa-bolt"></i>
                                     </button>
-                                    <a href="/api/admin/files/download/${encodeURIComponent(f.filename)}" target="_blank" class="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-slate-200 inline-block transition" title="Download / View PDF">
+                                    <a href="/api/admin/files/download/${encodeURIComponent(f.filename)}" target="_blank" class="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-slate-200 inline-block transition" title="Download / View PDF">
                                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                     </a>
-                                    <button onclick="deletePdfPrompt('${f.filename}')" class="p-1.5 rounded-md hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 transition" title="Delete PDF & vectors">
+                                    <button onclick="deletePdfPrompt('${escapeAttr(f.filename)}')" class="p-2 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 transition" title="Delete PDF & vectors">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                 </td>
                             </tr>
                         `;
                     }).join("");
+
+                    // Render Mobile Cards View
+                    mobileContainer.innerHTML = data.files.map(f => {
+                        let statusBadge = "";
+                        if (f.is_modified) {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Modified</span>`;
+                        } else if (f.missing_pages_count > 0) {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Missing ${f.missing_pages_count} pg</span>`;
+                        } else if (f.status === "embedded") {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check mr-1"></i> Embedded</span>`;
+                        } else {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20"><i class="fa-solid fa-clock mr-1"></i> Pending</span>`;
+                        }
+
+                        return `
+                            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-center space-x-2.5 min-w-0">
+                                        <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0 text-sm">
+                                            <i class="fa-solid fa-file-pdf"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-semibold text-slate-100 truncate" title="${escapeHtml(f.filename)}">${escapeHtml(f.filename)}</p>
+                                            <p class="text-[11px] text-slate-400 font-mono">${f.size_formatted} • ${f.modified_at}</p>
+                                        </div>
+                                    </div>
+                                    <div class="shrink-0">${statusBadge}</div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-900/60 rounded-lg p-2 border border-slate-800/80">
+                                    <div>
+                                        <span class="text-slate-400">PDF Pages:</span>
+                                        <span class="font-semibold text-slate-200 ml-1">${f.total_pdf_pages}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400">Indexed:</span>
+                                        <span class="font-semibold ${f.embedded_pages_count > 0 ? 'text-emerald-400' : 'text-slate-500'} ml-1">${f.embedded_pages_count}</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-1">
+                                    <button onclick="openPageManager('${escapeAttr(f.filename)}')" class="flex-1 py-2 px-2.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                        <i class="fa-solid fa-images text-xs"></i>
+                                        <span>Pages & Tags</span>
+                                    </button>
+                                    <button onclick="openEmbedModeModal('${escapeAttr(f.filename)}')" class="py-2 px-3 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition" title="Embed Options">
+                                        <i class="fa-solid fa-bolt text-xs"></i>
+                                    </button>
+                                    <a href="/api/admin/files/download/${encodeURIComponent(f.filename)}" target="_blank" class="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium flex items-center justify-center transition" title="View PDF">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    </a>
+                                    <button onclick="deletePdfPrompt('${escapeAttr(f.filename)}')" class="py-2 px-2.5 rounded-lg bg-rose-950/40 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-xs font-medium flex items-center justify-center transition" title="Delete PDF">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join("");
                 }
             } catch (err) {
                 console.error("Error loading files:", err);
                 tbody.innerHTML = `<tr><td colspan="6" class="px-5 py-4 text-center text-rose-400">Failed to load files: ${err.message}</td></tr>`;
+                mobileContainer.innerHTML = `<div class="p-4 text-center text-rose-400 text-xs">Failed to load files: ${err.message}</div>`;
             }
         }
 
@@ -440,6 +1033,10 @@
                     method: "POST",
                     body: formData
                 });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok) {
                     showToast(data.message, "success");
@@ -454,60 +1051,285 @@
                 showToast(`Upload error: ${err.message}`, "error");
             } finally {
                 uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Upload to Source';
+                uploadBtn.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Upload PDF';
             }
         });
 
-        async function triggerEmbeddingAll() {
-            openLogModal("Embedding All Pending PDFs");
-            appendLog("Starting batch embedding pipeline...");
+        // =====================================================================
+        // Real-Time Embedding Pipeline & Live Progress Stream
+        // =====================================================================
+        let activeStreamController = null;
 
-            try {
-                const res = await fetch("/api/admin/embed", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({})
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    appendLog(`✅ ${data.message}`);
-                    showToast(data.message, "success");
-                    fetchFiles();
-                    fetchConfig();
-                } else {
-                    appendLog(`❌ Error: ${data.error}`);
-                    showToast(data.error, "error");
+        function resetProgressUI(title = "Embedding in Progress...") {
+            document.getElementById("logModalTitle").textContent = title;
+            document.getElementById("embedStatusText").textContent = "Connecting to pipeline engine...";
+            document.getElementById("embedStatusText").className = "text-[11px] text-sky-400 font-medium truncate";
+            
+            document.getElementById("embedPercentText").textContent = "0.0%";
+            const bar = document.getElementById("embedProgressBar");
+            bar.style.width = "0%";
+            bar.className = "h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm";
+            
+            document.getElementById("statTotalPages").textContent = "0";
+            document.getElementById("statDonePages").textContent = "0";
+            document.getElementById("statRemainingPages").textContent = "0";
+            document.getElementById("statEta").textContent = "--";
+            
+            document.getElementById("embedCurrentActionText").textContent = "Preparing documents and outline metadata...";
+            document.getElementById("embedActionSpinner").className = "fa-solid fa-spinner fa-spin text-sky-400 shrink-0";
+            document.getElementById("embedSpinnerIcon").innerHTML = '<i class="fa-solid fa-bolt fa-spin"></i>';
+            document.getElementById("embedSpinnerIcon").className = "w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0";
+            
+            document.getElementById("logModalContent").innerHTML = "";
+            document.getElementById("embedFooterSummary").textContent = "Embedding pages into ChromaDB vector database...";
+            
+            const doneBtn = document.getElementById("doneProgressBtn");
+            doneBtn.className = "px-5 py-2.5 rounded-xl bg-slate-800 text-slate-500 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-not-allowed opacity-60";
+            doneBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Embedding...</span>';
+            doneBtn.disabled = true;
+        }
+
+        function enableProgressCloseBtn(isSuccess = true) {
+            const doneBtn = document.getElementById("doneProgressBtn");
+            if (isSuccess) {
+                doneBtn.className = "px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-600/40 cursor-pointer opacity-100 transform hover:scale-105 active:scale-95";
+                doneBtn.innerHTML = '<i class="fa-solid fa-check text-sm"></i> <span>Done</span>';
+            } else {
+                doneBtn.className = "px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer opacity-100";
+                doneBtn.innerHTML = '<i class="fa-solid fa-xmark text-sm"></i> <span>Close</span>';
+            }
+            doneBtn.disabled = false;
+        }
+
+        function handleEmbeddingEvent(event) {
+            if (!event || !event.type) return;
+
+            const totalPagesEl = document.getElementById("statTotalPages");
+            const donePagesEl = document.getElementById("statDonePages");
+            const remPagesEl = document.getElementById("statRemainingPages");
+            const etaEl = document.getElementById("statEta");
+            const pctEl = document.getElementById("embedPercentText");
+            const barEl = document.getElementById("embedProgressBar");
+            const actionEl = document.getElementById("embedCurrentActionText");
+            const statusEl = document.getElementById("embedStatusText");
+            const footerEl = document.getElementById("embedFooterSummary");
+
+            if (event.type === "start") {
+                totalPagesEl.textContent = event.overall_total ?? 0;
+                donePagesEl.textContent = event.overall_done ?? 0;
+                remPagesEl.textContent = event.overall_remaining ?? 0;
+                etaEl.textContent = event.eta_formatted || "Calculating...";
+                pctEl.textContent = "0.0%";
+                barEl.style.width = "0%";
+                statusEl.textContent = `Processing ${event.total_files} PDF file(s)...`;
+                if (event.message) appendLog(event.message);
+            }
+            else if (event.type === "file_start") {
+                statusEl.textContent = `[${event.file_index}/${event.total_files}] ${event.filename}`;
+                actionEl.textContent = `Reading outline & rendering ${event.filename}...`;
+                appendLog(event.message || `Processing '${event.filename}'...`);
+            }
+            else if (event.type === "progress") {
+                totalPagesEl.textContent = event.overall_total;
+                donePagesEl.textContent = event.overall_done;
+                remPagesEl.textContent = event.overall_remaining;
+                etaEl.textContent = event.eta_formatted || "--";
+                
+                const pct = (event.percentage || 0).toFixed(1);
+                pctEl.textContent = `${pct}%`;
+                barEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+                
+                if (event.current_action) {
+                    actionEl.textContent = event.current_action;
                 }
-            } catch (err) {
-                appendLog(`❌ Network error: ${err.message}`);
-                showToast(err.message, "error");
+                statusEl.textContent = `Embedding Page ${event.current_page}/${event.total_file_pages} (${event.filename})`;
+                footerEl.textContent = `Page ${event.overall_done} of ${event.overall_total} embedded (${event.overall_remaining} remaining)`;
+            }
+            else if (event.type === "page_complete") {
+                totalPagesEl.textContent = event.overall_total;
+                donePagesEl.textContent = event.overall_done;
+                remPagesEl.textContent = event.overall_remaining;
+                etaEl.textContent = event.eta_formatted || "--";
+                
+                const pct = (event.percentage || 0).toFixed(1);
+                pctEl.textContent = `${pct}%`;
+                barEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+                
+                if (event.message) appendLog(event.message);
+            }
+            else if (event.type === "log") {
+                appendLog(event.log || event.message);
+            }
+            else if (event.type === "complete") {
+                const total = event.overall_total || parseInt(totalPagesEl.textContent) || 0;
+                totalPagesEl.textContent = total;
+                donePagesEl.textContent = total;
+                remPagesEl.textContent = "0";
+                etaEl.textContent = "Complete";
+                
+                pctEl.textContent = "100.0%";
+                barEl.style.width = "100%";
+                barEl.className = "h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-sm shadow-emerald-500/50";
+                
+                actionEl.textContent = "All pages embedded and synchronized in ChromaDB!";
+                document.getElementById("embedActionSpinner").className = "fa-solid fa-circle-check text-emerald-400 shrink-0";
+                document.getElementById("embedSpinnerIcon").innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i>';
+                document.getElementById("embedSpinnerIcon").className = "w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0";
+                
+                statusEl.textContent = "Embedding completed successfully!";
+                statusEl.className = "text-[11px] text-emerald-400 font-semibold truncate";
+                footerEl.textContent = event.message || "Pipeline synchronization complete.";
+                
+                appendLog(`🎉 ${event.message || 'Completed!'}`);
+                showToast(event.message || "Embedding completed successfully!", "success");
+                enableProgressCloseBtn(true);
+                fetchFiles();
+                fetchConfig();
+            }
+            else if (event.type === "error") {
+                statusEl.textContent = "Error during embedding";
+                statusEl.className = "text-[11px] text-rose-400 font-semibold truncate";
+                document.getElementById("embedActionSpinner").className = "fa-solid fa-triangle-exclamation text-rose-400 shrink-0";
+                actionEl.textContent = `Error: ${event.error}`;
+                
+                appendLog(`❌ ERROR: ${event.error}`);
+                showToast(event.error, "error");
+                enableProgressCloseBtn(false);
+                fetchFiles();
+                fetchConfig();
             }
         }
 
-        async function triggerEmbeddingSingle(filename) {
-            openLogModal(`Embedding '${filename}'`);
-            appendLog(`Starting embedding for ${filename}...`);
+        async function startEmbeddingStream(payload, title) {
+            resetProgressUI(title);
+            document.getElementById("logModal").classList.remove("hidden");
+            appendLog(`Connecting to live embedding pipeline stream...`);
 
             try {
-                const res = await fetch("/api/admin/embed", {
+                const response = await fetch("/api/admin/embed/stream", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ filename: filename, force: true })
+                    body: JSON.stringify(payload)
                 });
-                const data = await res.json();
-                if (res.ok) {
-                    appendLog(`✅ ${data.message}`);
-                    showToast(data.message, "success");
-                    fetchFiles();
-                    fetchConfig();
-                } else {
-                    appendLog(`❌ Error: ${data.error}`);
-                    showToast(data.error, "error");
+
+                if (response.status === 401) {
+                    closeLogModal();
+                    showLoginGate();
+                    return;
                 }
+
+                if (!response.ok) {
+                    const errJson = await response.json().catch(() => ({}));
+                    throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n\n");
+                    buffer = lines.pop(); // keep trailing incomplete piece
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith("data: ")) {
+                            try {
+                                const eventData = JSON.parse(trimmed.slice(6));
+                                handleEmbeddingEvent(eventData);
+                            } catch (e) {
+                                console.error("JSON parse error on SSE line:", trimmed, e);
+                            }
+                        }
+                    }
+                }
+
+                enableProgressCloseBtn();
+
             } catch (err) {
-                appendLog(`❌ Error: ${err.message}`);
-                showToast(err.message, "error");
+                console.error("Embedding stream connection error:", err);
+                appendLog(`❌ Connection Error: ${err.message}`);
+                handleEmbeddingEvent({ type: "error", error: err.message });
+            } finally {
+                fetchFiles();
+                fetchConfig();
             }
+        }
+
+        let selectedEmbedTargetFilename = null;
+
+        function openEmbedModeModal(filename = null) {
+            selectedEmbedTargetFilename = filename;
+            const modal = document.getElementById("embedModeModal");
+            const labelEl = document.getElementById("embedModeTargetLabel");
+            const docInfoEl = document.getElementById("embedModeDocInfo");
+
+            if (filename) {
+                labelEl.textContent = `Target: ${filename}`;
+                const fileObj = (window.currentFilesList || []).find(f => f.filename === filename);
+                if (fileObj) {
+                    const missing = fileObj.missing_pages_count || 0;
+                    const modified = fileObj.is_modified;
+                    let statusDesc = '<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>100% Indexed</span>';
+                    if (modified) {
+                        statusDesc = '<span class="text-amber-400 font-semibold"><i class="fa-solid fa-clock-rotate-left mr-1"></i>File modified after embedding</span>';
+                    } else if (missing > 0) {
+                        statusDesc = `<span class="text-amber-400 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${missing} page(s) missing/lost</span>`;
+                    }
+
+                    docInfoEl.innerHTML = `
+                        <div class="flex justify-between items-center"><span class="text-slate-400">Document:</span> <span class="font-bold text-slate-100 font-mono truncate max-w-[240px] sm:max-w-xs">${escapeHtml(fileObj.filename)}</span></div>
+                        <div class="flex justify-between items-center"><span class="text-slate-400">Pages:</span> <span class="text-slate-200 font-medium"><strong>${fileObj.total_pdf_pages}</strong> PDF pages (${fileObj.embedded_pages_count} indexed)</span></div>
+                        <div class="flex justify-between items-center"><span class="text-slate-400">Status:</span> ${statusDesc}</div>
+                    `;
+                } else {
+                    docInfoEl.innerHTML = `<div><span class="text-slate-400">Document:</span> <strong class="text-slate-100">${escapeHtml(filename)}</strong></div>`;
+                }
+            } else {
+                labelEl.textContent = "Target: All Source PDF Manuals";
+                const allFiles = window.currentFilesList || [];
+                const totalPDFPages = allFiles.reduce((acc, f) => acc + (f.total_pdf_pages || 0), 0);
+                const totalIndexed = allFiles.reduce((acc, f) => acc + (f.embedded_pages_count || 0), 0);
+                const totalMissing = allFiles.reduce((acc, f) => acc + (f.missing_pages_count || 0), 0);
+
+                docInfoEl.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="text-slate-400">Scope:</span> <span class="font-bold text-slate-100">All ${allFiles.length} PDF Manuals in source/</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-400">Total Pages:</span> <span class="text-slate-200 font-medium">${totalPDFPages} PDF pages (${totalIndexed} indexed, ${totalMissing} missing)</span></div>
+                `;
+            }
+
+            modal.classList.remove("hidden");
+        }
+
+        function closeEmbedModeModal() {
+            document.getElementById("embedModeModal").classList.add("hidden");
+            selectedEmbedTargetFilename = null;
+        }
+
+        function executeEmbedChoice(mode) {
+            const filename = selectedEmbedTargetFilename;
+            closeEmbedModeModal();
+
+            const titlePrefix = (mode === "all") ? "Full Re-embed (All Pages)" : "Embed Required (Missing & Changed Pages)";
+            const targetDesc = filename ? `'${filename}'` : "All Manuals";
+
+            startEmbeddingStream({
+                filename: filename,
+                mode: mode,
+                force: (mode === "all")
+            }, `${titlePrefix} - ${targetDesc}`);
+        }
+
+        async function triggerEmbeddingAll() {
+            openEmbedModeModal(null);
+        }
+
+        async function triggerEmbeddingSingle(filename) {
+            openEmbedModeModal(filename);
         }
 
         async function deletePdfPrompt(filename) {
@@ -519,6 +1341,10 @@
                 const res = await fetch(`/api/admin/files/${encodeURIComponent(filename)}`, {
                     method: "DELETE"
                 });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok) {
                     showToast(data.message, "success");
@@ -532,9 +1358,561 @@
             }
         }
 
+        // =====================================================================
+        // Page & Metadata Inspector, Tag Editor & Single-Page Sync Controller
+        // =====================================================================
+        let currentManagingFilename = null;
+        let currentPagesData = [];
+        let currentPageFilter = "all";
+        let pageSearchQuery = "";
+        let selectedPageNumbers = new Set();
+
+        async function openPageManager(filename) {
+            currentManagingFilename = filename;
+            selectedPageNumbers.clear();
+            currentPageFilter = "all";
+            pageSearchQuery = "";
+            
+            document.getElementById("pageManagerModal").classList.remove("hidden");
+            document.getElementById("pmFilenameBadge").textContent = filename;
+            document.getElementById("pmSearchInput").value = "";
+            setPageFilter("all");
+            
+            await loadPageManagerData();
+        }
+
+        function closePageManager() {
+            document.getElementById("pageManagerModal").classList.add("hidden");
+            currentManagingFilename = null;
+            currentPagesData = [];
+            selectedPageNumbers.clear();
+        }
+
+        async function refreshCurrentPageManager() {
+            await loadPageManagerData();
+            showToast("Page inspector refreshed.", "info");
+        }
+
+        async function loadPageManagerData() {
+            if (!currentManagingFilename) return;
+            const container = document.getElementById("pmCardsContainer");
+            container.innerHTML = `
+                <div class="col-span-full py-16 text-center text-slate-500 text-xs">
+                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base text-sky-400"></i> Loading pages & metadata for <strong>${escapeHtml(currentManagingFilename)}</strong>...
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages`);
+                if (res.status === 401) {
+                    closePageManager();
+                    showLoginGate();
+                    return;
+                }
+                const data = await res.json();
+                if (data.status === "ok") {
+                    currentPagesData = data.pages || [];
+                    document.getElementById("pmTotalCount").textContent = data.total_pages;
+                    document.getElementById("pmIndexedCount").textContent = data.indexed_count;
+                    document.getElementById("pmMissingCount").textContent = data.missing_count;
+
+                    updatePageFilterCounts();
+                    renderPageCards();
+                } else {
+                    container.innerHTML = `<div class="col-span-full py-8 text-center text-rose-400 text-xs">${data.error || "Failed to load pages."}</div>`;
+                }
+            } catch (err) {
+                console.error("Error loading page details:", err);
+                container.innerHTML = `<div class="col-span-full py-8 text-center text-rose-400 text-xs">Error: ${err.message}</div>`;
+            }
+        }
+
+        function updatePageFilterCounts() {
+            const total = currentPagesData.length;
+            const indexed = currentPagesData.filter(p => p.is_indexed).length;
+            const missing = total - indexed;
+
+            document.getElementById("countFilterAll").textContent = total;
+            document.getElementById("countFilterIndexed").textContent = indexed;
+            document.getElementById("countFilterMissing").textContent = missing;
+        }
+
+        function setPageFilter(filter) {
+            currentPageFilter = filter;
+            ["tabFilterAll", "tabFilterIndexed", "tabFilterMissing"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.className = "px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition";
+            });
+
+            if (filter === "all") {
+                const el = document.getElementById("tabFilterAll");
+                if (el) el.className = "px-3 py-1.5 rounded-md font-semibold text-slate-200 bg-slate-800 shadow-sm transition";
+            } else if (filter === "indexed") {
+                const el = document.getElementById("tabFilterIndexed");
+                if (el) el.className = "px-3 py-1.5 rounded-md font-semibold text-slate-200 bg-slate-800 shadow-sm transition";
+            } else if (filter === "missing") {
+                const el = document.getElementById("tabFilterMissing");
+                if (el) el.className = "px-3 py-1.5 rounded-md font-semibold text-slate-200 bg-slate-800 shadow-sm transition";
+            }
+
+            renderPageCards();
+        }
+
+        function handlePageSearch(e) {
+            pageSearchQuery = e.target.value.toLowerCase().trim();
+            renderPageCards();
+        }
+
+        function renderPageCards() {
+            const container = document.getElementById("pmCardsContainer");
+            
+            let filtered = currentPagesData.filter(p => {
+                if (currentPageFilter === "indexed" && !p.is_indexed) return false;
+                if (currentPageFilter === "missing" && p.is_indexed) return false;
+
+                if (pageSearchQuery) {
+                    const numStr = String(p.page_number);
+                    const ch = (p.metadata?.chapter || "").toLowerCase();
+                    const sec = (p.metadata?.section || "").toLowerCase();
+                    const subsec = (p.metadata?.subsection || "").toLowerCase();
+                    const tags = JSON.stringify(p.metadata || {}).toLowerCase();
+                    const docText = (p.document || "").toLowerCase();
+
+                    if (!numStr.includes(pageSearchQuery) && !ch.includes(pageSearchQuery) && !sec.includes(pageSearchQuery) && !subsec.includes(pageSearchQuery) && !tags.includes(pageSearchQuery) && !docText.includes(pageSearchQuery)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-slate-500 text-xs">
+                        <i class="fa-solid fa-file-circle-xmark text-2xl mb-2 text-slate-600 block"></i>
+                        No pages match the current filter or search term.
+                    </div>
+                `;
+                updateBatchActionButtons();
+                return;
+            }
+
+            container.innerHTML = filtered.map(p => {
+                const isSelected = selectedPageNumbers.has(p.page_number);
+                const meta = p.metadata || {};
+
+                // Custom tags: any key not in core keys
+                const coreKeys = new Set(["pdf_stem", "page_image", "page_number", "chapter", "section", "subsection", "is_front_matter", "model", "dimensions", "elapsed_seconds"]);
+                const customTagEntries = Object.entries(meta).filter(([k]) => !coreKeys.has(k));
+
+                const statusBadge = p.is_indexed
+                    ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-circle-check mr-1"></i> Indexed</span>`
+                    : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-circle-xmark mr-1"></i> Not in DB</span>`;
+
+                return `
+                    <div id="pageCard_${p.page_number}" class="bg-slate-900 border ${isSelected ? 'border-sky-500/80 bg-sky-950/20' : 'border-slate-800'} rounded-xl p-3.5 flex flex-col justify-between shadow-sm hover:border-slate-700 transition space-y-3">
+                        
+                        <!-- Card Header -->
+                        <div class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" onchange="togglePageSelection(${p.page_number}, event)" ${isSelected ? 'checked' : ''} class="rounded border-slate-700 text-sky-600 focus:ring-0 cursor-pointer">
+                                <span class="font-bold text-xs text-slate-100 font-mono">Page ${p.page_number}</span>
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+
+                        <!-- Card Body: Thumbnail & Tag Editor -->
+                        <div class="space-y-3">
+                            <!-- Image Preview Thumbnail -->
+                            <div class="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-950 aspect-[4/3] flex items-center justify-center cursor-pointer" onclick="openImageLightbox('${escapeAttr(p.image_url)}', 'Page ${p.page_number} - ${escapeAttr(currentManagingFilename)}')">
+                                <img src="${p.image_url}" alt="Page ${p.page_number}" class="w-full h-full object-contain p-1 group-hover:scale-105 transition duration-200" loading="lazy">
+                                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200 gap-2">
+                                    <span class="text-white text-xs font-semibold px-2.5 py-1 rounded bg-slate-900/90 border border-slate-700 shadow">
+                                        <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Preview Full
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Core Metadata Inputs -->
+                            <div class="space-y-1.5 text-[11px]">
+                                <div class="grid grid-cols-3 gap-1.5 items-center">
+                                    <span class="text-slate-400 font-medium">Chapter:</span>
+                                    <input type="text" id="meta_ch_${p.page_number}" value="${escapeAttr(meta.chapter || '')}" placeholder="Chapter name"
+                                           class="col-span-2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 text-xs focus:border-sky-500 focus:outline-none">
+                                </div>
+                                <div class="grid grid-cols-3 gap-1.5 items-center">
+                                    <span class="text-slate-400 font-medium">Section:</span>
+                                    <input type="text" id="meta_sec_${p.page_number}" value="${escapeAttr(meta.section || '')}" placeholder="Section title"
+                                           class="col-span-2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 text-xs focus:border-sky-500 focus:outline-none">
+                                </div>
+                                <div class="grid grid-cols-3 gap-1.5 items-center">
+                                    <span class="text-slate-400 font-medium">Subsection:</span>
+                                    <input type="text" id="meta_subsec_${p.page_number}" value="${escapeAttr(meta.subsection || '')}" placeholder="Subsection title"
+                                           class="col-span-2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 text-xs focus:border-sky-500 focus:outline-none">
+                                </div>
+                                <div class="flex items-center justify-between pt-1">
+                                    <label class="flex items-center space-x-1.5 text-slate-400 cursor-pointer">
+                                        <input type="checkbox" id="meta_front_${p.page_number}" ${meta.is_front_matter ? 'checked' : ''} class="rounded border-slate-700 text-sky-600 focus:ring-0">
+                                        <span>Front Matter (Cover / TOC)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Custom Key-Value Tags -->
+                            <div class="border-t border-slate-800/80 pt-2 space-y-1.5">
+                                <div class="flex items-center justify-between text-[11px]">
+                                    <span class="font-semibold text-slate-300">Custom Metatags:</span>
+                                    <span class="text-slate-500 text-[10px]">${customTagEntries.length} tags</span>
+                                </div>
+
+                                <!-- Tags Container -->
+                                <div id="customTagsContainer_${p.page_number}" class="flex flex-wrap gap-1.5">
+                                    ${customTagEntries.map(([k, v]) => `
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-sky-950/80 text-sky-300 border border-sky-800/60" data-tag-key="${escapeAttr(k)}">
+                                            <strong class="text-slate-300">${escapeHtml(k)}:</strong>
+                                            <span>${escapeHtml(String(v))}</span>
+                                            <button type="button" onclick="removeCustomTag(${p.page_number}, '${escapeAttr(k)}')" class="text-sky-400 hover:text-rose-400 ml-0.5" title="Remove tag">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </span>
+                                    `).join("")}
+                                    ${customTagEntries.length === 0 ? '<span class="text-[10px] text-slate-500 italic">No custom tags</span>' : ''}
+                                </div>
+
+                                <!-- Add Tag Inline Input -->
+                                <div class="flex items-center gap-1 pt-1">
+                                    <input type="text" id="newTagKey_${p.page_number}" placeholder="Key (e.g. tag)" class="w-1/3 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[11px] text-slate-200 focus:border-sky-500 focus:outline-none">
+                                    <input type="text" id="newTagVal_${p.page_number}" placeholder="Value" class="flex-1 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[11px] text-slate-200 focus:border-sky-500 focus:outline-none">
+                                    <button type="button" onclick="addCustomTagInline(${p.page_number})" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-semibold transition" title="Add Tag">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Card Actions Footer -->
+                        <div class="border-t border-slate-800 pt-2.5 flex items-center justify-between gap-1.5">
+                            <button onclick="savePageMetadataAction(${p.page_number})" id="btnSaveMeta_${p.page_number}" class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold flex items-center justify-center gap-1 transition" title="Save tag edits">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Save Tags</span>
+                            </button>
+
+                            <button onclick="syncSinglePageAction(${p.page_number})" id="btnSyncPage_${p.page_number}" class="flex-1 px-2.5 py-1.5 rounded-lg bg-sky-600/30 hover:bg-sky-600 text-sky-200 border border-sky-500/40 text-[11px] font-semibold flex items-center justify-center gap-1 transition shadow-sm" title="Re-embed & sync this single page to ChromaDB">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Sync & Embed</span>
+                            </button>
+
+                            ${p.is_indexed 
+                                ? `<button onclick="deleteSinglePageAction(${p.page_number})" class="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-xs transition" title="Remove page from ChromaDB">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                   </button>`
+                                : `<button onclick="syncSinglePageAction(${p.page_number})" class="p-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/50 text-xs transition" title="Embed into ChromaDB">
+                                    <i class="fa-solid fa-plus"></i>
+                                   </button>`
+                            }
+                        </div>
+
+                    </div>
+                `;
+            }).join("");
+
+            updateBatchActionButtons();
+        }
+
+        function addCustomTagInline(pageNumber) {
+            const kInput = document.getElementById(`newTagKey_${pageNumber}`);
+            const vInput = document.getElementById(`newTagVal_${pageNumber}`);
+            const k = kInput.value.trim();
+            const v = vInput.value.trim();
+
+            if (!k) {
+                showToast("Please enter a tag key/name.", "error");
+                return;
+            }
+
+            const page = currentPagesData.find(p => p.page_number === pageNumber);
+            if (page) {
+                if (!page.metadata) page.metadata = {};
+                page.metadata[k] = v;
+                renderPageCards();
+                showToast(`Added tag '${k}'. Click 'Save Tags' or 'Sync & Embed' to persist.`, "info");
+            }
+        }
+
+        function removeCustomTag(pageNumber, tagKey) {
+            const page = currentPagesData.find(p => p.page_number === pageNumber);
+            if (page && page.metadata) {
+                delete page.metadata[tagKey];
+                renderPageCards();
+                showToast(`Deleted tag '${tagKey}'. Click 'Save Tags' to persist.`, "info");
+            }
+        }
+
+        function collectPageMetadata(pageNumber) {
+            const ch = document.getElementById(`meta_ch_${pageNumber}`)?.value.trim() || "Unknown";
+            const sec = document.getElementById(`meta_sec_${pageNumber}`)?.value.trim() || "Unknown";
+            const subsec = document.getElementById(`meta_subsec_${pageNumber}`)?.value.trim() || "Unknown";
+            const isFront = document.getElementById(`meta_front_${pageNumber}`)?.checked || false;
+
+            const page = currentPagesData.find(p => p.page_number === pageNumber);
+            const meta = page ? { ...(page.metadata || {}) } : {};
+
+            meta.chapter = ch;
+            meta.section = sec;
+            meta.subsection = subsec;
+            meta.is_front_matter = isFront;
+
+            return meta;
+        }
+
+        async function savePageMetadataAction(pageNumber) {
+            const btn = document.getElementById(`btnSaveMeta_${pageNumber}`);
+            const origHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            const meta = collectPageMetadata(pageNumber);
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages/${pageNumber}/metadata`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ metadata: meta })
+                });
+
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok && data.status === "ok") {
+                    const page = currentPagesData.find(p => p.page_number === pageNumber);
+                    if (page) page.metadata = data.metadata;
+                    showToast(`Page ${pageNumber} tags updated successfully!`, "success");
+                    renderPageCards();
+                } else {
+                    showToast(data.error || "Failed to update metadata.", "error");
+                }
+            } catch (err) {
+                showToast(`Error saving tags: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHTML;
+            }
+        }
+
+        async function syncSinglePageAction(pageNumber) {
+            const btn = document.getElementById(`btnSyncPage_${pageNumber}`);
+            const origHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Syncing...';
+
+            const meta = collectPageMetadata(pageNumber);
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages/${pageNumber}/embed`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ metadata: meta })
+                });
+
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok && data.status === "ok") {
+                    showToast(`Page ${pageNumber} embedded & synced into ChromaDB in ${data.elapsed_seconds.toFixed(2)}s!`, "success");
+                    await loadPageManagerData();
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Single page embed failed.", "error");
+                }
+            } catch (err) {
+                showToast(`Sync error: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHTML;
+            }
+        }
+
+        async function deleteSinglePageAction(pageNumber) {
+            if (!confirm(`Are you sure you want to remove Page ${pageNumber} from the ChromaDB vector database?\n\nThis page will no longer be retrieved during queries until re-embedded.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages/${pageNumber}`, {
+                    method: "DELETE"
+                });
+
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok && data.status === "ok") {
+                    showToast(`Page ${pageNumber} removed from vector database.`, "success");
+                    await loadPageManagerData();
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Delete page failed.", "error");
+                }
+            } catch (err) {
+                showToast(`Error deleting page: ${err.message}`, "error");
+            }
+        }
+
+        function togglePageSelection(pageNumber, event) {
+            if (event.target.checked) {
+                selectedPageNumbers.add(pageNumber);
+            } else {
+                selectedPageNumbers.delete(pageNumber);
+            }
+            updateBatchActionButtons();
+            
+            const card = document.getElementById(`pageCard_${pageNumber}`);
+            if (card) {
+                if (event.target.checked) {
+                    card.className = "bg-slate-900 border border-sky-500/80 bg-sky-950/20 rounded-xl p-3.5 flex flex-col justify-between shadow-sm hover:border-slate-700 transition space-y-3";
+                } else {
+                    card.className = "bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-sm hover:border-slate-700 transition space-y-3";
+                }
+            }
+        }
+
+        function toggleSelectAllPages(event) {
+            const checked = event.target.checked;
+            if (checked) {
+                currentPagesData.forEach(p => selectedPageNumbers.add(p.page_number));
+            } else {
+                selectedPageNumbers.clear();
+            }
+            renderPageCards();
+        }
+
+        function updateBatchActionButtons() {
+            const count = selectedPageNumbers.size;
+            const embedEl = document.getElementById("pmSelectedEmbedCount");
+            const delEl = document.getElementById("pmSelectedDeleteCount");
+            if (embedEl) embedEl.textContent = count;
+            if (delEl) delEl.textContent = count;
+
+            const btnEmbed = document.getElementById("btnBatchEmbed");
+            const btnDelete = document.getElementById("btnBatchDelete");
+            const selectAllBox = document.getElementById("pmSelectAllCheckbox");
+
+            if (btnEmbed) btnEmbed.disabled = (count === 0);
+            if (btnDelete) btnDelete.disabled = (count === 0);
+
+            if (selectAllBox) {
+                if (currentPagesData.length > 0 && selectedPageNumbers.size === currentPagesData.length) {
+                    selectAllBox.checked = true;
+                } else {
+                    selectAllBox.checked = false;
+                }
+            }
+        }
+
+        async function batchEmbedSelectedPages() {
+            const pages = Array.from(selectedPageNumbers);
+            if (pages.length === 0) return;
+
+            const btn = document.getElementById("btnBatchEmbed");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Syncing...';
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages/batch`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "embed", page_numbers: pages })
+                });
+
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message || `Successfully synced ${pages.length} pages!`, "success");
+                    await loadPageManagerData();
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Batch embed failed.", "error");
+                }
+            } catch (err) {
+                showToast(`Batch sync error: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>Sync & Embed (<span id="pmSelectedEmbedCount">${selectedPageNumbers.size}</span>)</span>`;
+            }
+        }
+
+        async function batchDeleteSelectedPages() {
+            const pages = Array.from(selectedPageNumbers);
+            if (pages.length === 0) return;
+
+            if (!confirm(`Are you sure you want to remove ${pages.length} selected pages from ChromaDB?`)) {
+                return;
+            }
+
+            const btn = document.getElementById("btnBatchDelete");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Deleting...';
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(currentManagingFilename)}/pages/batch`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "delete", page_numbers: pages })
+                });
+
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message || `Removed ${pages.length} pages from vector database.`, "success");
+                    await loadPageManagerData();
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Batch delete failed.", "error");
+                }
+            } catch (err) {
+                showToast(`Batch delete error: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> <span>Delete (<span id="pmSelectedDeleteCount">${selectedPageNumbers.size}</span>)</span>`;
+            }
+        }
+
+        function openImageLightbox(imgUrl, caption) {
+            document.getElementById("lightboxImg").src = imgUrl;
+            document.getElementById("lightboxCaption").textContent = caption;
+            document.getElementById("lightboxDownloadBtn").href = imgUrl;
+            document.getElementById("imageLightboxModal").classList.remove("hidden");
+        }
+
+        function closeImageLightbox() {
+            document.getElementById("imageLightboxModal").classList.add("hidden");
+            document.getElementById("lightboxImg").src = "";
+        }
+
         async function saveApiSettings() {
             const apiKeyInput = document.getElementById("apiKeyInput").value.trim();
             const qaModel = document.getElementById("qaModelSelect").value;
+            const newAdminPass = document.getElementById("newAdminPasswordInput").value.trim();
             const saveBtn = document.getElementById("saveConfigBtn");
 
             saveBtn.disabled = true;
@@ -545,16 +1923,24 @@
                 if (apiKeyInput) {
                     payload.api_key = apiKeyInput;
                 }
+                if (newAdminPass) {
+                    payload.admin_password = newAdminPass;
+                }
 
                 const res = await fetch("/api/admin/config", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok) {
-                    showToast("API & Model settings saved successfully!", "success");
+                    showToast("Settings and credentials saved successfully!", "success");
                     document.getElementById("apiKeyInput").value = "";
+                    document.getElementById("newAdminPasswordInput").value = "";
                     fetchConfig();
                 } else {
                     showToast(data.error || "Failed to save settings", "error");
@@ -580,6 +1966,10 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ api_key: apiKeyInput || null })
                 });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok && data.success) {
                     showToast(`✅ ${data.message} (Test Reply: "${data.reply}")`, "success");
@@ -600,6 +1990,10 @@
 
             try {
                 const res = await fetch("/api/admin/db/reset", { method: "POST" });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok) {
                     showToast(data.message, "success");
@@ -643,9 +2037,23 @@
             document.getElementById("logModal").classList.add("hidden");
         }
 
-        // Initialize on load
-        fetchConfig();
-        fetchFiles();
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // Check authentication on page load
+        checkAuthStatus();
     </script>
 </body>
 </html>

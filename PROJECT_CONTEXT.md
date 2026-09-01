@@ -51,6 +51,45 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 2. **Persistent Vector Database (ChromaDB):** Replaces flat `.npy`/`.jsonl` arrays with indexed HNSW vector storage, native metadata querying, and unified multi-PDF aggregation.
 3. **Native Outline-Aware Filtering & Expansion:** Uses document outline hierarchy (TOC) to filter out non-informative front-matter (covers, copyright, TOCs) and expands retrieved seed pages across neighboring pages strictly bounded within the same chapter.
 4. **Single-Hop Embedding:** Eliminates text extraction artifacts, caption hallucination, and multi-model pipeline latency.
+### 5. Multi-Mode Embedding Engine & Differential Sync
+- **Option 1: Embed Required Only (`mode="required"`, Default/Recommended)**:
+  - Smart differential sync:
+    1. Scans ChromaDB for any unindexed / lost page IDs (`{stem}_page_XXX`).
+    2. Detects if the source PDF was modified/edited after its last embedding timestamp or file size changed.
+    3. Renders only the necessary images and embeds **only the specific missing or modified pages** into ChromaDB.
+    4. Fast, highly resilient, and avoids burning Gemini multimodal API rate limits.
+- **Option 2: Re-embed All Pages (`mode="all"`, Full Overwrite)**:
+  - Forces a complete re-rendering and re-embedding of all pages from page 1 to $N$, completely updating and overwriting existing vector records in ChromaDB.
+- **Page & Metadata Inspector (`#pageManagerModal`)**:
+  - View all high-res page PNGs alongside current metadata tags and ChromaDB indexed states.
+  - Delete unneeded or irrelevant pages directly from ChromaDB.
+  - Add new custom key-value metatags or delete old metatags.
+  - Sync & embed individual pages or batch-selected pages without having to re-embed the whole document.
+- **Resilient Per-Page Retry & Backoff**: Catches HTTP 429 quota exhaustion with exponential backoff ($5.0\text{s} \times 1.5$ factor up to $60\text{s} + \text{jitter}$) up to 20 retries per page.
+- **Interactive UI**: Real-time SSE streaming progress bar, live ETA, page counters, and a green "Done" button.
+
+### 6. User Authentication, Chat Tabs & Conversational Memory
+- **Dedicated User Database Folder (`User database/`)**:
+  - `User database/users_and_chats.db`: SQLite database storing user credentials, chat tabs, and multi-turn message histories.
+  - `User database/profile_pictures/`: Stores user-uploaded profile picture avatars (`avatar_u<id>_<timestamp>.<ext>`).
+- **User Authentication (`auth_and_chat_db.py`)**:
+  - Validates `username` (Name) and `password` with strict no-spaces rules.
+  - Registration includes re-enter password confirmation.
+  - Passwords hashed with `werkzeug.security`.
+  - **Admin Console & User Login Credentials**:
+    - **ID**: `df`
+    - **Password**: `df`
+  - Profile picture upload support (`POST /api/user/profile-picture` and `GET /api/user/profile-picture/<filename>`).
+- **Per-User Chat Tabs & Memory Isolation**:
+  - Each user has independent chat tabs stored in SQLite (`User database/users_and_chats.db`).
+  - Users can create new tabs (`+ New Tab`) or delete unwanted tabs (`🗑️`).
+  - **Conversational Memory**: Chatbot conditioning includes prior turns from that specific tab to seamlessly understand follow-up questions.
+- **Compact Top-K Results Pill (`#topKModal`)**:
+  - Clean compact pill button underneath assistant response (`Top-K Result (N pages) - View more`).
+  - Click opens candidate page inspector modal without cluttering the chat stream.
+- **Interactive In-Text Citation Buttons (`/pdf-viewer`)**:
+  - Assistant attaches section/row citations in `[Manual Name, p.XX]` format.
+  - Clicking any citation opens `/pdf-viewer?file=...&page=XX` in a new browser tab directly jumped to the cited page.
 
 ---
 
@@ -58,14 +97,21 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 
 ```
 /home/tinonn/df_rag_project/
-├── config.py                       # Global configuration, hyperparameters, instructions, ChromaDB paths
+├── config.py                       # Global configuration, hyperparameters, instructions, ChromaDB & User DB paths
 ├── run_embedding_pipeline.py       # Batch pipeline: TOC parsing, page rendering, ChromaDB upsert
 ├── query_test.py                   # CLI diagnostic tool to query ChromaDB and rank pages
-├── app.py                          # Flask web application & REST API
+├── auth_and_chat_db.py             # User authentication, chat tabs & message history SQLite manager
+├── pipeline_service.py             # Re-embedding, page deletion, metadata editor, SSE progress
+├── app.py                          # Flask web application, REST APIs, profile picture upload & Admin session auth
 ├── templates/
-│   └── index.html                  # Responsive frontend UI (Tailwind CSS, Marked.js, Lightbox)
+│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic, Top-K, Citations)
+│   ├── admin.html                  # Password-protected Admin Console (Auth gate ID: df / Pass: df, PDF manager)
+│   └── pdf_viewer.html             # Dedicated PDF page citation viewer
 ├── requirements.txt                # Python package dependencies (google-genai, PyMuPDF, chromadb, flask, etc.)
-├── .env                            # Environment secrets (GEMINI_API_KEY)
+├── .env                            # Environment secrets (GEMINI_API_KEY, ADMIN_ID, ADMIN_PASSWORD)
+├── User database/                  # Dedicated directory for user credentials, tabs, history & avatars
+│   ├── users_and_chats.db          # Persistent SQLite database (users, chat_tabs, chat_messages)
+│   └── profile_pictures/           # User-uploaded avatar images
 ├── embedders/
 │   ├── __init__.py
 │   └── gemini_multimodal_embedder.py # Google GenAI SDK wrapper for image & query embeddings
@@ -84,11 +130,13 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 
 | File | Primary Role & Responsibilities |
 |---|---|
-| [`config.py`](file:///home/tinonn/df_rag_project/config.py) | Defines all system paths (`SOURCE_DIR`, `OUTPUT_DIR`, `IMAGE_CACHE_DIR`, `CHROMA_DIR`), collection name (`CHROMA_COLLECTION_NAME="pdf_pages"`), rendering specs (`RENDER_DPI=200`, `MAX_IMAGE_DIMENSION=2000`), model parameters (`GEMINI_EMBED_MODEL="gemini-embedding-2"`, `EMBED_OUTPUT_DIMENSIONALITY=3072`), and asymmetric embedding instructions. |
+| [`config.py`](file:///home/tinonn/df_rag_project/config.py) | Defines system paths, collection name, rendering specs, model parameters, asymmetric embedding instructions, `ADMIN_PASSWORD` (default: `"df"`), and session `SECRET_KEY`. |
 | [`run_embedding_pipeline.py`](file:///home/tinonn/df_rag_project/run_embedding_pipeline.py) | Iterates over `source/*.pdf`, checks `pipeline_state.json` to skip unchanged files, extracts native document outline (TOC) with PyMuPDF, renders pages to PNG, calls the Gemini embedder, and upserts vectors + metadata into ChromaDB. |
-| [`embedders/gemini_multimodal_embedder.py`](file:///home/tinonn/df_rag_project/embedders/gemini_multimodal_embedder.py) | Interacts with `google.genai.Client`. Provides `embed_page_image()` for PNG byte payloads and `embed_query_text()` for plain-text search queries, handling latency measurement and error reporting. |
-| [`app.py`](file:///home/tinonn/df_rag_project/app.py) | Flask web application serving both the HTML interface and REST API endpoints (`/api/status`, `/api/chat`, `/rendered_pages/<filename>`). Connects to ChromaDB, executes outline-aware retrieval with chapter-bounded expansion, and generates answers using `gemini-3.5-flash-lite`. |
-| [`templates/index.html`](file:///home/tinonn/df_rag_project/templates/index.html) | Interactive single-page web UI featuring real-time index status, chat history, Markdown formatting, citation cards with similarity scores, and a high-resolution image modal lightbox. |
+| [`embedders/gemini_multimodal_embedder.py`](file:///home/tinonn/df_rag_project/embedders/gemini_multimodal_embedder.py) | Interacts with `google.genai.Client`. Provides `embed_page_image()` with resilient exponential backoff retry for rate limits and `embed_query_text()` for search queries. |
+| [`pipeline_service.py`](file:///home/tinonn/df_rag_project/pipeline_service.py) | Core pipeline engine for outline extraction, rendering, incremental per-page ChromaDB upserts, and real-time SSE progress streaming with dynamic ETA calculation. |
+| [`app.py`](file:///home/tinonn/df_rag_project/app.py) | Flask web application serving HTML interfaces and REST API endpoints (`/api/status`, `/api/chat`, `/api/admin/*`, `/api/admin/embed/stream`). Features session-based password authentication (`@admin_required`). |
+| [`templates/index.html`](file:///home/tinonn/df_rag_project/templates/index.html) | Mobile & tablet friendly chat interface featuring off-canvas slide drawer navigation, real-time index status, chat history, Markdown formatting, citation cards with similarity scores, and a high-resolution touch image lightbox. |
+| [`templates/admin.html`](file:///home/tinonn/df_rag_project/templates/admin.html) | Password-protected admin dashboard featuring login lock gate, live loading bar with real-time ETA, total/remaining page metrics, dual table/card views for mobile/desktop, PDF uploader/manager, and settings editor. |
 | [`query_test.py`](file:///home/tinonn/df_rag_project/query_test.py) | Standalone CLI utility for validating retrieval quality against ChromaDB and inspecting top-ranked page image filenames and chapters. |
 
 ---
