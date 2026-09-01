@@ -80,6 +80,9 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
   - **Admin Console & User Login Credentials**:
     - **ID**: `df`
     - **Password**: `df`
+  - **Guest Access Option (`POST /api/auth/guest`)**:
+    - Users can click *"Continue as Guest"* on the login modal to immediately ask questions and upload photos without creating an account.
+    - Guest mode operates in a local session, with immediate access to all technical manuals and QA features.
   - Profile picture upload support (`POST /api/user/profile-picture` and `GET /api/user/profile-picture/<filename>`).
 - **Per-User Chat Tabs & Memory Isolation**:
   - Each user has independent chat tabs stored in SQLite (`User database/users_and_chats.db`).
@@ -92,10 +95,11 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
   - Users can attach up to 5 images (PNG, JPG, WEBP) or PDF documents directly to any chat question.
   - User-uploaded photos and PDF pages are loaded/rendered as PIL Images and passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.
   - Chat transcript bubbles render attached photo thumbnails with click-to-enlarge lightbox and interactive PDF badges.
-- **Admin User Data & Chat History Analytics (`#usersManagementSection` & `#userChatsModal`)**:
+- **Admin User Data, Chat History & Account Management (`#usersManagementSection` & `#userChatsModal`)**:
   - **User Overview & Login Tracking**: Admin panel displays all registered users, their avatars, roles, join dates, last login timestamps, and exact **Times of Login** (`login_count`).
+  - **User Removal Capability (`DELETE /api/admin/users/<id>`)**: Admins can permanently delete user accounts alongside all their chat tabs and message histories with a single click and confirmation modal. Primary administrator account `df` is protected from accidental deletion.
   - **Full Conversation Transcript Inspector**: Admin can click *"Inspect Chats"* on any user to open a full modal (`#userChatsModal`) allowing inspection of all that user's chat tabs, questions asked, attached photos/PDFs, assistant replies, in-text citations, and Top-K candidate sources.
-  - **Protected APIs**: Backed by `@admin_required` REST endpoints `GET /api/admin/users` and `GET /api/admin/users/<id>/chats`.
+  - **Protected APIs**: Backed by `@admin_required` REST endpoints `GET /api/admin/users`, `DELETE /api/admin/users/<id>`, and `GET /api/admin/users/<id>/chats`.
 - **Compact Top-K Results Pill (`#topKModal`)**:
   - Clean compact pill button underneath assistant response (`Top-K Result (N pages) - View more`).
   - Click opens candidate page inspector modal without cluttering the chat stream.

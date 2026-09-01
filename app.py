@@ -249,6 +249,25 @@ def auth_login():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
+@app.route("/api/auth/guest", methods=["POST"])
+def auth_guest():
+    """Logs in the session as a guest user."""
+    session["user_id"] = "guest"
+    session["username"] = "Guest"
+    session["role"] = "guest"
+    return jsonify({
+        "status": "ok",
+        "message": "Logged in as guest.",
+        "user": {
+            "id": "guest",
+            "username": "Guest",
+            "role": "guest",
+            "profile_pic": ""
+        },
+        "default_tab_id": "guest-tab"
+    })
+
+
 @app.route("/api/auth/logout", methods=["POST"])
 def auth_logout():
     session.pop("user_id", None)
@@ -264,6 +283,18 @@ def auth_me():
     if not user_id:
         return jsonify({"authenticated": False, "user": None})
 
+    if user_id == "guest":
+        return jsonify({
+            "authenticated": True,
+            "is_guest": True,
+            "user": {
+                "id": "guest",
+                "username": session.get("username", "Guest"),
+                "role": "guest",
+                "profile_pic": ""
+            }
+        })
+
     user = auth_and_chat_db.get_user_by_id(user_id)
     if not user:
         session.clear()
@@ -271,6 +302,7 @@ def auth_me():
 
     return jsonify({
         "authenticated": True,
+        "is_guest": False,
         "user": user
     })
 
@@ -880,6 +912,26 @@ def get_admin_user_chats(user_id: int):
         return jsonify({"status": "ok", "user": user_data})
     except Exception as e:
         logger.error(f"Error fetching admin user chats: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@admin_required
+def delete_admin_user(user_id: int):
+    try:
+        deleted = auth_and_chat_db.delete_user(user_id)
+        if not deleted:
+            return jsonify({"status": "error", "error": "User not found."}), 404
+        remaining = auth_and_chat_db.list_all_users_with_stats()
+        return jsonify({
+            "status": "ok",
+            "message": "User and associated chat history deleted successfully.",
+            "users": remaining
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error deleting user {user_id}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
 
 

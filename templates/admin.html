@@ -2269,10 +2269,18 @@
                             <span class="font-semibold text-emerald-400">${u.total_messages || 0}</span> msgs
                         </td>
                         <td class="px-5 py-3.5 text-right">
-                            <button onclick="openUserChatsModal(${u.id})" class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 hover:text-sky-100 border border-sky-500/30 text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm">
-                                <i class="fa-solid fa-comments text-xs"></i>
-                                <span>Inspect Chats</span>
-                            </button>
+                            <div class="inline-flex items-center justify-end space-x-1.5">
+                                <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 hover:text-sky-100 border border-sky-500/30 text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm" title="Inspect Chat History">
+                                    <i class="fa-solid fa-comments text-xs"></i>
+                                    <span>Inspect</span>
+                                </button>
+                                ${!isAdmin ? `
+                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-800/60 text-xs font-semibold transition inline-flex items-center gap-1 shadow-sm" title="Delete User Account">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                        <span class="hidden sm:inline">Delete</span>
+                                    </button>
+                                ` : ''}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -2320,14 +2328,45 @@
                             <div>
                                 <span>Chat: <strong class="text-sky-300">${u.total_tabs || 0} tabs</strong>, <strong class="text-emerald-300">${u.total_messages || 0} msgs</strong></span>
                             </div>
-                            <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm">
-                                <i class="fa-solid fa-comments"></i>
-                                <span>Inspect</span>
-                            </button>
+                            <div class="flex items-center space-x-1.5">
+                                <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm">
+                                    <i class="fa-solid fa-comments"></i>
+                                    <span>Inspect</span>
+                                </button>
+                                ${!isAdmin ? `
+                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-[11px] font-semibold border border-rose-800/60 transition flex items-center gap-1 shadow-sm">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function promptDeleteUser(userId, username) {
+            if (!confirm(`⚠️ Are you sure you want to permanently delete user "${username}"?\n\nThis will remove their account and all their chat tabs and message history from the database.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+                const data = await res.json();
+                if (res.ok && data.status === "ok") {
+                    showToast(`User "${username}" deleted successfully.`, "success");
+                    fetchUsers();
+                } else {
+                    showToast(data.error || "Failed to delete user.", "error");
+                }
+            } catch (err) {
+                console.error("Delete user error:", err);
+                showToast(`Error deleting user: ${err.message}`, "error");
+            }
         }
 
         function handleUserSearch(event) {

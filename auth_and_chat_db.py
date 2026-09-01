@@ -247,6 +247,16 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
         return None
 
 
+def get_user_by_username(username: str) -> Optional[dict]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE username = ?", (username.lower(),))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+
+
 def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Optional[dict]:
     """Updates user profile picture filename in the database."""
     with get_db_connection() as conn:
@@ -258,6 +268,34 @@ def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Opti
         if row:
             return dict(row)
         return None
+
+
+def delete_user(user_id: int) -> bool:
+    """Deletes a user account and cascades deletion of all their chat tabs and message history."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role, profile_pic FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+
+        # Protect primary admin 'df' and 'admin' from deletion
+        if row["username"].lower() in ["df", "admin"]:
+            raise ValueError("The primary administrator account ('df') cannot be deleted.")
+
+        # Clean up profile picture file if exists
+        if row["profile_pic"]:
+            avatar_path = config.USER_AVATAR_DIR / row["profile_pic"]
+            if avatar_path.exists():
+                try:
+                    avatar_path.unlink()
+                except Exception as e:
+                    logger.warning(f"Failed to remove avatar file {avatar_path}: {e}")
+
+        # Delete user
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
 
 # ============================================================================

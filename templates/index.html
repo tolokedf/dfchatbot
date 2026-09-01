@@ -451,6 +451,22 @@
                         <span>Create Account</span>
                     </button>
                 </form>
+
+                <!-- Guest Mode Quick Entry -->
+                <div class="pt-2">
+                    <div class="relative flex items-center justify-center mb-3">
+                        <div class="border-t border-slate-800 w-full"></div>
+                        <span class="bg-slate-900 px-2.5 text-[10px] uppercase font-semibold text-slate-500 tracking-wider">or</span>
+                    </div>
+
+                    <button type="button" onclick="handleGuestLogin()" id="guestLoginBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 hover:border-slate-600 transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-user-ninja text-sky-400 text-sm"></i>
+                        <span>Continue as Guest</span>
+                    </button>
+                    <p class="text-[10px] text-slate-500 text-center mt-1.5">
+                        Ask questions and upload photos without creating an account.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -686,33 +702,55 @@
                 loggedInEl.classList.remove('hidden');
                 loggedOutEl.classList.add('hidden');
 
-                document.getElementById('sidebarUsername').textContent = currentUser.username;
-                document.getElementById('sidebarUserRole').textContent = currentUser.role === 'admin' ? 'Administrator' : 'User';
+                const isGuest = currentUser.role === 'guest' || currentUser.is_guest || currentUser.username.toLowerCase() === 'guest';
 
-                // Render avatar image or initial
-                if (currentUser.profile_pic) {
-                    avatarContainer.innerHTML = `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-full h-full object-cover" alt="${escapeAttr(currentUser.username)}">`;
+                if (isGuest) {
+                    document.getElementById('sidebarUsername').textContent = 'Guest User';
+                    document.getElementById('sidebarUserRole').innerHTML = '<span class="text-amber-400 font-semibold">Guest Mode</span> (Session only)';
+                    avatarContainer.innerHTML = `<i class="fa-solid fa-user-ninja text-sky-400 text-sm"></i>`;
+
+                    // Header Profile Badge for Guest
+                    headerAuth.innerHTML = `
+                        <div class="flex items-center space-x-2 bg-slate-850 border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-xs shadow-sm">
+                            <i class="fa-solid fa-user-ninja text-sky-400"></i>
+                            <span class="font-mono text-slate-200 font-semibold">Guest</span>
+                            <button onclick="openAuthModal('login')" class="ml-1 text-[11px] text-sky-400 hover:text-sky-300 font-semibold underline underline-offset-2" title="Log in to save multiple tabs">
+                                Log In
+                            </button>
+                            <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 ml-1 p-0.5" title="Exit Guest Mode">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                            </button>
+                        </div>
+                    `;
                 } else {
-                    avatarContainer.innerHTML = `<span id="userInitial">${currentUser.username.charAt(0).toUpperCase()}</span>`;
+                    document.getElementById('sidebarUsername').textContent = currentUser.username;
+                    document.getElementById('sidebarUserRole').textContent = currentUser.role === 'admin' ? 'Administrator' : 'User';
+
+                    // Render avatar image or initial
+                    if (currentUser.profile_pic) {
+                        avatarContainer.innerHTML = `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-full h-full object-cover" alt="${escapeAttr(currentUser.username)}">`;
+                    } else {
+                        avatarContainer.innerHTML = `<span id="userInitial">${currentUser.username.charAt(0).toUpperCase()}</span>`;
+                    }
+
+                    // Header Profile Badge
+                    const avatarHtml = currentUser.profile_pic
+                        ? `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-5 h-5 rounded-full object-cover border border-sky-400/60 shrink-0">`
+                        : `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>`;
+
+                    headerAuth.innerHTML = `
+                        <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 px-2.5 py-1.5 rounded-lg">
+                            ${avatarHtml}
+                            <span class="font-mono text-slate-200 font-semibold truncate max-w-[120px]">${escapeHtml(currentUser.username)}</span>
+                            <button onclick="openProfilePicModal()" class="text-slate-400 hover:text-sky-400 text-[10px] p-0.5 ml-0.5" title="Change Avatar">
+                                <i class="fa-solid fa-camera"></i>
+                            </button>
+                            <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 ml-1 p-0.5" title="Logout">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                            </button>
+                        </div>
+                    `;
                 }
-
-                // Header Profile Badge
-                const avatarHtml = currentUser.profile_pic
-                    ? `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-5 h-5 rounded-full object-cover border border-sky-400/60 shrink-0">`
-                    : `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>`;
-
-                headerAuth.innerHTML = `
-                    <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 px-2.5 py-1.5 rounded-lg">
-                        ${avatarHtml}
-                        <span class="font-mono text-slate-200 font-semibold truncate max-w-[120px]">${escapeHtml(currentUser.username)}</span>
-                        <button onclick="openProfilePicModal()" class="text-slate-400 hover:text-sky-400 text-[10px] p-0.5 ml-0.5" title="Change Avatar">
-                            <i class="fa-solid fa-camera"></i>
-                        </button>
-                        <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 ml-1 p-0.5" title="Logout">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                        </button>
-                    </div>
-                `;
             } else {
                 loggedInEl.classList.add('hidden');
                 loggedOutEl.classList.remove('hidden');
@@ -911,6 +949,42 @@
             }
         }
 
+        async function handleGuestLogin() {
+            const errEl = document.getElementById('authErrorMsg');
+            const guestBtn = document.getElementById('guestLoginBtn');
+            if (guestBtn) {
+                guestBtn.disabled = true;
+                guestBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Entering as guest...';
+            }
+            try {
+                const res = await fetch('/api/auth/guest', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    currentUser = data.user;
+                    currentUser.is_guest = true;
+                    updateUserUI();
+                    closeAuthModal();
+                    chatMessagesHistory = [];
+                    messageSeedsMap = {};
+                    userTabs = [{ id: 'guest-tab', title: 'Guest Session', message_count: 0 }];
+                    activeTabId = 'guest-tab';
+                    renderTabsList();
+                    renderWelcomeScreen("Guest Session");
+                } else {
+                    errEl.textContent = data.error || "Guest login failed.";
+                    errEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                errEl.textContent = `Network error: ${err.message}`;
+                errEl.classList.remove('hidden');
+            } finally {
+                if (guestBtn) {
+                    guestBtn.disabled = false;
+                    guestBtn.innerHTML = '<i class="fa-solid fa-user-ninja text-sky-400 text-sm"></i> <span>Continue as Guest</span>';
+                }
+            }
+        }
+
         async function handleLogout() {
             try {
                 await fetch('/api/auth/logout', { method: 'POST' });
@@ -918,6 +992,8 @@
                 updateUserUI();
                 userTabs = [];
                 activeTabId = null;
+                chatMessagesHistory = [];
+                messageSeedsMap = {};
                 renderTabsList();
                 renderWelcomeScreen("New Chat");
             } catch (err) {
@@ -930,11 +1006,15 @@
         // =====================================================================
         async function loadTabs(preferredTabId = null) {
             const container = document.getElementById('tabsListContainer');
-            if (!currentUser) {
-                userTabs = [{ id: 'guest-tab', title: 'Local Session', message_count: 0 }];
+            const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest || currentUser.username.toLowerCase() === 'guest');
+
+            if (!currentUser || isGuest) {
+                userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: chatMessagesHistory.length }];
                 activeTabId = 'guest-tab';
                 renderTabsList();
-                renderWelcomeScreen("Local Session");
+                if (chatMessagesHistory.length === 0) {
+                    renderWelcomeScreen(isGuest ? "Guest Session" : "Local Session");
+                }
                 return;
             }
 
@@ -962,6 +1042,7 @@
 
         function renderTabsList() {
             const container = document.getElementById('tabsListContainer');
+            const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
             if (userTabs.length === 0) {
                 container.innerHTML = `<div class="p-2 text-center text-slate-500 text-xs">No tabs yet.</div>`;
                 return;
@@ -990,8 +1071,15 @@
         }
 
         async function createNewTab() {
-            if (!currentUser) {
-                openAuthModal('login');
+            const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
+            if (isGuest || !currentUser) {
+                chatMessagesHistory = [];
+                messageSeedsMap = {};
+                userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: 0 }];
+                activeTabId = 'guest-tab';
+                renderTabsList();
+                renderWelcomeScreen(isGuest ? "Guest Session" : "Local Session");
+                closeMobileSidebar();
                 return;
             }
 
