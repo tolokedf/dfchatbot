@@ -156,7 +156,7 @@
             <div class="max-w-7xl mx-auto space-y-5 sm:space-y-6">
 
                 <!-- Stat Cards Bar -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
                         <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-file-pdf"></i>
@@ -178,22 +178,32 @@
                     </div>
 
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Users Registered</p>
+                            <p id="statUserCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Total Logins</p>
+                            <p id="statLoginCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 sm:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
                         <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-brain"></i>
                         </div>
                         <div class="min-w-0">
                             <p class="text-[11px] sm:text-xs text-slate-400 truncate">QA Model</p>
                             <p id="statQaModel" class="text-xs sm:text-sm font-semibold font-mono text-purple-300 truncate">...</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-base sm:text-lg shrink-0">
-                            <i class="fa-solid fa-key"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">API Key Status</p>
-                            <p id="statKeyStatus" class="text-[11px] sm:text-xs font-semibold text-slate-300 truncate">Checking...</p>
                         </div>
                     </div>
                 </div>
@@ -262,6 +272,62 @@
                                 <tr>
                                     <td colspan="6" class="px-5 py-8 text-center text-slate-500">
                                         <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading source manuals...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Section 2: User Database & Chat History Management -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm" id="usersManagementSection">
+                    <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-users-gear text-sky-400"></i>
+                                User Database & Chat History (<span id="userCountBadge">0</span> Users)
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Inspect user accounts, total logins, active chat sessions/tabs, and conversation transcripts.</p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <!-- User Search Bar -->
+                            <div class="relative flex items-center">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-500 text-xs"></i>
+                                <input type="text" id="userSearchInput" oninput="handleUserSearch(event)" placeholder="Search username..."
+                                       class="bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition font-mono">
+                            </div>
+                            <button onclick="fetchUsers()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-rotate"></i>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Responsive User Cards View -->
+                    <div id="mobileUsersContainer" class="block md:hidden p-3 space-y-3">
+                        <div class="text-center py-6 text-slate-500 text-xs">
+                            <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Loading user accounts...
+                        </div>
+                    </div>
+
+                    <!-- Desktop/Tablet User Table View -->
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                                <tr>
+                                    <th class="px-5 py-3">User</th>
+                                    <th class="px-4 py-3">Times of Login</th>
+                                    <th class="px-4 py-3">Registered Date</th>
+                                    <th class="px-4 py-3">Last Active / Login</th>
+                                    <th class="px-4 py-3">Chat Sessions</th>
+                                    <th class="px-5 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-normal">
+                                <tr>
+                                    <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading user accounts...
                                     </td>
                                 </tr>
                             </tbody>
@@ -682,6 +748,76 @@
         </div>
     </div>
 
+    <!-- Modal: User Chat History & Transcript Inspector -->
+    <div id="userChatsModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
+        <div class="relative max-w-5xl w-full h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <div id="modalUserAvatar" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-base shrink-0 shadow-inner">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center space-x-2">
+                            <h3 id="modalUsername" class="text-sm sm:text-base font-bold text-slate-100 truncate">User Chat History</h3>
+                            <span id="modalUserRoleBadge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-950 text-sky-300 border border-sky-800">User</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span id="modalUserLogins"><i class="fa-solid fa-right-to-bracket text-amber-400 mr-1"></i>0 logins</span>
+                            <span>•</span>
+                            <span id="modalUserRegistered">Joined: --</span>
+                            <span>•</span>
+                            <span id="modalUserTotalChats" class="text-sky-300 font-medium">0 tabs, 0 messages</span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshCurrentModalChats()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition" title="Refresh User Chats">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <button onclick="closeUserChatsModal()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition" title="Close">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body: Split Layout (Tabs list on left, Transcript on right) -->
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-950/40">
+                
+                <!-- Left Pane: User Tabs List -->
+                <div class="w-full md:w-64 lg:w-72 bg-slate-900/90 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0">
+                    <div class="p-3 border-b border-slate-800/80 text-xs font-semibold text-slate-400 flex items-center justify-between">
+                        <span><i class="fa-solid fa-folder-tree text-sky-400 mr-1.5"></i> Chat Sessions (<span id="modalTabsCountBadge">0</span>)</span>
+                    </div>
+                    <div id="modalTabsList" class="flex-1 overflow-y-auto p-2 space-y-1">
+                        <!-- Dynamic user tab buttons -->
+                    </div>
+                </div>
+
+                <!-- Right Pane: Message Transcript Stream -->
+                <div class="flex-1 flex flex-col overflow-hidden bg-slate-950">
+                    <div class="p-2.5 sm:p-3 bg-slate-900/60 border-b border-slate-800/80 flex items-center justify-between shrink-0">
+                        <div class="flex items-center space-x-2 min-w-0">
+                            <i class="fa-solid fa-comments text-sky-400 text-xs"></i>
+                            <span id="modalActiveTabTitle" class="text-xs font-semibold text-slate-200 truncate">Select a chat tab</span>
+                        </div>
+                        <span id="modalActiveTabMsgCount" class="text-[11px] text-slate-500 font-mono">0 messages</span>
+                    </div>
+
+                    <div id="modalChatMessagesContainer" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
+                        <div class="py-16 text-center text-slate-500 text-xs">
+                            Select a chat tab on the left to inspect conversation history.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
     <!-- Toast Notification Box -->
     <div id="toast" class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
         <div id="toastIcon" class="text-base text-sky-400 shrink-0"></div>
@@ -748,6 +884,7 @@
             document.getElementById("adminContentContainer").classList.remove("hidden");
             fetchConfig();
             fetchFiles();
+            fetchUsers();
         }
 
         async function handleAdminLogin(event) {
@@ -2037,6 +2174,411 @@
             document.getElementById("logModal").classList.add("hidden");
         }
 
+        // =====================================================================
+        // User Database & Chat History Inspection
+        // =====================================================================
+        let allUsersList = [];
+        let currentModalUserChats = null;
+        let currentModalActiveTabId = null;
+
+        async function fetchUsers() {
+            try {
+                const res = await fetch("/api/admin/users");
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+                const data = await res.json();
+                if (data.status === "ok") {
+                    allUsersList = data.users || [];
+                    renderUsersStats(allUsersList);
+                    renderUsersTable(allUsersList);
+                    renderMobileUsersCards(allUsersList);
+                } else {
+                    showToast(data.error || "Failed to load user accounts", "error");
+                }
+            } catch (err) {
+                console.error("Fetch users error:", err);
+                showToast(`User fetch error: ${err.message}`, "error");
+            }
+        }
+
+        function renderUsersStats(users) {
+            const userCountEl = document.getElementById("statUserCount");
+            const loginCountEl = document.getElementById("statLoginCount");
+            const badgeEl = document.getElementById("userCountBadge");
+
+            const totalUsers = users.length;
+            const totalLogins = users.reduce((acc, u) => acc + (u.login_count || 0), 0);
+
+            if (userCountEl) userCountEl.textContent = `${totalUsers}`;
+            if (loginCountEl) loginCountEl.textContent = `${totalLogins}`;
+            if (badgeEl) badgeEl.textContent = `${totalUsers}`;
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById("usersTableBody");
+            if (!tbody) return;
+
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                            No registered users found in the User database.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const isAdmin = u.role === "admin" || u.username.toLowerCase() === "df";
+                const avatarSrc = u.profile_pic ? `/api/user/profile-picture/${encodeURIComponent(u.profile_pic)}` : null;
+                const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
+                const lastLogin = u.last_login_at ? new Date(u.last_login_at).toLocaleString() : '--';
+                const loginCount = u.login_count || 0;
+
+                return `
+                    <tr class="hover:bg-slate-850/50 transition">
+                        <td class="px-5 py-3.5 flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0 shadow-sm">
+                                ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${escapeHtml(u.username.charAt(0).toUpperCase())}'">` : `<span>${escapeHtml(u.username.charAt(0).toUpperCase())}</span>`}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="font-semibold text-slate-200 truncate font-mono text-xs">${escapeHtml(u.username)}</span>
+                                    ${isAdmin ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">User</span>`}
+                                </div>
+                                <span class="text-[10px] text-slate-500">ID: #${u.id}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3.5">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                <i class="fa-solid fa-right-to-bracket text-amber-400 text-[10px]"></i>
+                                <span>${loginCount} ${loginCount === 1 ? 'login' : 'logins'}</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-400 text-xs font-mono">
+                            ${regDate}
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-400 text-xs font-mono">
+                            ${lastLogin}
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-300 text-xs">
+                            <span class="font-semibold text-sky-400">${u.total_tabs || 0}</span> tabs / 
+                            <span class="font-semibold text-emerald-400">${u.total_messages || 0}</span> msgs
+                        </td>
+                        <td class="px-5 py-3.5 text-right">
+                            <button onclick="openUserChatsModal(${u.id})" class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 hover:text-sky-100 border border-sky-500/30 text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm">
+                                <i class="fa-solid fa-comments text-xs"></i>
+                                <span>Inspect Chats</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderMobileUsersCards(users) {
+            const container = document.getElementById("mobileUsersContainer");
+            if (!container) return;
+
+            if (users.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">No registered users found.</div>`;
+                return;
+            }
+
+            container.innerHTML = users.map(u => {
+                const isAdmin = u.role === "admin" || u.username.toLowerCase() === "df";
+                const avatarSrc = u.profile_pic ? `/api/user/profile-picture/${encodeURIComponent(u.profile_pic)}` : null;
+                const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
+                const lastLogin = u.last_login_at ? new Date(u.last_login_at).toLocaleString() : '--';
+                const loginCount = u.login_count || 0;
+
+                return `
+                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0">
+                                    ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${escapeHtml(u.username.charAt(0).toUpperCase())}'">` : `<span>${escapeHtml(u.username.charAt(0).toUpperCase())}</span>`}
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-1.5">
+                                        <span class="font-bold text-slate-200 text-xs font-mono">${escapeHtml(u.username)}</span>
+                                        ${isAdmin ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">User</span>`}
+                                    </div>
+                                    <span class="text-[10px] text-slate-500">ID: #${u.id} • Registered: ${regDate}</span>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                <i class="fa-solid fa-right-to-bracket text-[9px]"></i>
+                                <span>${loginCount}</span>
+                            </span>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 flex items-center justify-between">
+                            <div>
+                                <span>Chat: <strong class="text-sky-300">${u.total_tabs || 0} tabs</strong>, <strong class="text-emerald-300">${u.total_messages || 0} msgs</strong></span>
+                            </div>
+                            <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-comments"></i>
+                                <span>Inspect</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleUserSearch(event) {
+            const query = (event.target.value || "").toLowerCase().trim();
+            if (!query) {
+                renderUsersTable(allUsersList);
+                renderMobileUsersCards(allUsersList);
+                return;
+            }
+
+            const filtered = allUsersList.filter(u => 
+                (u.username && u.username.toLowerCase().includes(query)) ||
+                (u.role && u.role.toLowerCase().includes(query))
+            );
+            renderUsersTable(filtered);
+            renderMobileUsersCards(filtered);
+        }
+
+        // =====================================================================
+        // Modal: User Chat History Inspector
+        // =====================================================================
+        async function openUserChatsModal(userId) {
+            const modal = document.getElementById("userChatsModal");
+            const avatarEl = document.getElementById("modalUserAvatar");
+            const usernameEl = document.getElementById("modalUsername");
+            const roleBadgeEl = document.getElementById("modalUserRoleBadge");
+            const loginsEl = document.getElementById("modalUserLogins");
+            const regEl = document.getElementById("modalUserRegistered");
+            const totalChatsEl = document.getElementById("modalUserTotalChats");
+            const tabsListEl = document.getElementById("modalTabsList");
+            const chatMessagesContainer = document.getElementById("modalChatMessagesContainer");
+
+            modal.classList.remove("hidden");
+            tabsListEl.innerHTML = `<div class="py-8 text-center text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading sessions...</div>`;
+            chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading message history...</div>`;
+
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/chats`);
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+                const data = await res.json();
+                if (data.status === "ok" && data.user) {
+                    currentModalUserChats = data.user;
+                    const u = data.user;
+                    const isAdmin = u.role === "admin" || u.username.toLowerCase() === "df";
+                    const avatarSrc = u.profile_pic ? `/api/user/profile-picture/${encodeURIComponent(u.profile_pic)}` : null;
+
+                    // Header Info
+                    if (avatarSrc) {
+                        avatarEl.innerHTML = `<img src="${avatarSrc}" alt="Avatar" class="w-full h-full object-cover">`;
+                    } else {
+                        avatarEl.innerHTML = `<span>${escapeHtml(u.username.charAt(0).toUpperCase())}</span>`;
+                    }
+
+                    usernameEl.textContent = `${u.username} (ID: #${u.id})`;
+                    roleBadgeEl.textContent = isAdmin ? "Admin" : "User";
+                    roleBadgeEl.className = isAdmin ? "px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30" : "px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-950 text-sky-300 border border-sky-800";
+
+                    loginsEl.innerHTML = `<i class="fa-solid fa-right-to-bracket text-amber-400 mr-1"></i>${u.login_count || 0} logins`;
+                    regEl.textContent = `Joined: ${u.created_at ? new Date(u.created_at).toLocaleDateString() : '--'}`;
+                    totalChatsEl.textContent = `${u.total_tabs || 0} tabs, ${u.total_messages || 0} total messages`;
+
+                    document.getElementById("modalTabsCountBadge").textContent = `${u.tabs.length}`;
+
+                    // Render Tabs in Left Pane
+                    renderModalTabsList(u.tabs);
+
+                    // Auto-select first tab if exists
+                    if (u.tabs && u.tabs.length > 0) {
+                        selectUserChatTab(u.tabs[0].id);
+                    } else {
+                        document.getElementById("modalActiveTabTitle").textContent = "No active tabs";
+                        document.getElementById("modalActiveTabMsgCount").textContent = "0 messages";
+                        chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-slate-500 text-xs">This user has not created any chat sessions yet.</div>`;
+                    }
+                } else {
+                    showToast(data.error || "Failed to load user chats", "error");
+                    closeUserChatsModal();
+                }
+            } catch (err) {
+                console.error("Error loading user chats:", err);
+                showToast(`Chat inspection error: ${err.message}`, "error");
+                closeUserChatsModal();
+            }
+        }
+
+        function refreshCurrentModalChats() {
+            if (currentModalUserChats && currentModalUserChats.id) {
+                openUserChatsModal(currentModalUserChats.id);
+            }
+        }
+
+        function renderModalTabsList(tabs) {
+            const container = document.getElementById("modalTabsList");
+            if (!container) return;
+
+            if (!tabs || tabs.length === 0) {
+                container.innerHTML = `<div class="py-6 text-center text-slate-500 text-xs">No chat tabs found.</div>`;
+                return;
+            }
+
+            container.innerHTML = tabs.map(t => {
+                const isActive = t.id === currentModalActiveTabId;
+                const activeClass = isActive ? "bg-sky-600/20 text-sky-300 border-sky-500/40" : "bg-slate-850/60 hover:bg-slate-800 text-slate-300 border-slate-800/80";
+                const createdStr = t.created_at ? new Date(t.created_at).toLocaleDateString() : '';
+
+                return `
+                    <button onclick="selectUserChatTab('${t.id}')" id="modalTabBtn_${t.id}" class="w-full text-left p-2.5 rounded-xl border ${activeClass} transition flex items-center justify-between group">
+                        <div class="min-w-0 flex-1 pr-2">
+                            <p class="text-xs font-semibold truncate ${isActive ? 'text-sky-300' : 'text-slate-200 group-hover:text-white'}">${escapeHtml(t.title || 'Untitled Tab')}</p>
+                            <span class="text-[10px] text-slate-500 font-mono">${createdStr}</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${isActive ? 'bg-sky-500/30 text-sky-200' : 'bg-slate-800 text-slate-400'}">
+                            ${t.messages ? t.messages.length : 0}
+                        </span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectUserChatTab(tabId) {
+            if (!currentModalUserChats || !currentModalUserChats.tabs) return;
+            currentModalActiveTabId = tabId;
+
+            const targetTab = currentModalUserChats.tabs.find(t => t.id === tabId);
+            if (!targetTab) return;
+
+            // Update Left Pane styling
+            currentModalUserChats.tabs.forEach(t => {
+                const btn = document.getElementById(`modalTabBtn_${t.id}`);
+                if (btn) {
+                    const isCur = t.id === tabId;
+                    btn.className = `w-full text-left p-2.5 rounded-xl border ${isCur ? 'bg-sky-600/20 text-sky-300 border-sky-500/40' : 'bg-slate-850/60 hover:bg-slate-800 text-slate-300 border-slate-800/80'} transition flex items-center justify-between group`;
+                }
+            });
+
+            // Update Right Pane Header
+            document.getElementById("modalActiveTabTitle").textContent = targetTab.title || "Chat Tab";
+            const msgCount = targetTab.messages ? targetTab.messages.length : 0;
+            document.getElementById("modalActiveTabMsgCount").textContent = `${msgCount} message${msgCount === 1 ? '' : 's'}`;
+
+            // Render Messages
+            const container = document.getElementById("modalChatMessagesContainer");
+            if (!targetTab.messages || targetTab.messages.length === 0) {
+                container.innerHTML = `
+                    <div class="py-16 text-center text-slate-500 text-xs">
+                        <i class="fa-solid fa-comments text-2xl text-slate-600 mb-2"></i>
+                        <p>This tab is empty. No questions have been sent yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = targetTab.messages.map(m => {
+                const isUser = m.role === "user";
+                const timeStr = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                if (isUser) {
+                    let attachmentsHtml = '';
+                    if (m.attachments && m.attachments.length > 0) {
+                        attachmentsHtml = `
+                            <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-sky-500/30">
+                                ${m.attachments.map(att => {
+                                    if (att.type === 'pdf') {
+                                        return `
+                                            <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-950 text-sky-200 text-xs font-semibold border border-sky-500/40 hover:bg-sky-900 transition">
+                                                <i class="fa-solid fa-file-pdf text-rose-300 text-xs"></i>
+                                                <span class="truncate max-w-[120px]">${escapeHtml(att.name || 'Document.pdf')}</span>
+                                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
+                                            </a>
+                                        `;
+                                    } else {
+                                        return `
+                                            <div class="relative group max-w-[100px] max-h-[80px] rounded-lg overflow-hidden border border-sky-400/40 cursor-pointer shadow-sm" onclick="openImageLightbox('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
+                                                <img src="${att.url}" alt="Attachment" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                            </div>
+                                        `;
+                                    }
+                                }).join('')}
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="flex items-start justify-end space-x-2.5 max-w-4xl mx-auto">
+                            <div class="space-y-1 text-right">
+                                <div class="bg-sky-600 text-white rounded-2xl rounded-tr-sm p-3.5 text-xs text-left shadow-md break-words max-w-xl">
+                                    ${attachmentsHtml}
+                                    <p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(m.content)}</p>
+                                </div>
+                                <span class="text-[10px] text-slate-500 font-mono px-1">${timeStr}</span>
+                            </div>
+                            <div class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 text-xs font-bold">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const formattedAnswer = formatAdminChatCitations(m.content);
+                    const hasCitations = m.citations && m.citations.length > 0;
+                    const hasTopK = m.top_k && m.top_k.length > 0;
+
+                    return `
+                        <div class="flex items-start space-x-2.5 max-w-4xl mx-auto">
+                            <div class="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0 text-xs">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div class="space-y-2 max-w-2xl min-w-0">
+                                <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 shadow-sm leading-relaxed space-y-2 break-words">
+                                    <div>${formattedAnswer}</div>
+                                    
+                                    ${hasCitations ? `
+                                        <div class="pt-2 border-t border-slate-800 flex flex-wrap items-center gap-1.5 text-[11px]">
+                                            <span class="text-slate-400 font-semibold"><i class="fa-solid fa-book-bookmark text-sky-400 mr-1"></i> Citations:</span>
+                                            ${m.citations.map(c => `
+                                                <a href="${c.url}" target="_blank" class="px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800 hover:bg-sky-900 text-[10px] font-mono transition flex items-center gap-1">
+                                                    <i class="fa-solid fa-file-pdf text-rose-400"></i> ${escapeHtml(c.manual)}, p.${c.page_number}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+                                    <span>${timeStr}</span>
+                                    ${hasTopK ? `<span class="text-slate-400"><i class="fa-solid fa-images text-sky-400 mr-0.5"></i> ${m.top_k.length} candidate pages</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        function formatAdminChatCitations(rawAnswer) {
+            if (!rawAnswer) return "";
+            const regex = /\[(.*?)(?:,\s*p\.?|\s*-\s*page)\s*(\d+)\]/gi;
+            return rawAnswer.replace(regex, (match, manualTitle, pageNum) => {
+                const cleanManual = manualTitle.trim();
+                const cleanPage = pageNum.trim();
+                return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded bg-sky-500/15 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-[11px] font-mono transition no-underline" title="Open PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i> <span>${cleanManual}, p.${cleanPage}</span></a>`;
+            });
+        }
+
+        function closeUserChatsModal() {
+            document.getElementById("userChatsModal").classList.add("hidden");
+            currentModalUserChats = null;
+            currentModalActiveTabId = null;
+        }
+
         function escapeHtml(str) {
             if (!str) return '';
             return String(str)
@@ -2051,6 +2593,16 @@
             if (!str) return '';
             return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         }
+
+        // Close modals on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeUserChatsModal();
+                closePageManager();
+                closeImageLightbox();
+                closeLogModal();
+            }
+        });
 
         // Check authentication on page load
         checkAuthStatus();

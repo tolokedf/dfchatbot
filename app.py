@@ -856,6 +856,34 @@ def admin_logout():
 
 
 # ============================================================================
+# Admin User Analytics & Chat History Inspection APIs
+# ============================================================================
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def get_admin_users():
+    try:
+        users = auth_and_chat_db.list_all_users_with_stats()
+        return jsonify({"status": "ok", "users": users})
+    except Exception as e:
+        logger.error(f"Error fetching admin users: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/chats", methods=["GET"])
+@admin_required
+def get_admin_user_chats(user_id: int):
+    try:
+        user_data = auth_and_chat_db.get_user_full_chat_history(user_id)
+        if not user_data:
+            return jsonify({"status": "error", "error": "User not found"}), 404
+        return jsonify({"status": "ok", "user": user_data})
+    except Exception as e:
+        logger.error(f"Error fetching admin user chats: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+# ============================================================================
 # Admin & Source File Management APIs
 # ============================================================================
 

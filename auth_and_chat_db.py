@@ -30,7 +30,7 @@ def init_db():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # 1. Users Table (with profile_pic support)
+        # 1. Users Table (with profile_pic, login_count, and last_login_at support)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,13 +38,23 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 profile_pic TEXT DEFAULT '',
+                login_count INTEGER DEFAULT 0,
+                last_login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
-        # Gracefully add profile_pic column if table was previously created without it
+        # Gracefully add profile_pic, login_count, last_login_at columns if table was created earlier
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN profile_pic TEXT DEFAULT '';")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0;")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;")
         except sqlite3.OperationalError:
             pass
 
@@ -87,8 +97,8 @@ def init_db():
         if not cursor.fetchone():
             df_admin_hash = generate_password_hash("df")
             cursor.execute(
-                "INSERT INTO users (username, password_hash, role, profile_pic) VALUES (?, ?, ?, ?)",
-                ("df", df_admin_hash, "admin", "")
+                "INSERT INTO users (username, password_hash, role, profile_pic, login_count) VALUES (?, ?, ?, ?, ?)",
+                ("df", df_admin_hash, "admin", "", 1)
             )
             logger.info("Initialized default admin user 'df' (password: 'df') in User database.")
 
@@ -97,8 +107,8 @@ def init_db():
         if not cursor.fetchone():
             default_admin_hash = generate_password_hash(config.ADMIN_PASSWORD)
             cursor.execute(
-                "INSERT INTO users (username, password_hash, role, profile_pic) VALUES (?, ?, ?, ?)",
-                ("admin", default_admin_hash, "admin", "")
+                "INSERT INTO users (username, password_hash, role, profile_pic, login_count) VALUES (?, ?, ?, ?, ?)",
+                ("admin", default_admin_hash, "admin", "", 1)
             )
         
         conn.commit()
@@ -139,7 +149,7 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO users (username, password_hash, role, profile_pic) VALUES (?, ?, ?, ?)",
+                "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)",
                 (username, pw_hash, role, "")
             )
             user_id = cursor.lastrowid
@@ -157,6 +167,7 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
                 "username": username,
                 "role": role,
                 "profile_pic": "",
+                "login_count": 1,
                 "default_tab_id": tab_id
             }
         except sqlite3.IntegrityError:
@@ -164,7 +175,7 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
-    """Authenticates a user by username (Name) and password. Supports ID: df / password: df."""
+    """Authenticates a user by username (Name) and password. Tracks login counts and timestamps."""
     username = (username or "").strip()
     password = password or ""
 
@@ -178,16 +189,21 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
             cursor.execute("SELECT * FROM users WHERE username = ?", (username.lower(),))
             row = cursor.fetchone()
             if row:
+                user_id = row["id"]
+                new_count = (row["login_count"] or 0) + 1
+                cursor.execute("UPDATE users SET login_count = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (new_count, user_id))
+                conn.commit()
                 return {
-                    "id": row["id"],
+                    "id": user_id,
                     "username": row["username"],
                     "role": "admin",
-                    "profile_pic": row["profile_pic"] or ""
+                    "profile_pic": row["profile_pic"] or "",
+                    "login_count": new_count
                 }
             else:
                 pw_hash = generate_password_hash(password)
                 cursor.execute(
-                    "INSERT INTO users (username, password_hash, role, profile_pic) VALUES (?, ?, 'admin', '')",
+                    "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES (?, ?, 'admin', '', 1, CURRENT_TIMESTAMP)",
                     (username.lower(), pw_hash)
                 )
                 conn.commit()
@@ -195,7 +211,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                     "id": cursor.lastrowid,
                     "username": username.lower(),
                     "role": "admin",
-                    "profile_pic": ""
+                    "profile_pic": "",
+                    "login_count": 1
                 }
 
     with get_db_connection() as conn:
@@ -206,11 +223,16 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
             return None
 
         if check_password_hash(row["password_hash"], password):
+            user_id = row["id"]
+            new_count = (row["login_count"] or 0) + 1
+            cursor.execute("UPDATE users SET login_count = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (new_count, user_id))
+            conn.commit()
             return {
-                "id": row["id"],
+                "id": user_id,
                 "username": row["username"],
                 "role": row["role"],
-                "profile_pic": row["profile_pic"] or ""
+                "profile_pic": row["profile_pic"] or "",
+                "login_count": new_count
             }
         return None
 
@@ -218,7 +240,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
 def get_user_by_id(user_id: int) -> Optional[dict]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, profile_pic, created_at FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -231,11 +253,106 @@ def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Opti
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET profile_pic = ? WHERE id = ?", (profile_pic_filename, user_id))
         conn.commit()
-        cursor.execute("SELECT id, username, role, profile_pic, created_at FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
         return None
+
+
+# ============================================================================
+# Admin Analytics & User Chat History Inspection Helpers
+# ============================================================================
+
+def list_all_users_with_stats() -> List[dict]:
+    """Returns all users with login counts, tab counts, message counts, and timestamps for Admin Console."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                u.id, 
+                u.username, 
+                u.role, 
+                u.profile_pic, 
+                u.login_count, 
+                u.created_at, 
+                u.last_login_at,
+                COUNT(DISTINCT t.id) as total_tabs,
+                COUNT(m.id) as total_messages,
+                MAX(m.timestamp) as last_message_at
+            FROM users u
+            LEFT JOIN chat_tabs t ON u.id = t.user_id
+            LEFT JOIN chat_messages m ON t.id = m.tab_id
+            GROUP BY u.id
+            ORDER BY u.id ASC
+        """)
+        rows = cursor.fetchall()
+        users = []
+        for r in rows:
+            item = dict(r)
+            item["login_count"] = item.get("login_count") or 0
+            users.append(item)
+        return users
+
+
+def get_user_full_chat_history(user_id: int) -> Optional[dict]:
+    """Returns detailed chat tabs and complete message history for a specific user."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, role, profile_pic, login_count, created_at, last_login_at
+            FROM users 
+            WHERE id = ?
+        """, (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return None
+        
+        user_data = dict(user_row)
+        user_data["login_count"] = user_data.get("login_count") or 0
+
+        cursor.execute("""
+            SELECT id, title, created_at, updated_at
+            FROM chat_tabs
+            WHERE user_id = ?
+            ORDER BY updated_at DESC, created_at DESC
+        """, (user_id,))
+        tabs_rows = cursor.fetchall()
+        
+        tabs = []
+        for t in tabs_rows:
+            tab_item = dict(t)
+            cursor.execute("""
+                SELECT id, tab_id, role, content, citations_json, top_k_json, expanded_count, attachments_json, timestamp
+                FROM chat_messages
+                WHERE tab_id = ?
+                ORDER BY id ASC
+            """, (tab_item["id"],))
+            msg_rows = cursor.fetchall()
+            messages = []
+            for m in msg_rows:
+                m_dict = dict(m)
+                try:
+                    m_dict["citations"] = json.loads(m_dict.get("citations_json") or "[]")
+                except Exception:
+                    m_dict["citations"] = []
+                try:
+                    m_dict["top_k"] = json.loads(m_dict.get("top_k_json") or "[]")
+                except Exception:
+                    m_dict["top_k"] = []
+                try:
+                    m_dict["attachments"] = json.loads(m_dict.get("attachments_json") or "[]")
+                except Exception:
+                    m_dict["attachments"] = []
+                messages.append(m_dict)
+            tab_item["messages"] = messages
+            tab_item["message_count"] = len(messages)
+            tabs.append(tab_item)
+
+        user_data["tabs"] = tabs
+        user_data["total_tabs"] = len(tabs)
+        user_data["total_messages"] = sum(t["message_count"] for t in tabs)
+        return user_data
 
 
 # ============================================================================

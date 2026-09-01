@@ -92,6 +92,10 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
   - Users can attach up to 5 images (PNG, JPG, WEBP) or PDF documents directly to any chat question.
   - User-uploaded photos and PDF pages are loaded/rendered as PIL Images and passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.
   - Chat transcript bubbles render attached photo thumbnails with click-to-enlarge lightbox and interactive PDF badges.
+- **Admin User Data & Chat History Analytics (`#usersManagementSection` & `#userChatsModal`)**:
+  - **User Overview & Login Tracking**: Admin panel displays all registered users, their avatars, roles, join dates, last login timestamps, and exact **Times of Login** (`login_count`).
+  - **Full Conversation Transcript Inspector**: Admin can click *"Inspect Chats"* on any user to open a full modal (`#userChatsModal`) allowing inspection of all that user's chat tabs, questions asked, attached photos/PDFs, assistant replies, in-text citations, and Top-K candidate sources.
+  - **Protected APIs**: Backed by `@admin_required` REST endpoints `GET /api/admin/users` and `GET /api/admin/users/<id>/chats`.
 - **Compact Top-K Results Pill (`#topKModal`)**:
   - Clean compact pill button underneath assistant response (`Top-K Result (N pages) - View more`).
   - Click opens candidate page inspector modal without cluttering the chat stream.
