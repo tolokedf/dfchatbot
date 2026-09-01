@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console — Multimodal PDF RAG</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            950: '#070b14'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full flex flex-col text-slate-100 antialiased font-sans">
+
+    <!-- Top Navigation -->
+    <header class="h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 flex items-center justify-between px-6 z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 to-sky-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold">
+                <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    Admin Management Console
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
+                </h1>
+                <p class="text-xs text-slate-400">PDF Ingestion, Vector DB Sync & API Settings</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="/" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-2">
+                <i class="fa-solid fa-comments text-sky-400"></i>
+                Switch to Chat Assistant
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full space-y-6">
+
+        <!-- Stat Cards Bar -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
+                <div class="w-10 h-10 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-file-pdf"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Source PDFs</p>
+                    <p id="statSourceCount" class="text-lg font-bold text-slate-100">...</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Indexed Pages</p>
+                    <p id="statIndexedPages" class="text-lg font-bold text-slate-100">...</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">QA Model</p>
+                    <p id="statQaModel" class="text-sm font-semibold font-mono text-purple-300">...</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3 shadow-sm">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">API Key Status</p>
+                    <p id="statKeyStatus" class="text-xs font-semibold text-slate-300">Checking...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Source PDF File Management -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-sky-400"></i>
+                        Source PDF Manuals (<span id="fileCountBadge">0</span>)
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Manage source manuals in the <code class="text-sky-300">source/</code> folder and trigger ChromaDB vector embedding.</p>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="fetchFiles()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate"></i>
+                        Refresh
+                    </button>
+                    <button onclick="triggerEmbeddingAll()" id="embedAllBtn" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-sky-600/30">
+                        <i class="fa-solid fa-bolt"></i>
+                        Embed All Pending PDFs
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload Dropzone -->
+            <div class="p-5 bg-slate-950/40 border-b border-slate-800">
+                <form id="uploadForm" class="flex flex-col sm:flex-row items-center gap-3">
+                    <label class="flex-1 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-700 hover:border-sky-500/60 rounded-xl cursor-pointer bg-slate-900/50 hover:bg-slate-800/40 transition group">
+                        <div class="flex items-center space-x-2 text-xs text-slate-400 group-hover:text-slate-200">
+                            <i class="fa-solid fa-cloud-arrow-up text-base text-sky-400"></i>
+                            <span class="font-medium" id="uploadFilename">Choose or drop a PDF manual here</span>
+                        </div>
+                        <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="handleFileSelected(event)">
+                    </label>
+                    <button type="submit" id="uploadBtn" disabled class="px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-upload"></i>
+                        Upload to Source
+                    </button>
+                </form>
+            </div>
+
+            <!-- Table of Source PDFs -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <tr>
+                            <th class="px-5 py-3">Document Name</th>
+                            <th class="px-4 py-3">File Size</th>
+                            <th class="px-4 py-3">Pages (PDF / Indexed)</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Last Modified</th>
+                            <th class="px-5 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="filesTableBody" class="divide-y divide-slate-800/60 font-normal">
+                        <tr>
+                            <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading source manuals...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 2: API & Model Configuration (.env Manager) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Card: API Key & Model -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-key text-amber-400"></i>
+                            Google Gemini API Settings
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Manage your Gemini API key and QA generation model without editing code.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            Google Gemini API Key
+                        </label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="apiKeyInput" placeholder="Paste your GEMINI_API_KEY here..." 
+                                   class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 pr-20 font-mono">
+                            <div class="absolute right-2 flex items-center space-x-1">
+                                <button type="button" onclick="toggleKeyVisibility()" class="text-slate-400 hover:text-slate-200 p-1 text-xs" title="Toggle visibility">
+                                    <i id="eyeIcon" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-sky-400 hover:underline">Google AI Studio</a>. Saved directly into <code class="text-slate-400">.env</code>.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            Generation QA Model
+                        </label>
+                        <select id="qaModelSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
+                            <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recommended: High Quota, Fast Latency)</option>
+                            <option value="gemini-3.5-flash">gemini-3.5-flash (Standard: Complex Schematics)</option>
+                            <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+                            <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-3 pt-2">
+                        <button onclick="testApiKey()" id="testApiBtn" class="flex-1 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-vial"></i>
+                            Test API Connection
+                        </button>
+                        <button onclick="saveApiSettings()" id="saveConfigBtn" class="flex-1 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Save to .env
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: ChromaDB Database Management -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-server text-sky-400"></i>
+                            ChromaDB Vector Store Maintenance
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Database storage topology and re-indexing operations.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-xs text-slate-300">
+                    <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">ChromaDB Path:</span>
+                            <span class="font-mono text-slate-300">output/chroma_db/</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Collection Name:</span>
+                            <span class="font-mono text-sky-300">pdf_pages</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Embedding Metric:</span>
+                            <span class="font-mono text-slate-300">Cosine (3072 dims)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Render Resolution:</span>
+                            <span class="font-mono text-slate-300">200 DPI PNG</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button onclick="resetDatabasePrompt()" class="w-full px-3.5 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/60 text-xs font-semibold transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                            Wipe & Reset ChromaDB Collection
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal: Operation Logs / Progress -->
+    <div id="logModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
+                <span id="logModalTitle" class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cog fa-spin text-sky-400"></i>
+                    Embedding Pipeline in Progress...
+                </span>
+                <button onclick="closeLogModal()" id="closeLogModalBtn" class="text-slate-400 hover:text-white p-1 rounded transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <div class="p-4 bg-slate-950 font-mono text-xs text-slate-300 max-h-96 overflow-y-auto space-y-1.5" id="logModalContent">
+                <p class="text-slate-500">Initializing pipeline...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Box -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <div id="toastIcon" class="text-base text-sky-400"></div>
+        <div class="flex-1 text-xs" id="toastMessage">Notification message</div>
+    </div>
+
+    <!-- Frontend Script -->
+    <script>
+        let currentKeyHidden = true;
+
+        function showToast(msg, type = "info") {
+            const toast = document.getElementById("toast");
+            const toastIcon = document.getElementById("toastIcon");
+            const toastMessage = document.getElementById("toastMessage");
+
+            toastMessage.textContent = msg;
+            if (type === "success") {
+                toastIcon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-emerald-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+            } else if (type === "error") {
+                toastIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-rose-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+            } else {
+                toastIcon.innerHTML = '<i class="fa-solid fa-info-circle text-sky-400"></i>';
+                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-sky-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-0 opacity-100";
+            }
+
+            setTimeout(() => {
+                toast.className = "fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none";
+            }, 5000);
+        }
+
+        async function fetchConfig() {
+            try {
+                const res = await fetch("/api/admin/config");
+                const data = await res.json();
+                if (data.status === "ok") {
+                    document.getElementById("statIndexedPages").textContent = `${data.total_indexed_pages} pgs`;
+                    document.getElementById("statQaModel").textContent = data.qa_model;
+                    document.getElementById("qaModelSelect").value = data.qa_model;
+
+                    const statKeyStatus = document.getElementById("statKeyStatus");
+                    const apiKeyInput = document.getElementById("apiKeyInput");
+
+                    if (data.has_key) {
+                        statKeyStatus.innerHTML = '<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Configured</span>';
+                        apiKeyInput.placeholder = `Configured: ${data.masked_key}`;
+                    } else {
+                        statKeyStatus.innerHTML = '<span class="text-rose-400 font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i>Missing Key</span>';
+                        apiKeyInput.placeholder = "Enter your GEMINI_API_KEY here...";
+                    }
+                }
+            } catch (err) {
+                console.error("Config fetch error:", err);
+            }
+        }
+
+        async function fetchFiles() {
+            const tbody = document.getElementById("filesTableBody");
+            try {
+                const res = await fetch("/api/admin/files");
+                const data = await res.json();
+                if (data.status === "ok") {
+                    document.getElementById("statSourceCount").textContent = `${data.files.length} PDFs`;
+                    document.getElementById("fileCountBadge").textContent = data.files.length;
+
+                    if (data.files.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                    No PDF manuals found in <code class="text-slate-400">source/</code>. Upload a PDF above to get started.
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    tbody.innerHTML = data.files.map(f => {
+                        let statusBadge = "";
+                        if (f.status === "embedded") {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <i class="fa-solid fa-check mr-1"></i> Embedded
+                            </span>`;
+                        } else if (f.status === "outdated") {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Outdated
+                            </span>`;
+                        } else {
+                            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                                <i class="fa-solid fa-clock mr-1"></i> Pending
+                            </span>`;
+                        }
+
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="px-5 py-3 font-medium text-slate-200">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                                        <span class="truncate max-w-xs" title="${f.filename}">${f.filename}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-slate-400 font-mono">${f.size_formatted}</td>
+                                <td class="px-4 py-3">
+                                    <span class="text-slate-200 font-semibold">${f.total_pdf_pages}</span>
+                                    <span class="text-slate-500">/</span>
+                                    <span class="${f.embedded_pages_count > 0 ? 'text-emerald-400 font-semibold' : 'text-slate-500'}">${f.embedded_pages_count} indexed</span>
+                                </td>
+                                <td class="px-4 py-3">${statusBadge}</td>
+                                <td class="px-4 py-3 text-slate-400 text-[11px]">${f.modified_at}</td>
+                                <td class="px-5 py-3 text-right space-x-1">
+                                    <button onclick="triggerEmbeddingSingle('${f.filename}')" class="p-1.5 rounded-md hover:bg-sky-500/10 text-sky-400 hover:text-sky-300 transition" title="Embed this PDF">
+                                        <i class="fa-solid fa-bolt"></i>
+                                    </button>
+                                    <a href="/api/admin/files/download/${encodeURIComponent(f.filename)}" target="_blank" class="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-slate-200 inline-block transition" title="Download / View PDF">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    </a>
+                                    <button onclick="deletePdfPrompt('${f.filename}')" class="p-1.5 rounded-md hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 transition" title="Delete PDF & vectors">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join("");
+                }
+            } catch (err) {
+                console.error("Error loading files:", err);
+                tbody.innerHTML = `<tr><td colspan="6" class="px-5 py-4 text-center text-rose-400">Failed to load files: ${err.message}</td></tr>`;
+            }
+        }
+
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            const uploadFilename = document.getElementById("uploadFilename");
+            const uploadBtn = document.getElementById("uploadBtn");
+
+            if (file) {
+                uploadFilename.textContent = `${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`;
+                uploadBtn.disabled = false;
+            } else {
+                uploadFilename.textContent = "Choose or drop a PDF manual here";
+                uploadBtn.disabled = true;
+            }
+        }
+
+        document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById("pdfFileInput");
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const uploadBtn = document.getElementById("uploadBtn");
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Uploading...';
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const res = await fetch("/api/admin/files/upload", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, "success");
+                    fileInput.value = "";
+                    document.getElementById("uploadFilename").textContent = "Choose or drop a PDF manual here";
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Upload failed", "error");
+                }
+            } catch (err) {
+                showToast(`Upload error: ${err.message}`, "error");
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Upload to Source';
+            }
+        });
+
+        async function triggerEmbeddingAll() {
+            openLogModal("Embedding All Pending PDFs");
+            appendLog("Starting batch embedding pipeline...");
+
+            try {
+                const res = await fetch("/api/admin/embed", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    appendLog(`✅ ${data.message}`);
+                    showToast(data.message, "success");
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    appendLog(`❌ Error: ${data.error}`);
+                    showToast(data.error, "error");
+                }
+            } catch (err) {
+                appendLog(`❌ Network error: ${err.message}`);
+                showToast(err.message, "error");
+            }
+        }
+
+        async function triggerEmbeddingSingle(filename) {
+            openLogModal(`Embedding '${filename}'`);
+            appendLog(`Starting embedding for ${filename}...`);
+
+            try {
+                const res = await fetch("/api/admin/embed", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ filename: filename, force: true })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    appendLog(`✅ ${data.message}`);
+                    showToast(data.message, "success");
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    appendLog(`❌ Error: ${data.error}`);
+                    showToast(data.error, "error");
+                }
+            } catch (err) {
+                appendLog(`❌ Error: ${err.message}`);
+                showToast(err.message, "error");
+            }
+        }
+
+        async function deletePdfPrompt(filename) {
+            if (!confirm(`Are you sure you want to delete '${filename}'?\n\nThis will remove the PDF file, its rendered images, and all its vector records from ChromaDB.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/files/${encodeURIComponent(filename)}`, {
+                    method: "DELETE"
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, "success");
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Delete failed", "error");
+                }
+            } catch (err) {
+                showToast(`Delete error: ${err.message}`, "error");
+            }
+        }
+
+        async function saveApiSettings() {
+            const apiKeyInput = document.getElementById("apiKeyInput").value.trim();
+            const qaModel = document.getElementById("qaModelSelect").value;
+            const saveBtn = document.getElementById("saveConfigBtn");
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+
+            try {
+                const payload = { qa_model: qaModel };
+                if (apiKeyInput) {
+                    payload.api_key = apiKeyInput;
+                }
+
+                const res = await fetch("/api/admin/config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast("API & Model settings saved successfully!", "success");
+                    document.getElementById("apiKeyInput").value = "";
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Failed to save settings", "error");
+                }
+            } catch (err) {
+                showToast(`Error: ${err.message}`, "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Save to .env';
+            }
+        }
+
+        async function testApiKey() {
+            const apiKeyInput = document.getElementById("apiKeyInput").value.trim();
+            const testBtn = document.getElementById("testApiBtn");
+
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Testing...';
+
+            try {
+                const res = await fetch("/api/admin/config/test", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ api_key: apiKeyInput || null })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`✅ ${data.message} (Test Reply: "${data.reply}")`, "success");
+                } else {
+                    showToast(`❌ ${data.error || "Connection failed"}`, "error");
+                }
+            } catch (err) {
+                showToast(`Test error: ${err.message}`, "error");
+            } finally {
+                testBtn.disabled = false;
+                testBtn.innerHTML = '<i class="fa-solid fa-vial mr-1"></i> Test API Connection';
+            }
+        }
+
+        async function resetDatabasePrompt() {
+            const confirmation = prompt("⚠️ DANGER: Type 'RESET' to wipe the ChromaDB collection and all indexed vectors:");
+            if (confirmation !== "RESET") return;
+
+            try {
+                const res = await fetch("/api/admin/db/reset", { method: "POST" });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, "success");
+                    fetchFiles();
+                    fetchConfig();
+                } else {
+                    showToast(data.error || "Reset failed", "error");
+                }
+            } catch (err) {
+                showToast(`Reset error: ${err.message}`, "error");
+            }
+        }
+
+        function toggleKeyVisibility() {
+            const input = document.getElementById("apiKeyInput");
+            const icon = document.getElementById("eyeIcon");
+            if (input.type === "password") {
+                input.type = "text";
+                icon.className = "fa-solid fa-eye-slash";
+            } else {
+                input.type = "password";
+                icon.className = "fa-solid fa-eye";
+            }
+        }
+
+        function openLogModal(title) {
+            document.getElementById("logModalTitle").innerHTML = `<i class="fa-solid fa-cog fa-spin text-sky-400 mr-2"></i> ${title}`;
+            document.getElementById("logModalContent").innerHTML = "";
+            document.getElementById("logModal").classList.remove("hidden");
+        }
+
+        function appendLog(msg) {
+            const content = document.getElementById("logModalContent");
+            const p = document.createElement("p");
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            content.appendChild(p);
+            content.scrollTop = content.scrollHeight;
+        }
+
+        function closeLogModal() {
+            document.getElementById("logModal").classList.add("hidden");
+        }
+
+        // Initialize on load
+        fetchConfig();
+        fetchFiles();
+    </script>
+</body>
+</html>

@@ -33,7 +33,7 @@ MAX_IMAGE_DIMENSION = 2000
 # Models & Prompts
 # ---------------------------------------------------------------------------
 GEMINI_EMBED_MODEL = "gemini-embedding-2"
-GEMINI_QA_MODEL = os.environ.get("GEMINI_QA_MODEL", "gemini-3.5-flash")
+GEMINI_QA_MODEL = os.environ.get("GEMINI_QA_MODEL", "gemini-3.5-flash-lite")
 EMBED_OUTPUT_DIMENSIONALITY = 3072
 
 def get_gemini_api_key() -> str:

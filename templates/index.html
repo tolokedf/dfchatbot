@@ -9,7 +9,7 @@
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -24,12 +24,6 @@
                             700: '#075985',
                             800: '#0c4a6e',
                             900: '#082f49',
-                        },
-                        surface: {
-                            dark: '#0f172a',
-                            card: '#1e293b',
-                            border: '#334155',
-                            accent: '#38bdf8'
                         }
                     }
                 }
@@ -68,14 +62,24 @@
     <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
         <div class="p-5 flex flex-col h-full overflow-y-auto">
             <!-- Brand Header -->
-            <div class="flex items-center space-x-3 mb-6">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
-                    <i class="fa-solid fa-robot text-lg"></i>
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                        <i class="fa-solid fa-robot text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base leading-tight text-white">NavWiz & DFleet</h1>
+                        <p class="text-xs text-sky-400 font-medium">Multimodal RAG (ChromaDB)</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="font-bold text-base leading-tight text-white">NavWiz & DFleet</h1>
-                    <p class="text-xs text-sky-400 font-medium">Multimodal RAG (ChromaDB)</p>
-                </div>
+            </div>
+
+            <!-- Admin Link Button -->
+            <div class="mb-4">
+                <a href="/admin" class="w-full py-2 px-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-sliders"></i>
+                    Open Admin Console
+                </a>
             </div>
 
             <!-- Status Card -->
@@ -97,14 +101,21 @@
                 </div>
                 <div class="text-xs text-slate-300 flex justify-between py-1 border-t border-slate-700/40">
                     <span class="text-slate-400">QA Model:</span>
-                    <span class="font-mono text-slate-300">gemini-3.5-flash</span>
+                    <span id="qaModelName" class="font-mono text-slate-300">gemini-3.5-flash-lite</span>
                 </div>
             </div>
 
             <!-- Retrieval Controls -->
             <div class="space-y-4 mb-6">
-                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Retrieval Settings</h2>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Retrieval Filters</h2>
                 
+                <div>
+                    <label for="pdfFilterSelect" class="block text-xs text-slate-300 mb-1">Target Manual:</label>
+                    <select id="pdfFilterSelect" class="w-full bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg p-2 focus:outline-none focus:border-sky-500">
+                        <option value="all">🔍 Search All Manuals</option>
+                    </select>
+                </div>
+
                 <div>
                     <div class="flex justify-between text-xs text-slate-300 mb-1.5">
                         <label for="topKSlider">Top-K Seed Pages:</label>
@@ -135,14 +146,18 @@
                     </button>
                     <button onclick="setQuery('Explain critical NavWiz parameters for AGV obstacle sensors.')" 
                             class="w-full text-left text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded-lg border border-slate-700/50 transition">
-                        <i class="fa-solid fa-sliders text-sky-400 mr-1.5"></i> Critical NavWiz obstacle sensor parameters?
+                        <i class="fa-solid fa-sliders text-sky-400 mr-1.5"></i> Critical obstacle sensor parameters?
                     </button>
                 </div>
             </div>
 
-            <!-- Clear Chat Button -->
-            <div class="mt-auto pt-4 border-t border-slate-800">
-                <button id="clearChatBtn" class="w-full py-2 px-3 text-xs font-medium text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 rounded-lg border border-slate-700/50 hover:border-red-500/30 transition flex items-center justify-center space-x-2">
+            <!-- Bottom Actions Bar -->
+            <div class="mt-auto pt-4 border-t border-slate-800 space-y-2">
+                <button onclick="exportChatTranscript()" class="w-full py-1.5 px-3 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg border border-slate-700/50 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Export Transcript (.md)</span>
+                </button>
+                <button id="clearChatBtn" class="w-full py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-red-400 bg-slate-800/40 hover:bg-red-500/10 rounded-lg border border-slate-700/40 hover:border-red-500/30 transition flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-trash-can"></i>
                     <span>Clear Conversation</span>
                 </button>
@@ -159,9 +174,15 @@
                 <div class="h-2.5 w-2.5 rounded-full bg-sky-400 animate-ping"></div>
                 <span class="text-sm font-semibold text-slate-200">Outline-Aware Chapter Expansion Pipeline</span>
             </div>
-            <div class="text-xs text-slate-400 flex items-center space-x-2">
-                <i class="fa-solid fa-database text-sky-400"></i>
-                <span>ChromaDB Vector Backend</span>
+            <div class="flex items-center space-x-3 text-xs text-slate-400">
+                <a href="/admin" class="hover:text-amber-300 transition flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+                    <i class="fa-solid fa-sliders text-amber-400"></i>
+                    Admin Console
+                </a>
+                <span class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+                    <i class="fa-solid fa-database text-sky-400"></i>
+                    ChromaDB
+                </span>
             </div>
         </header>
 
@@ -199,7 +220,7 @@
                 </div>
             </form>
             <p class="text-center text-xs text-slate-500 mt-2">
-                Grounding answers directly from technical PDF page images with Gemini 3.5 Flash.
+                Grounding answers directly from technical PDF page images with Gemini 3.5 Flash Lite.
             </p>
         </div>
     </main>
@@ -230,6 +251,10 @@
         const showScoresToggle = document.getElementById('showScoresToggle');
         const clearChatBtn = document.getElementById('clearChatBtn');
         const indexedPagesCount = document.getElementById('indexedPagesCount');
+        const qaModelName = document.getElementById('qaModelName');
+        const pdfFilterSelect = document.getElementById('pdfFilterSelect');
+
+        let chatMessagesHistory = [];
 
         topKSlider.addEventListener('input', (e) => {
             topKValue.textContent = e.target.value;
@@ -242,6 +267,21 @@
                 const data = await res.json();
                 if (data.total_indexed_pages !== undefined) {
                     indexedPagesCount.textContent = `${data.total_indexed_pages} pages`;
+                }
+                if (data.qa_model && qaModelName) {
+                    qaModelName.textContent = data.qa_model;
+                }
+                if (data.sources && Array.isArray(data.sources)) {
+                    // Populate manual filter
+                    const currentVal = pdfFilterSelect.value;
+                    pdfFilterSelect.innerHTML = '<option value="all">🔍 Search All Manuals</option>';
+                    data.sources.forEach(src => {
+                        const opt = document.createElement('option');
+                        opt.value = src;
+                        opt.textContent = `📖 ${src}`;
+                        pdfFilterSelect.appendChild(opt);
+                    });
+                    if (currentVal) pdfFilterSelect.value = currentVal;
                 }
             } catch (err) {
                 console.error("Error fetching status:", err);
@@ -271,6 +311,7 @@
         });
 
         clearChatBtn.addEventListener('click', () => {
+            chatMessagesHistory = [];
             chatContainer.innerHTML = `
                 <div class="flex items-start space-x-3.5 max-w-4xl mx-auto">
                     <div class="w-8 h-8 rounded-lg bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
@@ -284,6 +325,38 @@
             `;
         });
 
+        function exportChatTranscript() {
+            if (chatMessagesHistory.length === 0) {
+                alert("No conversation history to export yet.");
+                return;
+            }
+
+            let mdContent = `# Multimodal RAG Conversation Transcript\n\nGenerated on: ${new Date().toLocaleString()}\n\n---\n\n`;
+            chatMessagesHistory.forEach(item => {
+                if (item.role === 'user') {
+                    mdContent += `### 👤 User:\n${item.text}\n\n`;
+                } else {
+                    mdContent += `### 🤖 Assistant:\n${item.text}\n\n`;
+                    if (item.seeds && item.seeds.length > 0) {
+                        mdContent += `**Retrieved Seed Citations:**\n`;
+                        item.seeds.forEach(s => {
+                            mdContent += `- Page: \`${s.page_image}\` (Ch: ${s.chapter}, Sim: ${s.similarity.toFixed(3)})\n`;
+                        });
+                        mdContent += `\n`;
+                    }
+                    mdContent += `---\n\n`;
+                }
+            });
+
+            const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rag_chat_${Date.now()}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = userInput.value.trim();
@@ -291,6 +364,8 @@
 
             // Render user bubble
             appendUserMessage(message);
+            chatMessagesHistory.push({ role: 'user', text: message });
+
             userInput.value = '';
             userInput.disabled = true;
             sendBtn.disabled = true;
@@ -305,7 +380,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: message,
-                        top_k: parseInt(topKSlider.value)
+                        top_k: parseInt(topKSlider.value),
+                        pdf_filter: pdfFilterSelect.value
                     })
                 });
 
@@ -316,6 +392,11 @@
                     appendErrorMessage(data.error || "An error occurred during retrieval.");
                 } else {
                     appendAssistantResponse(data);
+                    chatMessagesHistory.push({
+                        role: 'assistant',
+                        text: data.answer,
+                        seeds: data.seeds
+                    });
                 }
             } catch (err) {
                 removeElement(loaderId);

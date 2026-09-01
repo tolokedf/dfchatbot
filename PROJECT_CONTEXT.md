@@ -42,7 +42,7 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 │ • Tailwind UI / API   │     │  (query_test.py)      │
 │ • ChromaDB Retrieval  │     │  • ChromaDB Query     │
 │ • Chapter Expansion   │     │  • Cosine Similarity  │
-│ • gemini-3.5-flash QA │     └───────────────────────┘
+│ • gemini-3.5-flash-lite QA │ └───────────────────────┘
 └───────────────────────┘
 ```
 
@@ -87,7 +87,7 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 | [`config.py`](file:///home/tinonn/df_rag_project/config.py) | Defines all system paths (`SOURCE_DIR`, `OUTPUT_DIR`, `IMAGE_CACHE_DIR`, `CHROMA_DIR`), collection name (`CHROMA_COLLECTION_NAME="pdf_pages"`), rendering specs (`RENDER_DPI=200`, `MAX_IMAGE_DIMENSION=2000`), model parameters (`GEMINI_EMBED_MODEL="gemini-embedding-2"`, `EMBED_OUTPUT_DIMENSIONALITY=3072`), and asymmetric embedding instructions. |
 | [`run_embedding_pipeline.py`](file:///home/tinonn/df_rag_project/run_embedding_pipeline.py) | Iterates over `source/*.pdf`, checks `pipeline_state.json` to skip unchanged files, extracts native document outline (TOC) with PyMuPDF, renders pages to PNG, calls the Gemini embedder, and upserts vectors + metadata into ChromaDB. |
 | [`embedders/gemini_multimodal_embedder.py`](file:///home/tinonn/df_rag_project/embedders/gemini_multimodal_embedder.py) | Interacts with `google.genai.Client`. Provides `embed_page_image()` for PNG byte payloads and `embed_query_text()` for plain-text search queries, handling latency measurement and error reporting. |
-| [`app.py`](file:///home/tinonn/df_rag_project/app.py) | Flask web application serving both the HTML interface and REST API endpoints (`/api/status`, `/api/chat`, `/rendered_pages/<filename>`). Connects to ChromaDB, executes outline-aware retrieval with chapter-bounded expansion, and generates answers using `gemini-3.5-flash`. |
+| [`app.py`](file:///home/tinonn/df_rag_project/app.py) | Flask web application serving both the HTML interface and REST API endpoints (`/api/status`, `/api/chat`, `/rendered_pages/<filename>`). Connects to ChromaDB, executes outline-aware retrieval with chapter-bounded expansion, and generates answers using `gemini-3.5-flash-lite`. |
 | [`templates/index.html`](file:///home/tinonn/df_rag_project/templates/index.html) | Interactive single-page web UI featuring real-time index status, chat history, Markdown formatting, citation cards with similarity scores, and a high-resolution image modal lightbox. |
 | [`query_test.py`](file:///home/tinonn/df_rag_project/query_test.py) | Standalone CLI utility for validating retrieval quality against ChromaDB and inspecting top-ranked page image filenames and chapters. |
 
@@ -137,7 +137,7 @@ A single page often contains only part of a procedure. `app.py` employs a window
 5. Pass the deduplicated, ordered sequence of page images into the generation context.
 
 ### Grounding & Hallucination Guardrail Prompt
-`app.py` enforces strict context adherence on `gemini-3.5-flash`:
+`app.py` enforces strict context adherence on `gemini-3.5-flash-lite`:
 ```text
 You are an expert technical assistant for the NavWiz AMR software manual.
 Answer the user's question accurately using only the provided image pages as context.

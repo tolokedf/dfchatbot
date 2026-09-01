@@ -34,35 +34,54 @@ This:
 3. Embeds each page image with `gemini-embedding-2` (3072 dimensions).
 4. Stores/upserts vectors, metadata, and page IDs directly into **ChromaDB** (`output/chroma_db/`).
 
-## 4. Run Retrieval & Chatbot
+## 4. Run Web Application & Admin Console
 
-### Interactive Web Chatbot (Flask)
+### Launch the Flask App
 ```bash
 python app.py
 ```
-Open your browser at `http://localhost:5000`. Features:
-- Modern Tailwind CSS responsive interface with Markdown parsing and code blocks.
-- Real-time ChromaDB status inspection.
-- Native outline-aware retrieval with chapter-bounded neighbor expansion ($\pm 3$ pages).
-- Visual seed citation thumbnails with full-screen image inspection Lightbox.
-- Grounded generation with `gemini-3.5-flash`.
+Open your browser at `http://localhost:5000`:
 
-### CLI Query Test
+- **💬 Chat Assistant (`/`):**
+  - Modern Tailwind CSS responsive interface with Markdown parsing and code blocks.
+  - **Manual Filtering:** Select a specific manual or search across all manuals simultaneously.
+  - **Chapter-Bounded Expansion:** Automatically expands context up to $\pm 3$ pages within logical chapter boundaries.
+  - **Visual Seed Cards & Lightbox:** Click any citation card to open high-resolution page inspection.
+  - **Conversation Export:** Download your chat session directly as a formatted Markdown transcript (`.md`).
+  - **Grounded Generation:** Strict anti-hallucination guardrails powered by `gemini-3.5-flash-lite`.
+
+- **🛠️ Admin Console (`/admin`):**
+  - **PDF Source Management:** View, upload new PDFs, preview, or remove source manuals in `source/`.
+  - **Live Embedding Triggers:** Run embedding directly from the UI with real-time status and error reporting (detects rate limits, missing keys, invalid files).
+  - **API Key & Model Manager:** Update `GEMINI_API_KEY` and switch QA models (`gemini-3.5-flash-lite`, `gemini-3.5-flash`) securely into `.env` without seeing code.
+  - **API Connection Tester:** Instant one-click ping to verify Google Gemini API connectivity.
+  - **Vector DB Maintenance:** Inspect topology and reset ChromaDB collection if needed.
+
+### CLI Tools
 ```bash
+# Diagnostic query test
 python query_test.py "how do I calibrate the sensor array"
+
+# Multi-threaded concurrent stress test
+python stress_test.py --requests 10 --concurrency 3
 ```
-Queries ChromaDB, ranks stored pages by cosine similarity, and prints top matches with chapter/section metadata.
 
 ## File Overview
 
 ```
 config.py                          paths, model names, instructions, ChromaDB config
+pipeline_service.py                service layer for PDF ingestion, ChromaDB sync & .env config
 embedders/gemini_multimodal_embedder.py   embeds page images + text queries via Google GenAI
-run_embedding_pipeline.py          entry point: render + embed all PDFs into ChromaDB
+run_embedding_pipeline.py          CLI entry point: render + embed all PDFs into ChromaDB
 query_test.py                      CLI diagnostic tool for ChromaDB retrieval
-app.py                             Flask web application & REST API
-templates/index.html               Flask web UI template (Tailwind, Marked.js, Lightbox)
-source/                            drop source PDF manuals here
+stress_test.py                     automated multi-threaded load and sanity testing suite
+app.py                             Flask web application & REST APIs (/ and /admin)
+templates/index.html               Chat Assistant web UI template (Tailwind, Marked.js, Lightbox)
+templates/admin.html               Admin Management Console web UI template
+source/                            source PDF manuals
+output/chroma_db/                  persistent ChromaDB vector database
+output/rendered_pages/             cached PNG page renderings
+```
 output/
 ├── chroma_db/                     persistent ChromaDB vector index and metadata
 ├── rendered_pages/                rendered PNG page images
