@@ -740,19 +740,25 @@ def chat():
             )
             answer_text = response.text.strip() if response.text else "Hello! How can I assist you with your DF technical manuals or robotics questions today?"
 
-            # Persist in DB
-            if tab_id and session.get("user_id"):
-                auth_and_chat_db.add_chat_message(
-                    tab_id=tab_id,
-                    role="user",
-                    content=user_prompt,
-                    attachments=saved_attachments_meta
-                )
-                auth_and_chat_db.add_chat_message(
-                    tab_id=tab_id,
-                    role="assistant",
-                    content=answer_text
-                )
+            # Persist in DB if logged in and not a guest tab
+            uid = session.get("user_id")
+            if tab_id and tab_id != "guest-tab" and uid:
+                try:
+                    auth_and_chat_db.add_chat_message(
+                        tab_id=tab_id,
+                        role="user",
+                        content=user_prompt,
+                        attachments=saved_attachments_meta,
+                        user_id=uid
+                    )
+                    auth_and_chat_db.add_chat_message(
+                        tab_id=tab_id,
+                        role="assistant",
+                        content=answer_text,
+                        user_id=uid
+                    )
+                except Exception as db_err:
+                    logger.warning(f"Failed to persist greeting message in DB: {db_err}")
 
             return jsonify({
                 "answer": answer_text,
@@ -1013,30 +1019,36 @@ def chat():
                     })
 
         # 9. Persist messages in database if tab_id & user session exists
-        if tab_id and session.get("user_id"):
-            auth_and_chat_db.add_chat_message(
-                tab_id=tab_id,
-                role="user",
-                content=user_prompt,
-                attachments=saved_attachments_meta
-            )
-            auth_and_chat_db.add_chat_message(
-                tab_id=tab_id,
-                role="assistant",
-                content=answer_text,
-                citations=structured_citations,
-                top_k=retrieved_seed_info,
-                expanded_count=len(sorted_pages)
-            )
+        uid = session.get("user_id")
+        if tab_id and tab_id != "guest-tab" and uid:
+            try:
+                auth_and_chat_db.add_chat_message(
+                    tab_id=tab_id,
+                    role="user",
+                    content=user_prompt,
+                    attachments=saved_attachments_meta,
+                    user_id=uid
+                )
+                auth_and_chat_db.add_chat_message(
+                    tab_id=tab_id,
+                    role="assistant",
+                    content=answer_text,
+                    citations=structured_citations,
+                    top_k=retrieved_seed_info,
+                    expanded_count=len(sorted_pages),
+                    user_id=uid
+                )
 
-            # If tab has default title "New Chat", auto-update title with prompt topic
-            tabs = auth_and_chat_db.list_user_tabs(session["user_id"])
-            current_tab = next((t for t in tabs if t["id"] == tab_id), None)
-            if current_tab and current_tab["title"] in ["New Chat", ""]:
-                clean_title = re.sub(r'[\r\n\t]+', ' ', user_prompt).strip()[:35]
-                if len(user_prompt) > 35:
-                    clean_title += "..."
-                auth_and_chat_db.update_tab_title(tab_id, clean_title)
+                # If tab has default title "New Chat", auto-update title with prompt topic
+                tabs = auth_and_chat_db.list_user_tabs(uid)
+                current_tab = next((t for t in tabs if t["id"] == tab_id), None)
+                if current_tab and current_tab["title"] in ["New Chat", ""]:
+                    suggested_title = user_prompt[:35].strip()
+                    if len(user_prompt) > 35:
+                        suggested_title += "..."
+                    auth_and_chat_db.update_tab_title(tab_id, suggested_title)
+            except Exception as db_err:
+                logger.warning(f"Failed to persist QA message in DB: {db_err}")
 
         return jsonify({
             "answer": answer_text,

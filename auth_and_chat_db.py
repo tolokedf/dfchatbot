@@ -534,15 +534,45 @@ def add_chat_message(
     citations: Optional[List[dict]] = None,
     top_k: Optional[List[dict]] = None,
     expanded_count: int = 0,
-    attachments: Optional[List[dict]] = None
+    attachments: Optional[List[dict]] = None,
+    user_id: Optional[int] = None
 ) -> int:
     """Appends a user or assistant message to the tab history and updates tab timestamp."""
+    if not tab_id or tab_id == "guest-tab":
+        return 0
+
     citations_str = json.dumps(citations or [])
     top_k_str = json.dumps(top_k or [])
     attachments_str = json.dumps(attachments or [])
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        # Verify if tab exists; if not, ensure it's safely created for valid user
+        cursor.execute("SELECT id FROM chat_tabs WHERE id = ?", (tab_id,))
+        if not cursor.fetchone():
+            if user_id:
+                # Check user existence
+                cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+                user_row = cursor.fetchone()
+                if not user_row:
+                    cursor.execute("SELECT id FROM users WHERE username = 'df'")
+                    df_row = cursor.fetchone()
+                    effective_uid = df_row["id"] if df_row else 1
+                else:
+                    effective_uid = user_id
+                
+                try:
+                    cursor.execute(
+                        "INSERT INTO chat_tabs (id, user_id, title) VALUES (?, ?, ?)",
+                        (tab_id, effective_uid, "New Chat")
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not auto-create tab {tab_id}: {e}")
+                    return 0
+            else:
+                logger.warning(f"Skipping message persistence: Tab {tab_id} does not exist in DB.")
+                return 0
+
         cursor.execute("""
             INSERT INTO chat_messages (tab_id, role, content, citations_json, top_k_json, expanded_count, attachments_json)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -558,6 +588,9 @@ def get_tab_conversation_memory(tab_id: str, max_turns: int = 6) -> List[Dict[st
     Returns recent multi-turn question & answer pairs from this specific tab history
     formatted for conversational memory conditioning.
     """
+    if not tab_id or tab_id == "guest-tab":
+        return []
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
