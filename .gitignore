@@ -15,6 +15,14 @@ __pycache__/
 *$py.class
 .pytest_cache/
 
+# ==========================================
+# Runtime Data, Databases & Generated Outputs
+# ==========================================
+source/
+output/
+User database/
+data/
+*.db
 
 # IDE / Editor Files
 .vscode/
@@ -23,3 +31,4 @@ __pycache__/
 *.swo
 .DS_Store
 *token*.txt
+
