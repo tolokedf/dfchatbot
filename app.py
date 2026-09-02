@@ -14,9 +14,10 @@ import logging
 import os
 import re
 import time
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, Response, stream_with_context, make_response, send_file
 from werkzeug.utils import secure_filename
 from PIL import Image
 from google import genai
@@ -26,6 +27,7 @@ import chromadb
 import config
 import pipeline_service
 import auth_and_chat_db
+import report_exporter
 from embedders import gemini_multimodal_embedder as embedder
 import fitz
 
@@ -723,7 +725,7 @@ def chat():
             manual_list_str = ", ".join(manual_stems) if manual_stems else "NavWiz 4.0 User Manual 1.0, DFleet 4.0 User Manual, Copy of Field Deployment Handbook"
 
             meta_prompt = (
-                "You are the friendly, expert NavWiz & DFleet Multimodal Technical Assistant by DF Automation.\n"
+                "You are the friendly, expert DF Chatbot, the Multimodal Technical Assistant by DF Automation.\n"
                 f"You have access to high-resolution technical manuals including: {manual_list_str}.\n"
                 "Respond in a friendly, helpful, and concise manner.\n"
                 "- If the user greets you or asks how you are doing, greet them back warmly and explain what you can help with.\n"
@@ -736,7 +738,7 @@ def chat():
                 model=config.GEMINI_QA_MODEL,
                 contents=meta_prompt
             )
-            answer_text = response.text.strip() if response.text else "Hello! How can I assist you with your NavWiz, DFleet, or robotics deployment questions today?"
+            answer_text = response.text.strip() if response.text else "Hello! How can I assist you with your DF technical manuals or robotics questions today?"
 
             # Persist in DB
             if tab_id and session.get("user_id"):
@@ -906,7 +908,7 @@ def chat():
         manual_names_bullet_list = "\n".join([f'- "{p.stem}"' for p in active_source_pdfs]) if active_source_pdfs else '- "DFleet 4.0 User Manual"\n- "NavWiz 4.0 User Manual 1.0"'
 
         system_prompt = (
-            "You are an expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals by DF Automation.\n"
+            "You are DF Chatbot, the expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals by DF Automation.\n"
             "Answer the user's question accurately, thoroughly, and concisely using the provided manual page images and user uploads.\n\n"
             f"{attachment_notice}"
             "CRITICAL CITATION RULES:\n"
@@ -1076,10 +1078,10 @@ def admin_auth_status():
 @app.route("/api/admin/login", methods=["POST"])
 def admin_login():
     data = request.get_json(force=True, silent=True) or {}
-    admin_id = str(data.get("id") or data.get("username") or "df").strip()
+    admin_id = str(data.get("id") or data.get("username") or "").strip()
     password = str(data.get("password", "")).strip()
 
-    if config.verify_admin_credentials(admin_id, password) or (admin_id in ["df", "admin"] and (password == "df" or config.verify_admin_password(password))) or config.verify_admin_password(password):
+    if admin_id.lower() == "df" and (password == "df" or config.verify_admin_password(password)):
         session["admin_authenticated"] = True
         session.permanent = True
         
@@ -1090,7 +1092,7 @@ def admin_login():
             session["username"] = admin_user["username"]
             session["role"] = "admin"
 
-        logger.info(f"Admin authentication successful for ID: {admin_id}.")
+        logger.info("Admin authentication successful for ID: df.")
         return jsonify({
             "status": "ok",
             "message": "Admin authentication successful."
@@ -1099,7 +1101,7 @@ def admin_login():
     logger.warning(f"Failed admin login attempt for ID: {admin_id}.")
     return jsonify({
         "status": "error",
-        "error": "Invalid admin ID or password. (Default ID: df, Password: df)"
+        "error": "Invalid admin ID or password. (Admin ID: df, Password: df)"
     }), 401
 
 
@@ -1159,6 +1161,153 @@ def delete_admin_user(user_id: int):
     except Exception as e:
         logger.error(f"Error deleting user {user_id}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/export/html", methods=["GET"])
+@admin_required
+def export_admin_user_chats_html(user_id: int):
+    try:
+        user_data = auth_and_chat_db.get_user_full_chat_history(user_id)
+        if not user_data:
+            return jsonify({"status": "error", "error": "User not found"}), 404
+        
+        tab_id = request.args.get("tab_id")
+        html_content = report_exporter.generate_html_report(user_data, tab_id=tab_id)
+        
+        username_safe = re.sub(r'[^a-zA-Z0-9_\-]', '_', user_data.get("username", "user"))
+        scope_suffix = f"tab_{tab_id[:8]}" if tab_id else "all_tabs"
+        filename = f"df_chatbot_report_{username_safe}_{scope_suffix}.html"
+        
+        as_attachment = request.args.get("download", "0") == "1"
+        disposition = f'attachment; filename="{filename}"' if as_attachment else f'inline; filename="{filename}"'
+        
+        response = make_response(html_content)
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
+        response.headers["Content-Disposition"] = disposition
+        return response
+    except Exception as e:
+        logger.error(f"Error exporting user chats HTML (user {user_id}): {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/export/pdf", methods=["GET"])
+@admin_required
+def export_admin_user_chats_pdf(user_id: int):
+    try:
+        user_data = auth_and_chat_db.get_user_full_chat_history(user_id)
+        if not user_data:
+            return jsonify({"status": "error", "error": "User not found"}), 404
+        
+        tab_id = request.args.get("tab_id")
+        pdf_bytes = report_exporter.generate_pdf_report(user_data, tab_id=tab_id)
+        
+        username_safe = re.sub(r'[^a-zA-Z0-9_\-]', '_', user_data.get("username", "user"))
+        scope_suffix = f"tab_{tab_id[:8]}" if tab_id else "all_tabs"
+        filename = f"df_chatbot_report_{username_safe}_{scope_suffix}.pdf"
+        
+        as_attachment = request.args.get("download", "1") != "0"
+        
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype="application/pdf",
+            as_attachment=as_attachment,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting user chats PDF (user {user_id}): {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+def _get_requested_user_ids() -> Optional[List[int]]:
+    user_ids = []
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        user_ids = data.get("user_ids", [])
+    if not user_ids:
+        ids_param = request.args.get("user_ids", "")
+        if ids_param:
+            user_ids = [int(x.strip()) for x in ids_param.split(",") if x.strip().isdigit()]
+    return user_ids if user_ids else None
+
+
+@app.route("/api/admin/users/export/html", methods=["GET", "POST"])
+@admin_required
+def export_admin_multi_users_html():
+    try:
+        user_ids = _get_requested_user_ids()
+        users_data = auth_and_chat_db.get_multiple_users_full_chat_history(user_ids)
+        if not users_data:
+            return jsonify({"status": "error", "error": "No user accounts found"}), 404
+        
+        html_content = report_exporter.generate_multi_user_html_report(users_data)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"df_chatbot_multi_user_report_{len(users_data)}users_{timestamp_str}.html"
+        
+        as_attachment = request.args.get("download", "0") == "1"
+        disposition = f'attachment; filename="{filename}"' if as_attachment else f'inline; filename="{filename}"'
+        
+        response = make_response(html_content)
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
+        response.headers["Content-Disposition"] = disposition
+        return response
+    except Exception as e:
+        logger.error(f"Error exporting multi-user HTML: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/export/pdf", methods=["GET", "POST"])
+@admin_required
+def export_admin_multi_users_pdf():
+    try:
+        user_ids = _get_requested_user_ids()
+        users_data = auth_and_chat_db.get_multiple_users_full_chat_history(user_ids)
+        if not users_data:
+            return jsonify({"status": "error", "error": "No user accounts found"}), 404
+        
+        pdf_bytes = report_exporter.generate_multi_user_pdf_report(users_data)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"df_chatbot_multi_user_report_{len(users_data)}users_{timestamp_str}.pdf"
+        
+        as_attachment = request.args.get("download", "1") != "0"
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype="application/pdf",
+            as_attachment=as_attachment,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting multi-user PDF: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/export/zip", methods=["GET", "POST"])
+@admin_required
+def export_admin_multi_users_zip():
+    try:
+        user_ids = _get_requested_user_ids()
+        users_data = auth_and_chat_db.get_multiple_users_full_chat_history(user_ids)
+        if not users_data:
+            return jsonify({"status": "error", "error": "No user accounts found"}), 404
+        
+        doc_format = request.args.get("format", "pdf").lower()
+        if request.method == "POST":
+            data = request.get_json(silent=True) or {}
+            doc_format = data.get("format", doc_format).lower()
+            
+        zip_bytes = report_exporter.generate_multi_user_zip(users_data, format=doc_format)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"df_chatbot_user_reports_archive_{len(users_data)}users_{timestamp_str}.zip"
+        
+        return send_file(
+            io.BytesIO(zip_bytes),
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting multi-user ZIP: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 
 
 # ============================================================================

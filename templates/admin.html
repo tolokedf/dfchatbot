@@ -1,27 +1,42 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950">
+<html lang="en" class="h-full bg-[#131314]">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>DFleet 4.0 — Admin Management Console</title>
+    <title>DF Chatbot — Admin Management Console</title>
     <link rel="icon" type="image/png" href="/static/df_logo_badge.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['"Google Sans"', '"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"Roboto Mono"', 'monospace']
+                    },
                     colors: {
                         df: {
                             500: '#00b5b8',
                             600: '#00979b',
                             700: '#00787c'
                         },
-                        slate: {
-                            850: '#151f32',
-                            950: '#070b14'
+                        google: {
+                            blue: '#0b57d0',
+                            blueHover: '#0842a0',
+                            blueLight: '#c2e7ff',
+                            blueDark: '#004a77',
+                            surfaceLight: '#f0f4f9',
+                            surfaceDark: '#131314',
+                            cardDark: '#1e1f20',
+                            borderDark: '#282a2c'
                         }
                     },
                     screens: {
@@ -42,42 +57,41 @@
             height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #0b1120;
+            background: #131314;
         }
         ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+            background: #282a2c;
+            border-radius: 9999px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #00b5b8;
+            background: #0b57d0;
         }
     </style>
 </head>
-<body class="h-full flex flex-col text-slate-100 antialiased font-sans bg-slate-950">
+<body class="h-full flex flex-col text-[#e3e3e3] antialiased font-sans bg-[#131314]">
 
     <!-- ===================================================================== -->
     <!-- Admin Login / Lock Screen (Shown when unauthenticated) -->
     <!-- ===================================================================== -->
-    <div id="loginGateScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-[#00b5b8]/10 relative overflow-hidden">
+    <div id="loginGateScreen" class="fixed inset-0 z-50 bg-[#131314] flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
+        <div class="w-full max-w-md bg-[#1e1f20] border border-[#37393b] rounded-[28px] p-6 sm:p-8 shadow-2xl relative overflow-hidden">
             <!-- Decorative ambient glow -->
             <div class="absolute -top-24 -right-24 w-48 h-48 bg-[#00b5b8]/15 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-[#00787c]/15 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="relative z-10 space-y-6">
                 <!-- Icon & Header -->
                 <div class="text-center space-y-2">
-                    <div class="w-16 h-16 mx-auto rounded-2xl bg-[#00b5b8] p-2.5 shadow-lg shadow-[#00b5b8]/30 flex items-center justify-center">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-3 shadow-lg shadow-[#00b5b8]/30 flex items-center justify-center">
                         <img src="/static/df_logo_white.png" alt="DF Automation Logo" class="w-full h-full object-contain">
                     </div>
                     <div class="pt-1">
                         <div class="flex items-center justify-center gap-1.5">
-                            <span class="font-extrabold text-xl tracking-tight text-[#00b5b8]">DFleet</span>
-                            <span class="font-black text-xl text-white">4.0</span>
+                            <span class="font-extrabold text-xl tracking-tight text-white">DF <span class="text-[#00b5b8]">Chatbot</span></span>
                         </div>
                         <h2 class="text-sm font-semibold text-slate-300">Admin Console Access</h2>
                     </div>
-                    <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                    <p class="text-xs text-[#9aa0a6] leading-relaxed max-w-xs mx-auto">
                         Please enter the administrator password to manage source PDF manuals, vector indices, and API settings.
                     </p>
                 </div>
@@ -89,7 +103,7 @@
                             Admin ID / Username
                         </label>
                         <input type="text" id="adminIdInput" value="df" placeholder="Enter ID (default: df)" autocomplete="username"
-                               class="w-full bg-slate-950 border border-slate-700 focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-mono">
+                               class="w-full bg-[#131314] border border-[#37393b] focus:border-[#0b57d0] focus:ring-2 focus:ring-[#0b57d0]/20 rounded-xl px-4 py-2.5 text-sm text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none transition font-mono">
                     </div>
 
                     <div>
@@ -98,27 +112,27 @@
                         </label>
                         <div class="relative flex items-center">
                             <input type="password" id="adminPassInput" placeholder="Enter password (default: df)" autocomplete="current-password" autofocus
-                                   class="w-full bg-slate-950 border border-slate-700 focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition pr-12 font-mono">
+                                   class="w-full bg-[#131314] border border-[#37393b] focus:border-[#0b57d0] focus:ring-2 focus:ring-[#0b57d0]/20 rounded-xl px-4 py-2.5 text-sm text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none transition pr-12 font-mono">
                             <button type="button" onclick="toggleLoginPassVisibility()" class="absolute right-3 text-slate-400 hover:text-slate-200 p-1 text-sm transition" title="Toggle password visibility">
                                 <i id="loginEyeIcon" class="fa-solid fa-eye"></i>
                             </button>
                         </div>
-                        <div id="loginErrorMsg" class="hidden mt-2 text-xs text-rose-400 flex items-center gap-1.5 bg-rose-950/40 border border-rose-900/50 rounded-lg p-2.5 animate-pulse">
+                        <div id="loginErrorMsg" class="hidden mt-2 text-xs text-rose-400 flex items-center gap-1.5 bg-rose-950/40 border border-rose-900/50 rounded-xl p-2.5 animate-pulse">
                             <i class="fa-solid fa-circle-exclamation text-sm shrink-0"></i>
                             <span id="loginErrorText">Incorrect ID or password. Please try again.</span>
                         </div>
                     </div>
 
-                    <button type="submit" id="loginSubmitBtn" class="w-full py-3 px-4 rounded-xl bg-[#00b5b8] hover:bg-[#00979b] text-white text-sm font-bold shadow-lg shadow-[#00b5b8]/30 transition flex items-center justify-center gap-2 active:scale-[0.99]">
+                    <button type="submit" id="loginSubmitBtn" class="w-full py-3 px-4 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-sm font-bold shadow-lg shadow-[#0b57d0]/25 transition flex items-center justify-center gap-2 active:scale-[0.99]">
                         <i class="fa-solid fa-key text-xs"></i>
                         <span>Unlock Admin Console</span>
                     </button>
                 </form>
 
                 <!-- Footer link back to Chat -->
-                <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <span class="text-slate-500">Default: ID <code class="text-[#00b5b8] font-mono font-semibold">df</code> / Pass <code class="text-[#00b5b8] font-mono font-semibold">df</code></span>
-                    <a href="/" class="text-[#00b5b8] hover:text-sky-300 font-medium transition flex items-center gap-1">
+                <div class="pt-4 border-t border-[#282a2c] flex items-center justify-between text-xs">
+                    <span class="text-[#9aa0a6]">Default: ID <code class="text-[#a8c7fa] font-mono font-semibold">df</code> / Pass <code class="text-[#a8c7fa] font-mono font-semibold">df</code></span>
+                    <a href="/" class="text-[#a8c7fa] hover:text-white font-medium transition flex items-center gap-1">
                         <i class="fa-solid fa-comments"></i>
                         Back to Chat
                     </a>
@@ -133,27 +147,27 @@
     <div id="adminContentContainer" class="flex-1 flex flex-col h-full overflow-hidden hidden">
 
         <!-- Top Navigation -->
-        <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-3 sm:py-3.5 z-20 shrink-0">
+        <header class="bg-[#1e1f20]/90 backdrop-blur border-b border-[#282a2c] px-4 sm:px-6 py-3 sm:py-3.5 z-20 shrink-0">
             <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/20 shrink-0">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/30 shrink-0">
                         <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                     </div>
                     <div>
-                        <h1 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                            DFleet 4.0 Admin Console
-                            <span class="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
+                        <h1 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                            DF Chatbot Admin Console
+                            <span class="text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]">Admin</span>
                         </h1>
-                        <p class="text-[11px] sm:text-xs text-slate-400">DF Automation • PDF Ingestion, Vector DB Sync & API Settings</p>
+                        <p class="text-[11px] sm:text-xs text-[#9aa0a6]">DF Automation • PDF Ingestion, Vector DB Sync & API Settings</p>
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
-                    <a href="/" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 sm:gap-2">
-                        <i class="fa-solid fa-comments text-[#00b5b8]"></i>
+                    <a href="/" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5 sm:gap-2">
+                        <i class="fa-solid fa-comments text-[#a8c7fa]"></i>
                         <span class="hidden xs:inline">Switch to</span> Chat
                     </a>
-                    <button onclick="logoutAdmin()" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">
+                    <button onclick="logoutAdmin()" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-lock text-rose-400"></i>
                         <span>Lock</span>
                     </button>
@@ -167,74 +181,74 @@
 
                 <!-- Stat Cards Bar -->
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
+                        <div class="w-10 h-10 rounded-xl bg-[#c2e7ff]/20 text-[#a8c7fa] flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-file-pdf"></i>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Source PDFs</p>
-                            <p id="statSourceCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Source PDFs</p>
+                            <p id="statSourceCount" class="text-base sm:text-lg font-bold text-white truncate">...</p>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-database"></i>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Indexed Pages</p>
-                            <p id="statIndexedPages" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Indexed Pages</p>
+                            <p id="statIndexedPages" class="text-base sm:text-lg font-bold text-white truncate">...</p>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-users"></i>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Users Registered</p>
-                            <p id="statUserCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Users Registered</p>
+                            <p id="statUserCount" class="text-base sm:text-lg font-bold text-white truncate">...</p>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-right-to-bracket"></i>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">Total Logins</p>
-                            <p id="statLoginCount" class="text-base sm:text-lg font-bold text-slate-100 truncate">...</p>
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Total Logins</p>
+                            <p id="statLoginCount" class="text-base sm:text-lg font-bold text-white truncate">...</p>
                         </div>
                     </div>
 
-                    <div class="col-span-2 sm:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 shadow-sm">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                    <div class="col-span-2 sm:col-span-1 bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-brain"></i>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-[11px] sm:text-xs text-slate-400 truncate">QA Model</p>
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">QA Model</p>
                             <p id="statQaModel" class="text-xs sm:text-sm font-semibold font-mono text-purple-300 truncate">...</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Section 1: Source PDF File Management -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                    <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] overflow-hidden shadow-sm">
+                    <div class="p-4 sm:p-5 border-b border-[#282a2c] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                                <i class="fa-solid fa-folder-open text-sky-400"></i>
+                            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-folder-open text-[#a8c7fa]"></i>
                                 Source PDF Manuals (<span id="fileCountBadge">0</span>)
                             </h2>
-                            <p class="text-xs text-slate-400 mt-0.5">Manage source manuals in the <code class="text-sky-300">source/</code> folder and trigger ChromaDB vector embedding.</p>
+                            <p class="text-xs text-[#9aa0a6] mt-0.5">Manage source manuals in the <code class="text-[#a8c7fa] bg-[#131314] px-1.5 py-0.5 rounded border border-[#282a2c]">source/</code> folder and trigger ChromaDB vector embedding.</p>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button onclick="fetchFiles()" class="flex-1 sm:flex-none px-3 py-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center justify-center gap-1.5">
+                            <button onclick="fetchFiles()" class="flex-1 sm:flex-none px-4 py-2 sm:px-4 sm:py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-rotate"></i>
                                 <span>Refresh</span>
                             </button>
-                            <button onclick="openEmbedModeModal(null)" id="embedAllBtn" class="flex-1 sm:flex-none px-3.5 py-2 sm:px-4 sm:py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-sky-600/30">
+                            <button onclick="openEmbedModeModal(null)" id="embedAllBtn" class="flex-1 sm:flex-none px-4 py-2 sm:px-5 sm:py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-[#0b57d0]/25">
                                 <i class="fa-solid fa-bolt"></i>
                                 <span>Embed Options</span>
                             </button>
@@ -242,16 +256,16 @@
                     </div>
 
                     <!-- Upload Dropzone -->
-                    <div class="p-4 sm:p-5 bg-slate-950/40 border-b border-slate-800">
+                    <div class="p-4 sm:p-5 bg-[#131314]/60 border-b border-[#282a2c]">
                         <form id="uploadForm" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                            <label class="flex-1 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-slate-700 hover:border-sky-500/60 rounded-xl cursor-pointer bg-slate-900/50 hover:bg-slate-800/40 transition group">
-                                <div class="flex items-center space-x-2 text-xs text-slate-400 group-hover:text-slate-200 text-center">
-                                    <i class="fa-solid fa-cloud-arrow-up text-base text-sky-400"></i>
+                            <label class="flex-1 w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-[#37393b] hover:border-[#0b57d0] rounded-2xl cursor-pointer bg-[#1e1f20]/50 hover:bg-[#282a2c]/50 transition group">
+                                <div class="flex items-center space-x-2 text-xs text-[#9aa0a6] group-hover:text-[#e3e3e3] text-center">
+                                    <i class="fa-solid fa-cloud-arrow-up text-base text-[#a8c7fa]"></i>
                                     <span class="font-medium truncate max-w-xs sm:max-w-md" id="uploadFilename">Choose or drop a PDF manual here</span>
                                 </div>
                                 <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="handleFileSelected(event)">
                             </label>
-                            <button type="submit" id="uploadBtn" disabled class="px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition flex items-center justify-center gap-2 whitespace-nowrap">
+                            <button type="submit" id="uploadBtn" disabled class="px-5 py-3 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition flex items-center justify-center gap-2 whitespace-nowrap shadow-md shadow-[#0b57d0]/20">
                                 <i class="fa-solid fa-upload"></i>
                                 <span>Upload PDF</span>
                             </button>
@@ -260,27 +274,27 @@
 
                     <!-- Mobile Responsive Cards View (Visible on phones & small tablets) -->
                     <div id="mobileFilesContainer" class="block md:hidden p-3 space-y-3">
-                        <div class="text-center py-6 text-slate-500 text-xs">
+                        <div class="text-center py-6 text-[#9aa0a6] text-xs">
                             <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Loading source manuals...
                         </div>
                     </div>
 
                     <!-- Desktop/Tablet Table View (Visible on md screens and up) -->
                     <div class="hidden md:block overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <table class="w-full text-left text-xs text-[#e3e3e3]">
+                            <thead class="bg-[#131314] text-[#9aa0a6] font-semibold border-b border-[#282a2c] uppercase tracking-wider text-[11px]">
                                 <tr>
-                                    <th class="px-5 py-3">Document Name</th>
-                                    <th class="px-4 py-3">File Size</th>
-                                    <th class="px-4 py-3">Pages (PDF / Indexed)</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3">Last Modified</th>
-                                    <th class="px-5 py-3 text-right">Actions</th>
+                                    <th class="px-5 py-3.5">Document Name</th>
+                                    <th class="px-4 py-3.5">File Size</th>
+                                    <th class="px-4 py-3.5">Pages (PDF / Indexed)</th>
+                                    <th class="px-4 py-3.5">Status</th>
+                                    <th class="px-4 py-3.5">Last Modified</th>
+                                    <th class="px-5 py-3.5 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="filesTableBody" class="divide-y divide-slate-800/60 font-normal">
+                            <tbody id="filesTableBody" class="divide-y divide-[#282a2c] font-normal">
                                 <tr>
-                                    <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                    <td colspan="6" class="px-5 py-8 text-center text-[#9aa0a6]">
                                         <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading source manuals...
                                     </td>
                                 </tr>
@@ -290,24 +304,60 @@
                 </div>
 
                 <!-- Section 2: User Database & Chat History Management -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm" id="usersManagementSection">
-                    <div class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] overflow-hidden shadow-sm" id="usersManagementSection">
+                    <div class="p-4 sm:p-5 border-b border-[#282a2c] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                                <i class="fa-solid fa-users-gear text-sky-400"></i>
+                            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-users-gear text-[#a8c7fa]"></i>
                                 User Database & Chat History (<span id="userCountBadge">0</span> Users)
                             </h2>
-                            <p class="text-xs text-slate-400 mt-0.5">Inspect user accounts, total logins, active chat sessions/tabs, and conversation transcripts.</p>
+                            <p class="text-xs text-[#9aa0a6] mt-0.5">Inspect user accounts, total logins, active chat sessions/tabs, and conversation transcripts.</p>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center flex-wrap gap-2">
                             <!-- User Search Bar -->
                             <div class="relative flex items-center">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-500 text-xs"></i>
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 text-[#9aa0a6] text-xs"></i>
                                 <input type="text" id="userSearchInput" oninput="handleUserSearch(event)" placeholder="Search username..."
-                                       class="bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition font-mono">
+                                       class="bg-[#131314] border border-[#37393b] focus:border-[#0b57d0] rounded-full pl-8 pr-3 py-1.5 text-xs text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none transition font-mono">
                             </div>
-                            <button onclick="fetchUsers()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition flex items-center justify-center gap-1.5">
+
+                            <!-- Batch Export Dropdown -->
+                            <div class="relative">
+                                <button type="button" onclick="toggleBatchExportMenu(event)" id="btnBatchExportUsers" class="px-4 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-[#0b57d0]/25">
+                                    <i class="fa-solid fa-file-export text-xs"></i>
+                                    <span>Export (<span id="selectedUsersCount">All</span>)</span>
+                                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+                                </button>
+
+                                <div id="batchExportDropdownMenu" class="hidden absolute right-0 mt-2 w-72 bg-[#1e1f20] border border-[#37393b] rounded-2xl shadow-2xl p-2 z-50 space-y-1 text-xs">
+                                    <div class="px-3 py-1.5 text-[10px] font-bold text-[#9aa0a6] uppercase tracking-wider border-b border-[#282a2c]">
+                                        Combined Multi-User Reports
+                                    </div>
+                                    <button type="button" onclick="exportBatchUsers('pdf', false)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                        <span class="flex items-center gap-2"><i class="fa-solid fa-file-pdf text-rose-400"></i> Combined Report (PDF)</span>
+                                        <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                                    </button>
+                                    <button type="button" onclick="exportBatchUsers('html', false)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                        <span class="flex items-center gap-2"><i class="fa-solid fa-file-code text-[#a8c7fa]"></i> Combined Report (HTML)</span>
+                                        <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                                    </button>
+
+                                    <div class="px-3 py-1.5 text-[10px] font-bold text-[#9aa0a6] uppercase tracking-wider border-b border-[#282a2c] pt-2">
+                                        Individual Archive (.ZIP)
+                                    </div>
+                                    <button type="button" onclick="exportBatchUsers('pdf', true)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                        <span class="flex items-center gap-2"><i class="fa-solid fa-file-zipper text-amber-400"></i> ZIP Archive (Individual PDFs)</span>
+                                        <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                                    </button>
+                                    <button type="button" onclick="exportBatchUsers('html', true)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                        <span class="flex items-center gap-2"><i class="fa-solid fa-file-zipper text-cyan-400"></i> ZIP Archive (Individual HTMLs)</span>
+                                        <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button onclick="fetchUsers()" class="px-4 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-rotate"></i>
                                 <span>Refresh</span>
                             </button>
@@ -316,27 +366,30 @@
 
                     <!-- Mobile Responsive User Cards View -->
                     <div id="mobileUsersContainer" class="block md:hidden p-3 space-y-3">
-                        <div class="text-center py-6 text-slate-500 text-xs">
+                        <div class="text-center py-6 text-[#9aa0a6] text-xs">
                             <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Loading user accounts...
                         </div>
                     </div>
 
                     <!-- Desktop/Tablet User Table View -->
                     <div class="hidden md:block overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-850 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <table class="w-full text-left text-xs text-[#e3e3e3]">
+                            <thead class="bg-[#131314] text-[#9aa0a6] font-semibold border-b border-[#282a2c] uppercase tracking-wider text-[11px]">
                                 <tr>
-                                    <th class="px-5 py-3">User</th>
-                                    <th class="px-4 py-3">Times of Login</th>
-                                    <th class="px-4 py-3">Registered Date</th>
-                                    <th class="px-4 py-3">Last Active / Login</th>
-                                    <th class="px-4 py-3">Chat Sessions</th>
-                                    <th class="px-5 py-3 text-right">Actions</th>
+                                    <th class="px-4 py-3.5 w-12 text-center">
+                                        <input type="checkbox" id="userSelectAllCheckbox" onchange="toggleSelectAllUsers(event)" class="rounded text-[#0b57d0] focus:ring-0 cursor-pointer" title="Select All / Deselect All">
+                                    </th>
+                                    <th class="px-4 py-3.5">User</th>
+                                    <th class="px-4 py-3.5">Times of Login</th>
+                                    <th class="px-4 py-3.5">Registered Date</th>
+                                    <th class="px-4 py-3.5">Last Active / Login</th>
+                                    <th class="px-4 py-3.5">Chat Sessions</th>
+                                    <th class="px-5 py-3.5 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-normal">
+                            <tbody id="usersTableBody" class="divide-y divide-[#282a2c] font-normal">
                                 <tr>
-                                    <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                                    <td colspan="7" class="px-5 py-8 text-center text-[#9aa0a6]">
                                         <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading user accounts...
                                     </td>
                                 </tr>
@@ -345,18 +398,18 @@
                     </div>
                 </div>
 
-                <!-- Section 2: API & Model Configuration (.env Manager) -->
+                <!-- Section 3: API & Model Configuration (.env Manager) -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
 
                     <!-- Card: API Key & Model -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#282a2c] pb-3">
                             <div>
-                                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                                <h3 class="text-sm font-bold text-white flex items-center gap-2">
                                     <i class="fa-solid fa-key text-amber-400"></i>
                                     Google Gemini & Auth Settings
                                 </h3>
-                                <p class="text-xs text-slate-400 mt-0.5">Manage your Gemini API key, QA model, and Admin password.</p>
+                                <p class="text-xs text-[#9aa0a6] mt-0.5">Manage your Gemini API key, QA model, and Admin password.</p>
                             </div>
                         </div>
 
@@ -367,19 +420,19 @@
                                 </label>
                                 <div class="relative flex items-center">
                                     <input type="password" id="apiKeyInput" placeholder="Paste your GEMINI_API_KEY here..." 
-                                           class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 pr-10 font-mono">
+                                           class="w-full bg-[#131314] border border-[#37393b] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none focus:border-[#0b57d0] pr-10 font-mono">
                                     <button type="button" onclick="toggleKeyVisibility()" class="absolute right-2 text-slate-400 hover:text-slate-200 p-1 text-xs" title="Toggle visibility">
                                         <i id="eyeIcon" class="fa-solid fa-eye"></i>
                                     </button>
                                 </div>
-                                <p class="text-[11px] text-slate-500 mt-1">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-sky-400 hover:underline">Google AI Studio</a>. Saved directly into <code class="text-slate-400">.env</code>.</p>
+                                <p class="text-[11px] text-[#9aa0a6] mt-1">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-[#a8c7fa] hover:underline">Google AI Studio</a>. Saved directly into <code class="text-slate-400">.env</code>.</p>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-semibold text-slate-300 mb-1">
                                     Generation QA Model
                                 </label>
-                                <select id="qaModelSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-sky-500">
+                                <select id="qaModelSelect" class="w-full bg-[#131314] border border-[#37393b] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-[#e3e3e3] focus:outline-none focus:border-[#0b57d0]">
                                     <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recommended: High Quota, Fast Latency)</option>
                                     <option value="gemini-3.5-flash">gemini-3.5-flash (Standard: Complex Schematics)</option>
                                     <option value="gemini-3.6-flash">gemini-3.6-flash</option>
@@ -392,15 +445,15 @@
                                     Update Admin Password (Optional)
                                 </label>
                                 <input type="password" id="newAdminPasswordInput" placeholder="Leave blank to keep current (default: df)" 
-                                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono">
+                                       class="w-full bg-[#131314] border border-[#37393b] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none focus:border-[#0b57d0] font-mono">
                             </div>
 
                             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
-                                <button onclick="testApiKey()" id="testApiBtn" class="flex-1 px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center gap-1.5">
+                                <button onclick="testApiKey()" id="testApiBtn" class="flex-1 px-4 py-2.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] text-xs font-semibold border border-[#37393b] transition flex items-center justify-center gap-1.5">
                                     <i class="fa-solid fa-vial"></i>
                                     Test API Connection
                                 </button>
-                                <button onclick="saveApiSettings()" id="saveConfigBtn" class="flex-1 px-3.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30">
+                                <button onclick="saveApiSettings()" id="saveConfigBtn" class="flex-1 px-4 py-2.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-[#0b57d0]/25">
                                     <i class="fa-solid fa-floppy-disk"></i>
                                     Save to .env
                                 </button>
@@ -409,39 +462,39 @@
                     </div>
 
                     <!-- Card: ChromaDB Database Management -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] p-5 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#282a2c] pb-3">
                             <div>
-                                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                                    <i class="fa-solid fa-server text-sky-400"></i>
+                                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-server text-[#a8c7fa]"></i>
                                     ChromaDB Vector Store Maintenance
                                 </h3>
-                                <p class="text-xs text-slate-400 mt-0.5">Database storage topology and re-indexing operations.</p>
+                                <p class="text-xs text-[#9aa0a6] mt-0.5">Database storage topology and re-indexing operations.</p>
                             </div>
                         </div>
 
-                        <div class="space-y-3 text-xs text-slate-300">
-                            <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="space-y-3 text-xs text-[#e3e3e3]">
+                            <div class="p-3.5 bg-[#131314]/80 rounded-2xl border border-[#282a2c] space-y-2">
                                 <div class="flex justify-between">
-                                    <span class="text-slate-400">ChromaDB Path:</span>
+                                    <span class="text-[#9aa0a6]">ChromaDB Path:</span>
                                     <span class="font-mono text-slate-300">output/chroma_db/</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-400">Collection Name:</span>
-                                    <span class="font-mono text-sky-300">pdf_pages</span>
+                                    <span class="text-[#9aa0a6]">Collection Name:</span>
+                                    <span class="font-mono text-[#a8c7fa]">pdf_pages</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-400">Embedding Metric:</span>
+                                    <span class="text-[#9aa0a6]">Embedding Metric:</span>
                                     <span class="font-mono text-slate-300">Cosine (3072 dims)</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-slate-400">Render Resolution:</span>
+                                    <span class="text-[#9aa0a6]">Render Resolution:</span>
                                     <span class="font-mono text-slate-300">200 DPI PNG</span>
                                 </div>
                             </div>
 
                             <div class="pt-2">
-                                <button onclick="resetDatabasePrompt()" class="w-full px-3.5 py-2.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/60 text-xs font-semibold transition flex items-center justify-center gap-2">
+                                <button onclick="resetDatabasePrompt()" class="w-full px-4 py-2.5 rounded-full bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/60 text-xs font-semibold transition flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-trash-can"></i>
                                     Wipe & Reset ChromaDB Collection
                                 </button>
@@ -457,76 +510,76 @@
 
     <!-- Modal: Embedding Mode Selection (1. Re-embed All Pages vs 2. Embed Required Pages) -->
     <div id="embedModeModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="relative max-w-lg w-full bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-2xl">
+        <div class="relative max-w-lg w-full bg-[#1e1f20] border border-[#37393b] rounded-[28px] overflow-hidden shadow-2xl">
             <!-- Header -->
-            <div class="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+            <div class="p-4 bg-[#1e1f20] border-b border-[#282a2c] flex items-center justify-between">
                 <div class="flex items-center space-x-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm">
+                    <div class="w-8 h-8 rounded-xl bg-[#c2e7ff]/20 text-[#a8c7fa] flex items-center justify-center text-sm">
                         <i class="fa-solid fa-layer-group"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-100">Choose Embedding Option</h3>
-                        <p class="text-[11px] text-slate-400" id="embedModeTargetLabel">Select how you want to embed this document</p>
+                        <h3 class="text-sm font-bold text-white">Choose Embedding Option</h3>
+                        <p class="text-[11px] text-[#9aa0a6]" id="embedModeTargetLabel">Select how you want to embed this document</p>
                     </div>
                 </div>
-                <button onclick="closeEmbedModeModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Close">
+                <button onclick="closeEmbedModeModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
             <!-- Body Details -->
-            <div class="p-4 sm:p-5 space-y-4">
+            <div class="p-5 space-y-4">
                 
                 <!-- Target Document Summary Pill -->
-                <div id="embedModeDocInfo" class="bg-slate-950/70 rounded-xl p-3 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+                <div id="embedModeDocInfo" class="bg-[#131314] rounded-2xl p-3.5 border border-[#282a2c] space-y-1.5 text-xs text-[#e3e3e3]">
                     <!-- Injected dynamically via JS: Document Name, Total PDF Pages, Indexed, Missing, Modified -->
                 </div>
 
                 <!-- 2 Action Option Cards -->
                 <div class="space-y-3">
                     
-                    <!-- Option 2: Embed Required (Smart Sync) -->
-                    <div onclick="executeEmbedChoice('required')" class="p-4 rounded-xl border border-sky-500/40 bg-sky-950/20 hover:bg-sky-900/30 hover:border-sky-500 cursor-pointer transition group relative">
+                    <!-- Option 1: Embed Required (Smart Sync) -->
+                    <div onclick="executeEmbedChoice('required')" class="p-4 rounded-2xl border border-[#0b57d0]/40 bg-[#004a77]/20 hover:bg-[#004a77]/35 hover:border-[#0b57d0] cursor-pointer transition group relative">
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                                <div class="w-8 h-8 rounded-xl bg-[#c2e7ff] dark:bg-[#004a77] text-[#0b57d0] dark:text-[#a8c7fa] flex items-center justify-center text-xs group-hover:scale-105 transition">
                                     <i class="fa-solid fa-bolt"></i>
                                 </div>
                                 <div>
-                                    <h4 class="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-sky-300 transition">
+                                    <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-[#a8c7fa] transition">
                                         Option 1: Embed Required Only
                                     </h4>
-                                    <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 mt-0.5">
+                                    <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#c2e7ff]/30 text-[#a8c7fa] border border-[#0b57d0]/30 mt-0.5">
                                         Recommended • Smart Sync
                                     </span>
                                 </div>
                             </div>
-                            <span class="text-sky-400 text-xs font-semibold mt-1">Select <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i></span>
+                            <span class="text-[#a8c7fa] text-xs font-semibold mt-1">Select <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i></span>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-2 pl-9 leading-relaxed">
+                        <p class="text-[11px] text-[#9aa0a6] mt-2 pl-10 leading-relaxed">
                             Scans for missing/lost pages or pages edited after embedding, and <strong>only embeds the required pages</strong>. Fast and preserves your Gemini API quota.
                         </p>
                     </div>
 
-                    <!-- Option 1: Re-embed All Pages (Full Overwrite) -->
-                    <div onclick="executeEmbedChoice('all')" class="p-4 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800/40 hover:border-slate-700 cursor-pointer transition group relative">
+                    <!-- Option 2: Re-embed All Pages (Full Overwrite) -->
+                    <div onclick="executeEmbedChoice('all')" class="p-4 rounded-2xl border border-[#282a2c] bg-[#131314]/80 hover:bg-[#282a2c]/60 hover:border-[#37393b] cursor-pointer transition group relative">
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                                <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs group-hover:scale-105 transition">
                                     <i class="fa-solid fa-rotate"></i>
                                 </div>
                                 <div>
-                                    <h4 class="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">
+                                    <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition">
                                         Option 2: Re-embed All Pages
                                     </h4>
-                                    <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 mt-0.5">
+                                    <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 mt-0.5">
                                         Full Overwrite
                                     </span>
                                 </div>
                             </div>
                             <span class="text-slate-400 group-hover:text-amber-400 text-xs font-semibold mt-1">Select <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i></span>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-2 pl-9 leading-relaxed">
+                        <p class="text-[11px] text-[#9aa0a6] mt-2 pl-10 leading-relaxed">
                             Forces a complete re-rendering and re-embedding of <strong>all pages from page 1 to the end</strong>, completely refreshing all vectors in ChromaDB.
                         </p>
                     </div>
@@ -536,8 +589,8 @@
             </div>
 
             <!-- Footer -->
-            <div class="p-3.5 bg-slate-850 border-t border-slate-800 flex justify-end">
-                <button onclick="closeEmbedModeModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            <div class="p-4 bg-[#1e1f20] border-t border-[#282a2c] flex justify-end">
+                <button onclick="closeEmbedModeModal()" class="px-5 py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] text-xs font-semibold transition">
                     Cancel
                 </button>
             </div>
@@ -546,84 +599,84 @@
 
     <!-- Modal: Enhanced Embedding Progress & Live Loading Bar -->
     <div id="logModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
+        <div class="relative max-w-2xl w-full bg-[#1e1f20] border border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
             
             <!-- Modal Header -->
-            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+            <div class="p-4 bg-[#1e1f20] border-b border-[#282a2c] flex items-center justify-between">
                 <div class="flex items-center space-x-2.5 min-w-0">
-                    <div id="embedSpinnerIcon" class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-bolt fa-spin"></i>
+                    <div id="embedSpinnerIcon" class="w-8 h-8 rounded-xl bg-[#c2e7ff]/20 text-[#a8c7fa] flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-sparkles fa-spin"></i>
                     </div>
                     <div class="min-w-0">
-                        <h3 id="logModalTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">Embedding in Progress...</h3>
-                        <p id="embedStatusText" class="text-[11px] text-sky-400 font-medium truncate">Initializing pipeline...</p>
+                        <h3 id="logModalTitle" class="text-xs sm:text-sm font-bold text-white truncate">Embedding in Progress...</h3>
+                        <p id="embedStatusText" class="text-[11px] text-[#a8c7fa] font-medium truncate">Initializing pipeline...</p>
                     </div>
                 </div>
-                <button onclick="closeLogModal()" id="closeLogModalBtn" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Close">
+                <button onclick="closeLogModal()" id="closeLogModalBtn" class="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
             <!-- Modal Body with Live Loading Bar & Metrics -->
-            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto">
+            <div class="p-5 space-y-4 overflow-y-auto">
                 
                 <!-- Hero Progress Bar Card -->
-                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
+                <div class="bg-[#131314] border border-[#282a2c] rounded-2xl p-4 space-y-3">
                     <div class="flex items-center justify-between text-xs">
                         <span class="font-semibold text-slate-300 flex items-center gap-1.5">
-                            <i class="fa-solid fa-bars-progress text-sky-400"></i>
+                            <i class="fa-solid fa-bars-progress text-[#a8c7fa]"></i>
                             Overall Progress
                         </span>
-                        <span id="embedPercentText" class="text-sm font-bold font-mono text-sky-400">0.0%</span>
+                        <span id="embedPercentText" class="text-sm font-bold font-mono text-[#a8c7fa]">0.0%</span>
                     </div>
 
                     <!-- Animated Progress Bar -->
-                    <div class="w-full bg-slate-900 rounded-full h-3.5 sm:h-4 overflow-hidden p-0.5 border border-slate-800 shadow-inner">
-                        <div id="embedProgressBar" class="h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm" style="width: 0%;"></div>
+                    <div class="w-full bg-[#1e1f20] rounded-full h-3.5 sm:h-4 overflow-hidden p-0.5 border border-[#282a2c] shadow-inner">
+                        <div id="embedProgressBar" class="h-full bg-gradient-to-r from-[#1a73e8] via-[#7c3aed] to-[#38bdf8] rounded-full transition-all duration-300 ease-out shadow-sm" style="width: 0%;"></div>
                     </div>
 
                     <!-- 4 Live Metric Cards -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                         <!-- Total Pages -->
-                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
-                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Total Pages</p>
-                            <p id="statTotalPages" class="text-sm sm:text-base font-bold text-slate-100 font-mono mt-0.5">0</p>
+                        <div class="bg-[#1e1f20] rounded-xl p-2.5 border border-[#282a2c] text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-[#9aa0a6]">Total Pages</p>
+                            <p id="statTotalPages" class="text-sm sm:text-base font-bold text-white font-mono mt-0.5">0</p>
                         </div>
                         <!-- Embedded Pages -->
-                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
-                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Embedded</p>
+                        <div class="bg-[#1e1f20] rounded-xl p-2.5 border border-[#282a2c] text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-[#9aa0a6]">Embedded</p>
                             <p id="statDonePages" class="text-sm sm:text-base font-bold text-emerald-400 font-mono mt-0.5">0</p>
                         </div>
                         <!-- Remaining Pages -->
-                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
-                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Remaining</p>
+                        <div class="bg-[#1e1f20] rounded-xl p-2.5 border border-[#282a2c] text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-[#9aa0a6]">Remaining</p>
                             <p id="statRemainingPages" class="text-sm sm:text-base font-bold text-amber-400 font-mono mt-0.5">0</p>
                         </div>
                         <!-- Estimated Time Remaining -->
-                        <div class="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800/80 text-center">
-                            <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Est. Time (ETA)</p>
-                            <p id="statEta" class="text-sm sm:text-base font-bold text-sky-400 font-mono mt-0.5">--</p>
+                        <div class="bg-[#1e1f20] rounded-xl p-2.5 border border-[#282a2c] text-center">
+                            <p class="text-[10px] uppercase tracking-wider font-semibold text-[#9aa0a6]">Est. Time (ETA)</p>
+                            <p id="statEta" class="text-sm sm:text-base font-bold text-[#a8c7fa] font-mono mt-0.5">--</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Current Task Action Bar -->
-                <div class="bg-slate-950/50 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-300">
+                <div class="bg-[#131314]/70 border border-[#282a2c] rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-[#e3e3e3]">
                     <div class="flex items-center space-x-2 truncate">
-                        <i class="fa-solid fa-spinner fa-spin text-sky-400 shrink-0" id="embedActionSpinner"></i>
+                        <i class="fa-solid fa-spinner fa-spin text-[#a8c7fa] shrink-0" id="embedActionSpinner"></i>
                         <span id="embedCurrentActionText" class="truncate font-mono text-[11px] sm:text-xs">Preparing embedding engine...</span>
                     </div>
                 </div>
 
                 <!-- Real-Time Log Terminal -->
                 <div>
-                    <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 px-0.5">
+                    <div class="flex items-center justify-between text-[11px] text-[#9aa0a6] mb-1.5 px-0.5">
                         <span class="font-semibold flex items-center gap-1">
                             <i class="fa-solid fa-terminal text-slate-500"></i> Live Activity Log
                         </span>
                         <span class="text-slate-500">Auto-scrolling</span>
                     </div>
-                    <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] text-slate-300 h-44 overflow-y-auto space-y-1" id="logModalContent">
+                    <div class="p-3 bg-[#131314] border border-[#282a2c] rounded-2xl font-mono text-[11px] text-[#e3e3e3] h-44 overflow-y-auto space-y-1" id="logModalContent">
                         <p class="text-slate-500">Connecting to pipeline stream...</p>
                     </div>
                 </div>
@@ -631,9 +684,9 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="p-3.5 sm:p-4 bg-slate-850 border-t border-slate-800 flex items-center justify-between">
-                <span id="embedFooterSummary" class="text-xs text-slate-400 truncate max-w-[60%]">Embedding pages into ChromaDB vector database...</span>
-                <button onclick="closeLogModal()" id="doneProgressBtn" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-500 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-not-allowed opacity-60" disabled>
+            <div class="p-4 bg-[#1e1f20] border-t border-[#282a2c] flex items-center justify-between">
+                <span id="embedFooterSummary" class="text-xs text-[#9aa0a6] truncate max-w-[60%]">Embedding pages into ChromaDB vector database...</span>
+                <button onclick="closeLogModal()" id="doneProgressBtn" class="px-5 py-2.5 rounded-full bg-[#282a2c] text-[#9aa0a6] text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-not-allowed opacity-60" disabled>
                     <i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Embedding...</span>
                 </button>
             </div>
@@ -642,21 +695,21 @@
 
     <!-- Modal: Page & Metadata Manager (Inspect PNGs, Edit Tags, Delete Pages, Single-Page Sync) -->
     <div id="pageManagerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
-        <div class="relative max-w-6xl w-full h-[95vh] bg-slate-900 border border-slate-700/80 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+        <div class="relative max-w-6xl w-full h-[95vh] bg-[#1e1f20] border border-[#37393b] rounded-[28px] flex flex-col shadow-2xl overflow-hidden">
             
             <!-- Header -->
-            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+            <div class="p-4 bg-[#1e1f20] border-b border-[#282a2c] flex items-center justify-between shrink-0">
                 <div class="flex items-center space-x-3 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0 text-base">
+                    <div class="w-9 h-9 rounded-xl bg-[#c2e7ff]/20 text-[#a8c7fa] flex items-center justify-center shrink-0 text-base">
                         <i class="fa-solid fa-images"></i>
                     </div>
                     <div class="min-w-0">
                         <div class="flex items-center space-x-2">
-                            <h3 class="text-sm sm:text-base font-bold text-slate-100 truncate">Pages & Metadata Manager</h3>
-                            <span id="pmFilenameBadge" class="hidden sm:inline-block px-2 py-0.5 rounded text-[11px] font-mono bg-sky-950 text-sky-300 border border-sky-800 truncate max-w-xs"></span>
+                            <h3 class="text-sm sm:text-base font-bold text-white truncate">Pages & Metadata Manager</h3>
+                            <span id="pmFilenameBadge" class="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#131314] text-[#a8c7fa] border border-[#282a2c] truncate max-w-xs"></span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-0.5 flex items-center space-x-2 truncate">
-                            <span>Total: <strong id="pmTotalCount" class="text-slate-200">0</strong></span>
+                        <p class="text-xs text-[#9aa0a6] mt-0.5 flex items-center space-x-2 truncate">
+                            <span>Total: <strong id="pmTotalCount" class="text-white">0</strong></span>
                             <span>•</span>
                             <span class="text-emerald-400 font-semibold">Indexed in DB: <strong id="pmIndexedCount">0</strong></span>
                             <span>•</span>
@@ -666,55 +719,55 @@
                 </div>
                 
                 <div class="flex items-center space-x-2">
-                    <button onclick="refreshCurrentPageManager()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5" title="Reload Pages">
+                    <button onclick="refreshCurrentPageManager()" class="px-3.5 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5" title="Reload Pages">
                         <i class="fa-solid fa-rotate"></i>
                         <span class="hidden sm:inline">Refresh</span>
                     </button>
-                    <button onclick="closePageManager()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition" title="Close">
+                    <button onclick="closePageManager()" class="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Filter & Action Controls Toolbar -->
-            <div class="p-3 bg-slate-950/80 border-b border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shrink-0">
+            <div class="p-3.5 bg-[#131314] border-b border-[#282a2c] flex flex-col md:flex-row md:items-center md:justify-between gap-3 shrink-0">
                 
                 <!-- Left: Filter Tabs & Search -->
                 <div class="flex flex-wrap items-center gap-2">
                     <!-- Filter Pills -->
-                    <div class="inline-flex rounded-lg bg-slate-900 p-0.5 border border-slate-800 text-xs">
-                        <button onclick="setPageFilter('all')" id="tabFilterAll" class="px-3 py-1.5 rounded-md font-semibold text-slate-200 bg-slate-800 shadow-sm transition">
+                    <div class="inline-flex rounded-full bg-[#1e1f20] p-1 border border-[#282a2c] text-xs">
+                        <button onclick="setPageFilter('all')" id="tabFilterAll" class="px-3.5 py-1 rounded-full font-bold text-[#001d35] bg-[#c2e7ff] dark:bg-[#004a77] dark:text-[#c2e7ff] shadow-sm transition">
                             All (<span id="countFilterAll">0</span>)
                         </button>
-                        <button onclick="setPageFilter('indexed')" id="tabFilterIndexed" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition">
+                        <button onclick="setPageFilter('indexed')" id="tabFilterIndexed" class="px-3.5 py-1 rounded-full font-medium text-[#9aa0a6] hover:text-white transition">
                             Indexed (<span id="countFilterIndexed">0</span>)
                         </button>
-                        <button onclick="setPageFilter('missing')" id="tabFilterMissing" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition">
+                        <button onclick="setPageFilter('missing')" id="tabFilterMissing" class="px-3.5 py-1 rounded-full font-medium text-[#9aa0a6] hover:text-white transition">
                             Missing/Excluded (<span id="countFilterMissing">0</span>)
                         </button>
                     </div>
 
                     <!-- Search Bar -->
                     <div class="relative flex items-center min-w-[200px] flex-1 sm:flex-none">
-                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 text-slate-500 text-xs"></i>
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 text-[#9aa0a6] text-xs"></i>
                         <input type="text" id="pmSearchInput" oninput="handlePageSearch(event)" placeholder="Search chapter, section, tags..."
-                               class="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                               class="w-full bg-[#1e1f20] border border-[#282a2c] rounded-full pl-8 pr-3 py-1.5 text-xs text-[#e3e3e3] placeholder-[#9aa0a6] focus:outline-none focus:border-[#0b57d0]">
                     </div>
                 </div>
 
                 <!-- Right: Batch Selection & Actions -->
                 <div class="flex items-center space-x-2">
-                    <label class="flex items-center space-x-1.5 text-xs text-slate-400 cursor-pointer select-none bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:text-slate-200">
-                        <input type="checkbox" id="pmSelectAllCheckbox" onchange="toggleSelectAllPages(event)" class="rounded border-slate-700 text-sky-600 focus:ring-0">
+                    <label class="flex items-center space-x-2 text-xs text-[#9aa0a6] cursor-pointer select-none bg-[#1e1f20] px-3 py-1.5 rounded-full border border-[#282a2c] hover:text-white">
+                        <input type="checkbox" id="pmSelectAllCheckbox" onchange="toggleSelectAllPages(event)" class="rounded text-[#0b57d0] focus:ring-0">
                         <span>Select All</span>
                     </label>
 
-                    <button onclick="batchEmbedSelectedPages()" id="btnBatchEmbed" disabled class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                    <button onclick="batchEmbedSelectedPages()" id="btnBatchEmbed" disabled class="px-4 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0b57d0]/25 transition">
                         <i class="fa-solid fa-bolt"></i>
                         <span>Sync & Embed (<span id="pmSelectedEmbedCount">0</span>)</span>
                     </button>
 
-                    <button onclick="batchDeleteSelectedPages()" id="btnBatchDelete" disabled class="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold flex items-center gap-1.5 transition">
+                    <button onclick="batchDeleteSelectedPages()" id="btnBatchDelete" disabled class="px-4 py-1.5 rounded-full bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-trash-can"></i>
                         <span>Delete (<span id="pmSelectedDeleteCount">0</span>)</span>
                     </button>
@@ -723,18 +776,18 @@
             </div>
 
             <!-- Page Cards Scroll Deck -->
-            <div id="pmCardsContainer" class="flex-1 overflow-y-auto p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 bg-slate-950/40">
-                <div class="col-span-full py-16 text-center text-slate-500 text-xs">
-                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base"></i> Loading pages & metadata...
+            <div id="pmCardsContainer" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 bg-[#131314]/50">
+                <div class="col-span-full py-16 text-center text-[#9aa0a6] text-xs">
+                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base text-[#a8c7fa]"></i> Loading pages & metadata...
                 </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="p-3 bg-slate-850 border-t border-slate-800 flex items-center justify-between shrink-0">
-                <p class="text-[11px] text-slate-400">
+            <div class="p-4 bg-[#1e1f20] border-t border-[#282a2c] flex items-center justify-between shrink-0">
+                <p class="text-[11px] text-[#9aa0a6]">
                     💡 <span class="hidden sm:inline">Add custom key-value tags or exclude irrelevant pages.</span> Click <strong>"Sync & Embed"</strong> on any page to update vectors instantly.
                 </p>
-                <button onclick="closePageManager()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+                <button onclick="closePageManager()" class="px-5 py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] text-xs font-semibold transition">
                     Done & Close
                 </button>
             </div>
@@ -746,60 +799,95 @@
     <div id="imageLightboxModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex items-center justify-center p-3 sm:p-6" onclick="closeImageLightbox()">
         <div class="relative max-w-5xl max-h-[95vh] flex flex-col items-center" onclick="event.stopPropagation()">
             <div class="absolute top-2 right-2 flex items-center space-x-2 z-10">
-                <a id="lightboxDownloadBtn" href="#" target="_blank" class="p-2 rounded-lg bg-slate-850/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition" title="Open Full Resolution">
+                <a id="lightboxDownloadBtn" href="#" target="_blank" class="p-2 rounded-full bg-[#1e1f20]/80 hover:bg-[#282a2c] text-slate-300 hover:text-white text-xs font-semibold border border-[#37393b] transition" title="Open Full Resolution">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 </a>
-                <button onclick="closeImageLightbox()" class="p-2 rounded-lg bg-slate-850/80 hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                <button onclick="closeImageLightbox()" class="w-8 h-8 rounded-full bg-[#1e1f20]/80 hover:bg-[#282a2c] text-slate-300 hover:text-white flex items-center justify-center transition">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
-            <img id="lightboxImg" src="" alt="Page Preview" class="max-h-[85vh] max-w-full object-contain rounded-xl border border-slate-800 shadow-2xl bg-white">
-            <p id="lightboxCaption" class="mt-2 text-xs font-mono text-slate-300 text-center"></p>
+            <img id="lightboxImg" src="" alt="Page Preview" class="max-h-[85vh] max-w-full object-contain rounded-2xl border border-[#37393b] shadow-2xl bg-white">
+            <p id="lightboxCaption" class="mt-2 text-xs font-mono text-[#e3e3e3] text-center"></p>
         </div>
     </div>
 
     <!-- Modal: User Chat History & Transcript Inspector -->
     <div id="userChatsModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
-        <div class="relative max-w-5xl w-full h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+        <div class="relative max-w-5xl w-full h-[92vh] bg-[#1e1f20] border border-[#37393b] rounded-[28px] flex flex-col shadow-2xl overflow-hidden">
             
             <!-- Modal Header -->
-            <div class="p-3.5 sm:p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+            <div class="p-4 bg-[#1e1f20] border-b border-[#282a2c] flex items-center justify-between shrink-0">
                 <div class="flex items-center space-x-3 min-w-0">
-                    <div id="modalUserAvatar" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-base shrink-0 shadow-inner">
+                    <div id="modalUserAvatar" class="w-10 h-10 rounded-full bg-[#131314] border border-[#282a2c] overflow-hidden flex items-center justify-center text-slate-300 font-bold text-base shrink-0 shadow-inner">
                         <i class="fa-solid fa-user"></i>
                     </div>
                     <div class="min-w-0">
                         <div class="flex items-center space-x-2">
-                            <h3 id="modalUsername" class="text-sm sm:text-base font-bold text-slate-100 truncate">User Chat History</h3>
-                            <span id="modalUserRoleBadge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-950 text-sky-300 border border-sky-800">User</span>
+                            <h3 id="modalUsername" class="text-sm sm:text-base font-bold text-white truncate">User Chat History</h3>
+                            <span id="modalUserRoleBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]">User</span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p class="text-xs text-[#9aa0a6] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span id="modalUserLogins"><i class="fa-solid fa-right-to-bracket text-amber-400 mr-1"></i>0 logins</span>
                             <span>•</span>
                             <span id="modalUserRegistered">Joined: --</span>
                             <span>•</span>
-                            <span id="modalUserTotalChats" class="text-sky-300 font-medium">0 tabs, 0 messages</span>
+                            <span id="modalUserTotalChats" class="text-[#a8c7fa] font-medium">0 tabs, 0 messages</span>
                         </p>
                     </div>
                 </div>
                 
                 <div class="flex items-center space-x-2">
-                    <button onclick="refreshCurrentModalChats()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition" title="Refresh User Chats">
+                    <!-- Export Report Dropdown Menu -->
+                    <div class="relative">
+                        <button type="button" onclick="toggleExportDropdown(event)" id="modalExportBtn" class="px-4 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-[#0b57d0]/25">
+                            <i class="fa-solid fa-download text-xs"></i>
+                            <span>Export Report</span>
+                            <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+                        </button>
+                        
+                        <div id="modalExportMenu" class="hidden absolute right-0 mt-2 w-64 bg-[#1e1f20] border border-[#37393b] rounded-2xl shadow-2xl p-2 z-50 space-y-1 text-xs">
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-[#9aa0a6] uppercase tracking-wider border-b border-[#282a2c]">
+                                All Chat Sessions
+                            </div>
+                            <button type="button" onclick="exportUserReport('pdf')" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-file-pdf text-rose-400"></i> Export All Tabs (PDF)</span>
+                                <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                            </button>
+                            <button type="button" onclick="exportUserReport('html')" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-file-code text-[#a8c7fa]"></i> Export All Tabs (HTML)</span>
+                                <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                            </button>
+
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-[#9aa0a6] uppercase tracking-wider border-b border-[#282a2c] pt-2">
+                                Active Chat Tab Only
+                            </div>
+                            <button type="button" onclick="exportUserReport('pdf', currentModalActiveTabId)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-file-pdf text-rose-400"></i> Export Active Tab (PDF)</span>
+                                <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                            </button>
+                            <button type="button" onclick="exportUserReport('html', currentModalActiveTabId)" class="w-full text-left px-3 py-2 rounded-xl text-[#e3e3e3] hover:bg-[#282a2c] hover:text-white transition flex items-center justify-between group">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-file-code text-[#a8c7fa]"></i> Export Active Tab (HTML)</span>
+                                <i class="fa-solid fa-arrow-down text-[10px] opacity-60 group-hover:opacity-100"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="refreshCurrentModalChats()" class="px-3 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition" title="Refresh User Chats">
                         <i class="fa-solid fa-rotate"></i>
                     </button>
-                    <button onclick="closeUserChatsModal()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition" title="Close">
+                    <button onclick="closeUserChatsModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Body: Split Layout (Tabs list on left, Transcript on right) -->
-            <div class="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-950/40">
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden bg-[#131314]/40">
                 
                 <!-- Left Pane: User Tabs List -->
-                <div class="w-full md:w-64 lg:w-72 bg-slate-900/90 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0">
-                    <div class="p-3 border-b border-slate-800/80 text-xs font-semibold text-slate-400 flex items-center justify-between">
-                        <span><i class="fa-solid fa-folder-tree text-sky-400 mr-1.5"></i> Chat Sessions (<span id="modalTabsCountBadge">0</span>)</span>
+                <div class="w-full md:w-64 lg:w-72 bg-[#1e1f20]/90 border-b md:border-b-0 md:border-r border-[#282a2c] flex flex-col shrink-0">
+                    <div class="p-3 border-b border-[#282a2c] text-xs font-semibold text-[#9aa0a6] flex items-center justify-between">
+                        <span><i class="fa-solid fa-folder-tree text-[#a8c7fa] mr-1.5"></i> Chat Sessions (<span id="modalTabsCountBadge">0</span>)</span>
                     </div>
                     <div id="modalTabsList" class="flex-1 overflow-y-auto p-2 space-y-1">
                         <!-- Dynamic user tab buttons -->
@@ -807,17 +895,30 @@
                 </div>
 
                 <!-- Right Pane: Message Transcript Stream -->
-                <div class="flex-1 flex flex-col overflow-hidden bg-slate-950">
-                    <div class="p-2.5 sm:p-3 bg-slate-900/60 border-b border-slate-800/80 flex items-center justify-between shrink-0">
+                <div class="flex-1 flex flex-col overflow-hidden bg-[#131314]">
+                    <div class="p-3 bg-[#1e1f20]/60 border-b border-[#282a2c] flex items-center justify-between shrink-0">
                         <div class="flex items-center space-x-2 min-w-0">
-                            <i class="fa-solid fa-comments text-sky-400 text-xs"></i>
-                            <span id="modalActiveTabTitle" class="text-xs font-semibold text-slate-200 truncate">Select a chat tab</span>
+                            <i class="fa-solid fa-comments text-[#a8c7fa] text-xs"></i>
+                            <span id="modalActiveTabTitle" class="text-xs font-semibold text-white truncate">Select a chat tab</span>
                         </div>
-                        <span id="modalActiveTabMsgCount" class="text-[11px] text-slate-500 font-mono">0 messages</span>
+                        <div class="flex items-center space-x-2">
+                            <span id="modalActiveTabMsgCount" class="text-[11px] text-[#9aa0a6] font-mono">0 messages</span>
+                            <!-- Quick Tab Export Buttons -->
+                            <div class="flex items-center space-x-1 pl-2 border-l border-[#282a2c]">
+                                <button onclick="exportUserReport('pdf', currentModalActiveTabId)" class="px-2.5 py-1 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-rose-300 hover:text-white text-[11px] font-semibold border border-[#37393b] transition flex items-center gap-1 shadow-sm" title="Download Active Tab as PDF">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                    <span class="hidden sm:inline">PDF</span>
+                                </button>
+                                <button onclick="exportUserReport('html', currentModalActiveTabId)" class="px-2.5 py-1 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#a8c7fa] hover:text-white text-[11px] font-semibold border border-[#37393b] transition flex items-center gap-1 shadow-sm" title="View/Download Active Tab as HTML">
+                                    <i class="fa-solid fa-file-code"></i>
+                                    <span class="hidden sm:inline">HTML</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="modalChatMessagesContainer" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
-                        <div class="py-16 text-center text-slate-500 text-xs">
+                        <div class="py-16 text-center text-[#9aa0a6] text-xs">
                             Select a chat tab on the left to inspect conversation history.
                         </div>
                     </div>
@@ -829,8 +930,8 @@
     </div>
 
     <!-- Toast Notification Box -->
-    <div id="toast" class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
-        <div id="toastIcon" class="text-base text-sky-400 shrink-0"></div>
+    <div id="toast" class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#1e1f20] border border-[#37393b] text-[#e3e3e3] px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <div id="toastIcon" class="text-base text-[#a8c7fa] shrink-0"></div>
         <div class="flex-1 text-xs break-words" id="toastMessage">Notification message</div>
     </div>
 
@@ -2213,6 +2314,8 @@
             }
         }
 
+        let selectedUserIds = new Set();
+
         function renderUsersStats(users) {
             const userCountEl = document.getElementById("statUserCount");
             const loginCountEl = document.getElementById("statLoginCount");
@@ -2224,6 +2327,81 @@
             if (userCountEl) userCountEl.textContent = `${totalUsers}`;
             if (loginCountEl) loginCountEl.textContent = `${totalLogins}`;
             if (badgeEl) badgeEl.textContent = `${totalUsers}`;
+            updateUserBatchExportUI();
+        }
+
+        function toggleUserSelection(userId, event) {
+            if (event.target.checked) {
+                selectedUserIds.add(userId);
+            } else {
+                selectedUserIds.delete(userId);
+            }
+            updateUserBatchExportUI();
+        }
+
+        function toggleSelectAllUsers(event) {
+            const checked = event.target.checked;
+            if (checked) {
+                allUsersList.forEach(u => selectedUserIds.add(u.id));
+            } else {
+                selectedUserIds.clear();
+            }
+            renderUsersTable(allUsersList);
+            renderMobileUsersCards(allUsersList);
+            updateUserBatchExportUI();
+        }
+
+        function updateUserBatchExportUI() {
+            const countEl = document.getElementById("selectedUsersCount");
+            const count = selectedUserIds.size;
+            if (countEl) {
+                countEl.textContent = count === 0 ? "All" : `${count}`;
+            }
+            const selectAllCheckbox = document.getElementById("userSelectAllCheckbox");
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allUsersList.length > 0 && selectedUserIds.size === allUsersList.length;
+            }
+        }
+
+        function toggleBatchExportMenu(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById("batchExportDropdownMenu");
+            if (menu) menu.classList.toggle("hidden");
+        }
+
+        function closeBatchExportMenu() {
+            const menu = document.getElementById("batchExportDropdownMenu");
+            if (menu) menu.classList.add("hidden");
+        }
+
+        function exportBatchUsers(format, asZip = false) {
+            closeBatchExportMenu();
+            const userIdsArray = Array.from(selectedUserIds);
+            let url = `/api/admin/users/export/`;
+            
+            if (asZip) {
+                url += `zip?format=${format}`;
+            } else {
+                url += format;
+            }
+            
+            if (userIdsArray.length > 0) {
+                const queryParam = `user_ids=${userIdsArray.join(',')}`;
+                url += (url.includes('?') ? '&' : '?') + queryParam;
+            }
+            
+            if (format === 'html' && !asZip) {
+                window.open(url, '_blank');
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                const scopeDesc = userIdsArray.length > 0 ? `${userIdsArray.length} users` : "all users";
+                showToast(`Generating ${asZip ? 'ZIP archive' : format.toUpperCase()} report for ${scopeDesc}...`, "info");
+            }
         }
 
         function renderUsersTable(users) {
@@ -2233,7 +2411,7 @@
             if (users.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                        <td colspan="7" class="px-5 py-8 text-center text-slate-500">
                             No registered users found in the User database.
                         </td>
                     </tr>
@@ -2242,6 +2420,7 @@
             }
 
             tbody.innerHTML = users.map(u => {
+                const isSelected = selectedUserIds.has(u.id);
                 const isAdmin = u.role === "admin" || u.username.toLowerCase() === "df";
                 const avatarSrc = u.profile_pic ? `/api/user/profile-picture/${encodeURIComponent(u.profile_pic)}` : null;
                 const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
@@ -2249,17 +2428,20 @@
                 const loginCount = u.login_count || 0;
 
                 return `
-                    <tr class="hover:bg-slate-850/50 transition">
+                    <tr class="hover:bg-[#282a2c]/40 transition ${isSelected ? 'bg-[#0b57d0]/10' : ''}">
+                        <td class="px-4 py-3.5 text-center">
+                            <input type="checkbox" onchange="toggleUserSelection(${u.id}, event)" ${isSelected ? 'checked' : ''} class="rounded text-[#0b57d0] focus:ring-0 cursor-pointer">
+                        </td>
                         <td class="px-5 py-3.5 flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0 shadow-sm">
+                            <div class="w-8 h-8 rounded-full bg-[#131314] border border-[#282a2c] overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0 shadow-sm">
                                 ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${escapeHtml(u.username.charAt(0).toUpperCase())}'">` : `<span>${escapeHtml(u.username.charAt(0).toUpperCase())}</span>`}
                             </div>
                             <div class="min-w-0">
                                 <div class="flex items-center space-x-1.5">
-                                    <span class="font-semibold text-slate-200 truncate font-mono text-xs">${escapeHtml(u.username)}</span>
-                                    ${isAdmin ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">User</span>`}
+                                    <span class="font-semibold text-[#e3e3e3] truncate font-mono text-xs">${escapeHtml(u.username)}</span>
+                                    ${isAdmin ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#282a2c] text-[#9aa0a6]">User</span>`}
                                 </div>
-                                <span class="text-[10px] text-slate-500">ID: #${u.id}</span>
+                                <span class="text-[10px] text-[#9aa0a6]">ID: #${u.id}</span>
                             </div>
                         </td>
                         <td class="px-4 py-3.5">
@@ -2268,24 +2450,32 @@
                                 <span>${loginCount} ${loginCount === 1 ? 'login' : 'logins'}</span>
                             </span>
                         </td>
-                        <td class="px-4 py-3.5 text-slate-400 text-xs font-mono">
+                        <td class="px-4 py-3.5 text-[#9aa0a6] text-xs font-mono">
                             ${regDate}
                         </td>
-                        <td class="px-4 py-3.5 text-slate-400 text-xs font-mono">
+                        <td class="px-4 py-3.5 text-[#9aa0a6] text-xs font-mono">
                             ${lastLogin}
                         </td>
-                        <td class="px-4 py-3.5 text-slate-300 text-xs">
-                            <span class="font-semibold text-sky-400">${u.total_tabs || 0}</span> tabs / 
+                        <td class="px-4 py-3.5 text-[#e3e3e3] text-xs">
+                            <span class="font-semibold text-[#a8c7fa]">${u.total_tabs || 0}</span> tabs / 
                             <span class="font-semibold text-emerald-400">${u.total_messages || 0}</span> msgs
                         </td>
                         <td class="px-5 py-3.5 text-right">
                             <div class="inline-flex items-center justify-end space-x-1.5">
-                                <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 hover:text-sky-100 border border-sky-500/30 text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm" title="Inspect Chat History">
+                                <button onclick="openUserChatsModal(${u.id})" class="px-3 py-1.5 rounded-full bg-[#0b57d0]/20 hover:bg-[#0b57d0]/40 text-[#a8c7fa] hover:text-white border border-[#0b57d0]/30 text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm" title="Inspect Chat History">
                                     <i class="fa-solid fa-comments text-xs"></i>
                                     <span>Inspect</span>
                                 </button>
+                                <button onclick="exportQuickUserReport(${u.id}, 'pdf')" class="px-2.5 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-rose-300 hover:text-white border border-[#37393b] text-xs font-semibold transition inline-flex items-center gap-1 shadow-sm" title="Export All Chats as PDF">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                    <span class="hidden xl:inline text-[11px]">PDF</span>
+                                </button>
+                                <button onclick="exportQuickUserReport(${u.id}, 'html')" class="px-2.5 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#a8c7fa] hover:text-white border border-[#37393b] text-xs font-semibold transition inline-flex items-center gap-1 shadow-sm" title="Export All Chats as HTML">
+                                    <i class="fa-solid fa-file-code"></i>
+                                    <span class="hidden xl:inline text-[11px]">HTML</span>
+                                </button>
                                 ${!isAdmin ? `
-                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-800/60 text-xs font-semibold transition inline-flex items-center gap-1 shadow-sm" title="Delete User Account">
+                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2.5 py-1.5 rounded-full bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-800/60 text-xs font-semibold transition inline-flex items-center gap-1 shadow-sm" title="Delete User Account">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                         <span class="hidden sm:inline">Delete</span>
                                     </button>
@@ -2302,11 +2492,12 @@
             if (!container) return;
 
             if (users.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">No registered users found.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-[#9aa0a6] text-xs">No registered users found.</div>`;
                 return;
             }
 
             container.innerHTML = users.map(u => {
+                const isSelected = selectedUserIds.has(u.id);
                 const isAdmin = u.role === "admin" || u.username.toLowerCase() === "df";
                 const avatarSrc = u.profile_pic ? `/api/user/profile-picture/${encodeURIComponent(u.profile_pic)}` : null;
                 const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
@@ -2314,37 +2505,44 @@
                 const loginCount = u.login_count || 0;
 
                 return `
-                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-sm">
+                    <div class="bg-[#131314] border ${isSelected ? 'border-[#0b57d0] bg-[#0b57d0]/10' : 'border-[#282a2c]'} rounded-2xl p-4 space-y-3 shadow-sm">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0">
+                                <input type="checkbox" onchange="toggleUserSelection(${u.id}, event)" ${isSelected ? 'checked' : ''} class="rounded text-[#0b57d0] focus:ring-0 cursor-pointer mr-1">
+                                <div class="w-8 h-8 rounded-full bg-[#1e1f20] border border-[#282a2c] overflow-hidden flex items-center justify-center text-slate-300 font-bold text-xs shrink-0">
                                     ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${escapeHtml(u.username.charAt(0).toUpperCase())}'">` : `<span>${escapeHtml(u.username.charAt(0).toUpperCase())}</span>`}
                                 </div>
                                 <div>
                                     <div class="flex items-center space-x-1.5">
-                                        <span class="font-bold text-slate-200 text-xs font-mono">${escapeHtml(u.username)}</span>
-                                        ${isAdmin ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">User</span>`}
+                                        <span class="font-bold text-[#e3e3e3] text-xs font-mono">${escapeHtml(u.username)}</span>
+                                        ${isAdmin ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Admin</span>` : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#282a2c] text-[#9aa0a6]">User</span>`}
                                     </div>
-                                    <span class="text-[10px] text-slate-500">ID: #${u.id} • Registered: ${regDate}</span>
+                                    <span class="text-[10px] text-[#9aa0a6]">ID: #${u.id} • Registered: ${regDate}</span>
                                 </div>
                             </div>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
                                 <i class="fa-solid fa-right-to-bracket text-[9px]"></i>
                                 <span>${loginCount}</span>
                             </span>
                         </div>
 
-                        <div class="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 flex items-center justify-between">
+                        <div class="text-[11px] text-[#9aa0a6] border-t border-[#282a2c] pt-2.5 flex items-center justify-between">
                             <div>
-                                <span>Chat: <strong class="text-sky-300">${u.total_tabs || 0} tabs</strong>, <strong class="text-emerald-300">${u.total_messages || 0} msgs</strong></span>
+                                <span>Chat: <strong class="text-[#a8c7fa]">${u.total_tabs || 0} tabs</strong>, <strong class="text-emerald-400">${u.total_messages || 0} msgs</strong></span>
                             </div>
                             <div class="flex items-center space-x-1.5">
-                                <button onclick="openUserChatsModal(${u.id})" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm">
+                                <button onclick="openUserChatsModal(${u.id})" class="px-3 py-1 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm">
                                     <i class="fa-solid fa-comments"></i>
                                     <span>Inspect</span>
                                 </button>
+                                <button onclick="exportQuickUserReport(${u.id}, 'pdf')" class="p-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-rose-300 text-[11px] font-semibold border border-[#37393b] transition" title="Export PDF">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </button>
+                                <button onclick="exportQuickUserReport(${u.id}, 'html')" class="p-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#a8c7fa] text-[11px] font-semibold border border-[#37393b] transition" title="Export HTML">
+                                    <i class="fa-solid fa-file-code"></i>
+                                </button>
                                 ${!isAdmin ? `
-                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-[11px] font-semibold border border-rose-800/60 transition flex items-center gap-1 shadow-sm">
+                                    <button onclick="promptDeleteUser(${u.id}, '${escapeAttr(u.username)}')" class="px-2 py-1 rounded-full bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-[11px] font-semibold border border-rose-800/60 transition flex items-center gap-1 shadow-sm">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                 ` : ''}
@@ -2410,8 +2608,8 @@
             const chatMessagesContainer = document.getElementById("modalChatMessagesContainer");
 
             modal.classList.remove("hidden");
-            tabsListEl.innerHTML = `<div class="py-8 text-center text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading sessions...</div>`;
-            chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading message history...</div>`;
+            tabsListEl.innerHTML = `<div class="py-8 text-center text-[#9aa0a6] text-xs"><i class="fa-solid fa-spinner fa-spin mr-1 text-[#a8c7fa]"></i> Loading sessions...</div>`;
+            chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-[#9aa0a6] text-xs"><i class="fa-solid fa-spinner fa-spin mr-1 text-[#a8c7fa]"></i> Loading message history...</div>`;
 
             try {
                 const res = await fetch(`/api/admin/users/${userId}/chats`);
@@ -2435,7 +2633,7 @@
 
                     usernameEl.textContent = `${u.username} (ID: #${u.id})`;
                     roleBadgeEl.textContent = isAdmin ? "Admin" : "User";
-                    roleBadgeEl.className = isAdmin ? "px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30" : "px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-950 text-sky-300 border border-sky-800";
+                    roleBadgeEl.className = isAdmin ? "px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30" : "px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]";
 
                     loginsEl.innerHTML = `<i class="fa-solid fa-right-to-bracket text-amber-400 mr-1"></i>${u.login_count || 0} logins`;
                     regEl.textContent = `Joined: ${u.created_at ? new Date(u.created_at).toLocaleDateString() : '--'}`;
@@ -2452,7 +2650,7 @@
                     } else {
                         document.getElementById("modalActiveTabTitle").textContent = "No active tabs";
                         document.getElementById("modalActiveTabMsgCount").textContent = "0 messages";
-                        chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-slate-500 text-xs">This user has not created any chat sessions yet.</div>`;
+                        chatMessagesContainer.innerHTML = `<div class="py-16 text-center text-[#9aa0a6] text-xs">This user has not created any chat sessions yet.</div>`;
                     }
                 } else {
                     showToast(data.error || "Failed to load user chats", "error");
@@ -2476,22 +2674,22 @@
             if (!container) return;
 
             if (!tabs || tabs.length === 0) {
-                container.innerHTML = `<div class="py-6 text-center text-slate-500 text-xs">No chat tabs found.</div>`;
+                container.innerHTML = `<div class="py-6 text-center text-[#9aa0a6] text-xs">No chat tabs found.</div>`;
                 return;
             }
 
             container.innerHTML = tabs.map(t => {
                 const isActive = t.id === currentModalActiveTabId;
-                const activeClass = isActive ? "bg-sky-600/20 text-sky-300 border-sky-500/40" : "bg-slate-850/60 hover:bg-slate-800 text-slate-300 border-slate-800/80";
+                const activeClass = isActive ? "bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff] font-semibold" : "text-[#e3e3e3] hover:bg-[#282a2c]/60 font-medium";
                 const createdStr = t.created_at ? new Date(t.created_at).toLocaleDateString() : '';
 
                 return `
-                    <button onclick="selectUserChatTab('${t.id}')" id="modalTabBtn_${t.id}" class="w-full text-left p-2.5 rounded-xl border ${activeClass} transition flex items-center justify-between group">
+                    <button onclick="selectUserChatTab('${t.id}')" id="modalTabBtn_${t.id}" class="w-full text-left p-3 rounded-full ${activeClass} transition flex items-center justify-between group">
                         <div class="min-w-0 flex-1 pr-2">
-                            <p class="text-xs font-semibold truncate ${isActive ? 'text-sky-300' : 'text-slate-200 group-hover:text-white'}">${escapeHtml(t.title || 'Untitled Tab')}</p>
-                            <span class="text-[10px] text-slate-500 font-mono">${createdStr}</span>
+                            <p class="text-xs truncate">${escapeHtml(t.title || 'Untitled Tab')}</p>
+                            <span class="text-[10px] opacity-70 font-mono">${createdStr}</span>
                         </div>
-                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${isActive ? 'bg-sky-500/30 text-sky-200' : 'bg-slate-800 text-slate-400'}">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-[#282a2c] text-[#9aa0a6]'}">
                             ${t.messages ? t.messages.length : 0}
                         </span>
                     </button>
@@ -2511,7 +2709,7 @@
                 const btn = document.getElementById(`modalTabBtn_${t.id}`);
                 if (btn) {
                     const isCur = t.id === tabId;
-                    btn.className = `w-full text-left p-2.5 rounded-xl border ${isCur ? 'bg-sky-600/20 text-sky-300 border-sky-500/40' : 'bg-slate-850/60 hover:bg-slate-800 text-slate-300 border-slate-800/80'} transition flex items-center justify-between group`;
+                    btn.className = `w-full text-left p-3 rounded-full ${isCur ? 'bg-[#c2e7ff] text-[#001d35] dark:bg-[#004a77] dark:text-[#c2e7ff] font-semibold' : 'text-[#e3e3e3] hover:bg-[#282a2c]/60 font-medium'} transition flex items-center justify-between group`;
                 }
             });
 
@@ -2524,7 +2722,7 @@
             const container = document.getElementById("modalChatMessagesContainer");
             if (!targetTab.messages || targetTab.messages.length === 0) {
                 container.innerHTML = `
-                    <div class="py-16 text-center text-slate-500 text-xs">
+                    <div class="py-16 text-center text-[#9aa0a6] text-xs">
                         <i class="fa-solid fa-comments text-2xl text-slate-600 mb-2"></i>
                         <p>This tab is empty. No questions have been sent yet.</p>
                     </div>
@@ -2540,11 +2738,11 @@
                     let attachmentsHtml = '';
                     if (m.attachments && m.attachments.length > 0) {
                         attachmentsHtml = `
-                            <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-sky-500/30">
+                            <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-white/20">
                                 ${m.attachments.map(att => {
                                     if (att.type === 'pdf') {
                                         return `
-                                            <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-950 text-sky-200 text-xs font-semibold border border-sky-500/40 hover:bg-sky-900 transition">
+                                            <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-semibold hover:bg-white/30 transition">
                                                 <i class="fa-solid fa-file-pdf text-rose-300 text-xs"></i>
                                                 <span class="truncate max-w-[120px]">${escapeHtml(att.name || 'Document.pdf')}</span>
                                                 <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
@@ -2552,7 +2750,7 @@
                                         `;
                                     } else {
                                         return `
-                                            <div class="relative group max-w-[100px] max-h-[80px] rounded-lg overflow-hidden border border-sky-400/40 cursor-pointer shadow-sm" onclick="openImageLightbox('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
+                                            <div class="relative group max-w-[100px] max-h-[80px] rounded-xl overflow-hidden border border-white/30 cursor-pointer shadow-sm" onclick="openImageLightbox('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
                                                 <img src="${att.url}" alt="Attachment" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
                                             </div>
                                         `;
@@ -2565,13 +2763,13 @@
                     return `
                         <div class="flex items-start justify-end space-x-2.5 max-w-4xl mx-auto">
                             <div class="space-y-1 text-right">
-                                <div class="bg-sky-600 text-white rounded-2xl rounded-tr-sm p-3.5 text-xs text-left shadow-md break-words max-w-xl">
+                                <div class="bg-[#0b57d0] text-white rounded-[24px] rounded-tr-md p-4 text-xs text-left shadow-sm break-words max-w-xl">
                                     ${attachmentsHtml}
                                     <p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(m.content)}</p>
                                 </div>
-                                <span class="text-[10px] text-slate-500 font-mono px-1">${timeStr}</span>
+                                <span class="text-[10px] text-[#9aa0a6] font-mono px-1">${timeStr}</span>
                             </div>
-                            <div class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 text-xs font-bold">
+                            <div class="w-8 h-8 rounded-full bg-[#1e1f20] border border-[#282a2c] flex items-center justify-center text-slate-300 shrink-0 text-xs font-bold shadow-sm">
                                 <i class="fa-solid fa-user"></i>
                             </div>
                         </div>
@@ -2583,27 +2781,27 @@
 
                     return `
                         <div class="flex items-start space-x-2.5 max-w-4xl mx-auto">
-                            <div class="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0 text-xs">
-                                <i class="fa-solid fa-robot"></i>
+                            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] flex items-center justify-center text-white shrink-0 text-xs shadow-sm">
+                                <i class="fa-solid fa-sparkles"></i>
                             </div>
                             <div class="space-y-2 max-w-2xl min-w-0">
-                                <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 shadow-sm leading-relaxed space-y-2 break-words">
+                                <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] rounded-tl-md p-4 text-xs text-[#e3e3e3] shadow-sm leading-relaxed space-y-2 break-words">
                                     <div>${formattedAnswer}</div>
                                     
                                     ${hasCitations ? `
-                                        <div class="pt-2 border-t border-slate-800 flex flex-wrap items-center gap-1.5 text-[11px]">
-                                            <span class="text-slate-400 font-semibold"><i class="fa-solid fa-book-bookmark text-sky-400 mr-1"></i> Citations:</span>
+                                        <div class="pt-3 border-t border-[#282a2c] flex flex-wrap items-center gap-1.5 text-[11px]">
+                                            <span class="text-[#9aa0a6] font-semibold"><i class="fa-solid fa-book-bookmark text-[#a8c7fa] mr-1"></i> Sources:</span>
                                             ${m.citations.map(c => `
-                                                <a href="${c.url}" target="_blank" class="px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800 hover:bg-sky-900 text-[10px] font-mono transition flex items-center gap-1">
+                                                <a href="${c.url}" target="_blank" class="px-2.5 py-1 rounded-full bg-[#c2e7ff]/20 text-[#a8c7fa] border border-[#0b57d0]/30 hover:bg-[#c2e7ff]/30 text-[10px] font-mono transition flex items-center gap-1">
                                                     <i class="fa-solid fa-file-pdf text-rose-400"></i> ${escapeHtml(c.manual)}, p.${c.page_number}
                                                 </a>
                                             `).join('')}
                                         </div>
                                     ` : ''}
                                 </div>
-                                <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono px-1">
+                                <div class="flex items-center justify-between text-[10px] text-[#9aa0a6] font-mono px-1">
                                     <span>${timeStr}</span>
-                                    ${hasTopK ? `<span class="text-slate-400"><i class="fa-solid fa-images text-sky-400 mr-0.5"></i> ${m.top_k.length} candidate pages</span>` : ''}
+                                    ${hasTopK ? `<span class="text-[#9aa0a6]"><i class="fa-solid fa-images text-[#a8c7fa] mr-0.5"></i> ${m.top_k.length} candidate pages</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -2618,12 +2816,65 @@
             return rawAnswer.replace(regex, (match, manualTitle, pageNum) => {
                 const cleanManual = manualTitle.trim();
                 const cleanPage = pageNum.trim();
-                return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded bg-sky-500/15 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-[11px] font-mono transition no-underline" title="Open PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i> <span>${cleanManual}, p.${cleanPage}</span></a>`;
+                return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-full bg-[#c2e7ff]/20 hover:bg-[#c2e7ff]/30 text-[#a8c7fa] border border-[#0b57d0]/30 text-[11px] font-mono transition no-underline" title="Open PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i> <span>${cleanManual}, p.${cleanPage}</span></a>`;
             });
+        }
+
+        function toggleExportDropdown(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById("modalExportMenu");
+            if (menu) menu.classList.toggle("hidden");
+        }
+
+        function closeExportDropdown() {
+            const menu = document.getElementById("modalExportMenu");
+            if (menu) menu.classList.add("hidden");
+        }
+
+        function exportUserReport(format, tabId = null) {
+            if (!currentModalUserChats || !currentModalUserChats.id) {
+                showToast("No active user selected for export", "error");
+                return;
+            }
+            closeExportDropdown();
+
+            const userId = currentModalUserChats.id;
+            let url = `/api/admin/users/${userId}/export/${format}`;
+            if (tabId) {
+                url += `?tab_id=${encodeURIComponent(tabId)}`;
+            }
+
+            if (format === 'html') {
+                window.open(url, '_blank');
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`Generating ${tabId ? 'single tab' : 'full'} PDF report...`, "info");
+            }
+        }
+
+        function exportQuickUserReport(userId, format) {
+            let url = `/api/admin/users/${userId}/export/${format}`;
+            if (format === 'html') {
+                window.open(url, '_blank');
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast("Generating PDF report...", "info");
+            }
         }
 
         function closeUserChatsModal() {
             document.getElementById("userChatsModal").classList.add("hidden");
+            closeExportDropdown();
             currentModalUserChats = null;
             currentModalActiveTabId = null;
         }
@@ -2643,9 +2894,26 @@
             return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         }
 
+        // Close dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            const exportBtn = document.getElementById('modalExportBtn');
+            const exportMenu = document.getElementById('modalExportMenu');
+            if (exportMenu && !exportMenu.contains(e.target) && (!exportBtn || !exportBtn.contains(e.target))) {
+                closeExportDropdown();
+            }
+
+            const batchBtn = document.getElementById('btnBatchExportUsers');
+            const batchMenu = document.getElementById('batchExportDropdownMenu');
+            if (batchMenu && !batchMenu.contains(e.target) && (!batchBtn || !batchBtn.contains(e.target))) {
+                closeBatchExportMenu();
+            }
+        });
+
         // Close modals on Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                closeExportDropdown();
+                closeBatchExportMenu();
                 closeUserChatsModal();
                 closePageManager();
                 closeImageLightbox();

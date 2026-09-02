@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>DFleet 4.0 — DF Automation Multimodal Assistant</title>
+    <title>DF Chatbot — DF Automation Multimodal Assistant</title>
     <link rel="icon" type="image/png" href="/static/df_logo_badge.png">
     <!-- Immediate Theme Pre-loader (Default: Dark, with Light & Follow System support) -->
     <script>
@@ -26,6 +26,10 @@
             }
         })();
     </script>
+    <!-- Google Fonts: Google Sans / Plus Jakarta Sans & Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Marked.js for Markdown parsing -->
@@ -37,23 +41,35 @@
             darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['"Google Sans"', '"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                        mono: ['"Roboto Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    },
                     colors: {
-                        df: {
-                            50: '#edfcfb',
-                            100: '#d1f7f5',
-                            200: '#a8eeec',
-                            300: '#6ee0dd',
-                            400: '#2ec8c5',
-                            500: '#00b5b8',  /* Official DFleet Manual Cyan */
-                            600: '#00979b',
-                            700: '#00787c',
-                            800: '#065f63',
-                            900: '#0b4e51',
-                            950: '#022d30'
+                        google: {
+                            blue: '#0b57d0',
+                            blueHover: '#0842a0',
+                            blueLight: '#c2e7ff',
+                            blueDark: '#004a77',
+                            surfaceLight: '#f0f4f9',
+                            cardLight: '#ffffff',
+                            borderLight: '#e0e3e7',
+                            surfaceDark: '#131314',
+                            cardDark: '#1e1f20',
+                            cardDarkHover: '#282a2c',
+                            borderDark: '#2d2f31',
+                            textDark: '#e3e3e3'
                         },
-                        slate: {
-                            850: '#151f32',
-                            950: '#070b14'
+                        df: {
+                            500: '#00b5b8',
+                            600: '#00979b',
+                            700: '#00787c'
+                        },
+                        gemini: {
+                            blue: '#1a73e8',
+                            purple: '#7c3aed',
+                            pink: '#db2777',
+                            sparkle: '#38bdf8'
                         }
                     },
                     screens: {
@@ -64,472 +80,321 @@
         }
     </script>
     <style>
+        /* Base typography */
+        body, button, input, textarea, select {
+            font-family: 'Google Sans', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         /* Safe area support for iOS notches & home indicator */
         .pb-safe {
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
         }
-        /* Custom scrollbar in light and dark mode */
+
+        /* Desktop Sidebar Collapse Transition */
+        @media (min-width: 1024px) {
+            #sidebar.sidebar-collapsed {
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+                padding: 0 !important;
+                margin-left: 0 !important;
+                border-right: none !important;
+                overflow: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+        }
+        /* Google Style Minimalist scrollbar in light and dark mode */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #f0f7fc;
-        }
-        .dark ::-webkit-scrollbar-track {
-            background: #070b14;
+            background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: #9ec4e8;
-            border-radius: 4px;
+            background: #dadce0;
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
         .dark ::-webkit-scrollbar-thumb {
-            background: #334155;
+            background: #3c4043;
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #00b5b8;
+            background: #bdc1c6;
+            background-clip: content-box;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #5f6368;
+            background-clip: content-box;
         }
 
-        /* Prose Markdown Styling (Dual Light / Dark) */
+        /* Gemini Prose Markdown Styling */
         .prose pre {
-            background-color: #0f1f2e;
-            color: #e2e8f0;
-            padding: 0.85rem 1.1rem;
-            border-radius: 0.75rem;
+            background-color: #1e1f20;
+            color: #e3e3e3;
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
             overflow-x: auto;
-            border: 1px solid #1e3a5f;
-            margin: 0.75rem 0;
+            border: 1px solid #37393b;
+            margin: 0.85rem 0;
             font-size: 0.825rem;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
         }
-        .dark .prose pre {
-            background-color: #070b14;
-            border: 1px solid #1e293b;
+        .light .prose pre {
+            background-color: #f0f4f9;
+            color: #1f1f1f;
+            border: 1px solid #e0e3e7;
         }
         .prose code {
-            color: #00787c;
+            color: #0b57d0;
             font-weight: 600;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            background-color: #e0f7f7;
-            border: 1px solid #a8eeec;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+            background-color: #edf2fa;
+            border: 1px solid #c2e7ff;
             padding: 0.15rem 0.4rem;
             border-radius: 0.35rem;
             font-size: 0.85em;
         }
         .dark .prose code {
-            color: #38f2f5;
-            background-color: rgba(0, 181, 184, 0.15);
-            border: 1px solid rgba(0, 181, 184, 0.3);
+            color: #a8c7fa;
+            background-color: #282a2c;
+            border: 1px solid #37393b;
         }
         .prose pre code {
             background-color: transparent;
             border: none;
             padding: 0;
-            color: #e2e8f0;
+            color: inherit;
             font-weight: normal;
         }
         .prose p {
             margin-bottom: 0.75rem;
-            line-height: 1.65;
-            color: #1e293b;
+            line-height: 1.68;
+            color: #1f1f1f;
         }
         .dark .prose p {
-            color: #e2e8f0;
+            color: #e3e3e3;
         }
         .prose ul, .prose ol {
             margin-left: 1.25rem;
             margin-bottom: 0.75rem;
-            line-height: 1.6;
-            color: #475569;
+            line-height: 1.65;
+            color: #444746;
         }
         .dark .prose ul, .dark .prose ol {
-            color: #cbd5e1;
+            color: #c4c7c5;
         }
         .prose ul { list-style-type: disc; }
         .prose ol { list-style-type: decimal; }
         .prose table {
             width: 100%;
             border-collapse: collapse;
-            margin: 0.75rem 0;
+            margin: 0.85rem 0;
             font-size: 0.825rem;
+            border-radius: 0.75rem;
+            overflow: hidden;
         }
         .prose th, .prose td {
-            border: 1px solid #cbd5e1;
-            padding: 0.55rem 0.8rem;
+            border: 1px solid #e0e3e7;
+            padding: 0.6rem 0.85rem;
             text-align: left;
         }
         .dark .prose th, .dark .prose td {
-            border: 1px solid #334155;
+            border: 1px solid #37393b;
         }
         .prose th {
-            background-color: #f1f8fc;
-            color: #0f2942;
+            background-color: #f0f4f9;
+            color: #1f1f1f;
             font-weight: 700;
         }
         .dark .prose th {
-            background-color: #151f32;
-            color: #f8fafc;
+            background-color: #282a2c;
+            color: #e3e3e3;
         }
         .prose tr:nth-child(even) td {
-            background-color: #f8fbfe;
+            background-color: #f8fafd;
         }
         .dark .prose tr:nth-child(even) td {
-            background-color: rgba(15, 23, 42, 0.6);
+            background-color: #1a1b1c;
         }
         .prose blockquote {
-            border-left: 4px solid #00b5b8;
-            padding-left: 0.85rem;
-            color: #475569;
-            background-color: #f0fbfb;
+            border-left: 4px solid #0b57d0;
+            padding-left: 0.9rem;
+            color: #444746;
+            background-color: #edf2fa;
             padding-top: 0.4rem;
             padding-bottom: 0.4rem;
-            border-radius: 0 0.4rem 0.4rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
             margin: 0.75rem 0;
             font-style: italic;
         }
         .dark .prose blockquote {
-            color: #94a3b8;
-            background-color: rgba(0, 181, 184, 0.08);
+            border-left-color: #a8c7fa;
+            color: #c4c7c5;
+            background-color: #282a2c;
         }
     </style>
 </head>
-<body class="bg-[#f0f7fc] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex h-full overflow-hidden font-sans antialiased transition-colors duration-200">
+<body class="bg-[#f0f4f9] dark:bg-[#131314] text-slate-800 dark:text-[#e3e3e3] flex h-full overflow-hidden font-sans antialiased transition-colors duration-200">
 
     <!-- Mobile / Tablet Sidebar Backdrop Overlay -->
     <div id="sidebarOverlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden hidden transition-opacity duration-300 opacity-0"></div>
 
     <!-- Sidebar Drawer (Docked on Desktop lg+, Off-canvas Drawer on Mobile/Tablet) -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-sky-100 dark:border-slate-800 flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:z-auto shrink-0 shadow-2xl lg:shadow-sm">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 sm:w-80 max-w-[85vw] bg-[#f0f4f9] dark:bg-[#1e1f20] border-r border-[#e0e3e7] dark:border-[#282a2c] flex flex-col justify-between transform -translate-x-full transition-all duration-300 ease-in-out lg:static lg:translate-x-0 lg:z-auto shrink-0 shadow-2xl lg:shadow-none">
         
-        <div class="p-4 sm:p-5 flex flex-col h-full overflow-y-auto">
-            <!-- Brand Header & Close Button on Mobile -->
-            <div class="flex items-center justify-between mb-4 sm:mb-5 pb-3 border-b border-sky-100 dark:border-slate-800">
-                <div class="flex items-center space-x-3">
-                    <!-- DF Automation Logo Badge from DFleet 4.0 Manual Cover -->
-                    <div class="w-10 h-10 rounded-xl bg-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/20 shrink-0">
+        <!-- Top Bar: Brand & New Chat -->
+        <div class="p-3.5 sm:p-4 border-b border-[#e0e3e7] dark:border-[#282a2c] flex flex-col gap-3 shrink-0">
+            <!-- Brand & Close/Toggle -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1.5 flex items-center justify-center shadow-md shadow-[#00b5b8]/30 shrink-0">
                         <img src="/static/df_logo_white.png" alt="DF Automation Logo" class="w-full h-full object-contain">
                     </div>
                     <div>
                         <div class="flex items-center gap-1.5">
-                            <span class="font-extrabold text-base tracking-tight text-[#00b5b8]">DFleet</span>
-                            <span class="font-black text-base text-slate-900 dark:text-white">4.0</span>
+                            <span class="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">DF <span class="text-[#00787c] dark:text-[#00b5b8]">Chatbot</span></span>
                         </div>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold tracking-wide uppercase">DF Automation Assistant</p>
+                        <p class="text-[10px] text-slate-500 dark:text-[#9aa0a6] font-semibold tracking-wider">DF Automation</p>
                     </div>
                 </div>
 
-                <!-- Close button (Visible only on mobile/tablet) -->
-                <button onclick="closeMobileSidebar()" class="lg:hidden text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Close menu">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Theme Switcher: Light / Dark (Default) / Follow System -->
-            <div class="mb-4 bg-[#f4f9fd] dark:bg-slate-850 border border-sky-200/80 dark:border-slate-800 rounded-xl p-2.5 shadow-sm">
-                <div class="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 px-0.5">
-                    <span class="flex items-center gap-1.5">
-                        <i class="fa-solid fa-circle-half-stroke text-[#00b5b8]"></i>
-                        <span>Appearance</span>
-                    </span>
-                    <span id="activeThemeIndicator" class="text-[10px] font-bold text-[#00787c] dark:text-[#38f2f5] font-mono capitalize">Dark</span>
-                </div>
-                <div class="grid grid-cols-3 gap-1 bg-white/80 dark:bg-slate-950 p-1 rounded-lg border border-sky-200/70 dark:border-slate-800 text-xs">
-                    <button type="button" onclick="setTheme('light')" id="themeBtnLight" 
-                            class="py-1.5 px-2 rounded-md font-bold flex items-center justify-center gap-1 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Light theme">
-                        <i class="fa-solid fa-sun text-amber-500 text-xs"></i>
-                        <span>Light</span>
+                <div class="flex items-center space-x-1">
+                    <!-- Collapse Sidebar Button (Desktop) -->
+                    <button onclick="toggleSidebar()" class="hidden lg:flex w-8 h-8 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#282a2c] items-center justify-center transition text-xs" title="Hide Sidebar">
+                        <i class="fa-solid fa-bars-staggered"></i>
                     </button>
-                    <button type="button" onclick="setTheme('dark')" id="themeBtnDark" 
-                            class="py-1.5 px-2 rounded-md font-bold flex items-center justify-center gap-1 transition bg-[#00b5b8] text-white shadow-sm" title="Dark theme (Default)">
-                        <i class="fa-solid fa-moon text-sky-200 text-xs"></i>
-                        <span>Dark</span>
-                    </button>
-                    <button type="button" onclick="setTheme('system')" id="themeBtnSystem" 
-                            class="py-1.5 px-2 rounded-md font-bold flex items-center justify-center gap-1 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Follow laptop background theme">
-                        <i class="fa-solid fa-laptop text-slate-400 text-xs"></i>
-                        <span>System</span>
+                    <!-- Close button (Mobile/Tablet) -->
+                    <button onclick="closeMobileSidebar()" class="lg:hidden w-8 h-8 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#282a2c] flex items-center justify-center transition" title="Close menu">
+                        <i class="fa-solid fa-xmark text-sm"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- User Auth Bar / Badge in Sidebar -->
-            <div class="mb-4 bg-[#f4f9fd] dark:bg-slate-850 border border-sky-200/80 dark:border-slate-800 rounded-xl p-3 shadow-sm">
-                <div id="sidebarUserLoggedIn" class="hidden flex items-center justify-between">
-                    <div class="flex items-center space-x-2.5 min-w-0">
-                        <div class="relative group cursor-pointer" onclick="openProfilePicModal()" title="Click to upload/change profile picture">
-                            <div id="userAvatarContainer" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00b5b8] bg-[#e0f7f7] dark:bg-slate-800 text-[#00787c] dark:text-[#38f2f5] flex items-center justify-center text-xs font-bold font-mono shrink-0 shadow-sm">
-                                <span id="userInitial">U</span>
-                            </div>
-                            <div class="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white text-[10px]">
-                                <i class="fa-solid fa-camera"></i>
-                            </div>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-1">
-                                <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" id="sidebarUsername">User</p>
-                                <button onclick="openProfilePicModal()" class="text-slate-400 hover:text-[#00b5b8] text-[10px] p-0.5" title="Change Photo">
-                                    <i class="fa-solid fa-pen-to-square"></i>
-                                </button>
-                            </div>
-                            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
-                                <span id="sidebarUserRole">Online</span>
-                            </p>
-                        </div>
-                    </div>
-                    <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition text-xs shadow-none hover:shadow-sm" title="Log Out">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </button>
-                </div>
+            <!-- Google Drive / Gemini style Compose New Chat button -->
+            <button onclick="createNewTab()" class="w-full py-2.5 px-4 rounded-full bg-[#c2e7ff] hover:bg-[#b0d8f5] dark:bg-[#004a77] dark:hover:bg-[#005b94] text-[#001d35] dark:text-[#c2e7ff] text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow transition active:scale-[0.98]" title="Open new chat with fresh memory">
+                <i class="fa-solid fa-plus text-xs text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                <span>New Chat</span>
+            </button>
+        </div>
 
-                <div id="sidebarUserLoggedOut" class="flex flex-col gap-2">
-                    <div class="text-[11px] text-slate-500 dark:text-slate-400 text-center font-medium">Log in to save multiple chat tabs & history.</div>
-                    <button onclick="openAuthModal('login')" class="w-full py-1.5 px-3 rounded-lg bg-[#00b5b8] hover:bg-[#00979b] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md shadow-[#00b5b8]/20 transition active:scale-[0.99]">
-                        <i class="fa-solid fa-user-lock"></i>
-                        <span>Log In / Create Account</span>
-                    </button>
-                </div>
+        <!-- Middle: Full Chat Tabs List -->
+        <div class="flex-1 flex flex-col min-h-0 p-3 sm:p-4 overflow-hidden">
+            <div class="flex items-center justify-between mb-2.5 px-2 text-[11px] font-bold text-slate-500 dark:text-[#9aa0a6] uppercase tracking-wider shrink-0">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-regular fa-folder-open text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                    <span>Conversations</span>
+                </span>
+                <span id="sidebarTabsCountBadge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#dfe3e8] dark:bg-[#282a2c] text-slate-700 dark:text-[#c4c7c5]">0</span>
             </div>
 
-            <!-- Chat Tabs Section (Multi-Tab Manager) -->
-            <div class="mb-4">
-                <div class="flex items-center justify-between mb-2 px-0.5">
-                    <h2 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="fa-solid fa-folder-open text-[#00b5b8]"></i>
-                        <span>Chat Tabs</span>
-                    </h2>
-                    <button onclick="createNewTab()" class="px-2.5 py-1 rounded-lg bg-[#e0f7f7] dark:bg-[#00b5b8]/15 hover:bg-[#c5f2f0] dark:hover:bg-[#00b5b8]/30 border border-[#a8eeec] dark:border-[#00b5b8]/30 text-[#00787c] dark:text-[#38f2f5] text-[11px] font-bold flex items-center gap-1 transition shadow-sm" title="Open new chat tab with fresh memory">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                        <span>New Tab</span>
-                    </button>
+            <!-- Scrollable Tabs List -->
+            <div id="tabsListContainer" class="flex-1 overflow-y-auto space-y-1 pr-0.5">
+                <div class="p-3 text-center text-slate-400 dark:text-[#9aa0a6] text-xs">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading chats...
                 </div>
-
-                <!-- Tabs Scroll List -->
-                <div id="tabsListContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-                    <div class="p-2 text-center text-slate-400 dark:text-slate-500 text-xs">
-                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading tabs...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Admin Link Button -->
-            <div class="mb-4">
-                <a href="/admin" class="w-full py-2.5 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm active:scale-[0.99]">
-                    <i class="fa-solid fa-sliders text-amber-500 dark:text-amber-400"></i>
-                    <span>Admin Management Console</span>
-                </a>
-            </div>
-
-            <!-- Status Card -->
-            <div class="bg-[#f4f9fd] dark:bg-slate-850 border border-sky-200/70 dark:border-slate-800 rounded-xl p-3.5 mb-4 sm:mb-5 shadow-sm">
-                <div class="flex items-center justify-between text-xs mb-2">
-                    <span class="text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                        <i class="fa-solid fa-database text-[#00b5b8]"></i>
-                        <span>Vector Store</span>
-                    </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/50">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1.5 animate-pulse"></span>
-                        Active
-                    </span>
-                </div>
-                <div class="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 flex justify-between py-1 border-t border-sky-100 dark:border-slate-800">
-                    <span class="text-slate-500 dark:text-slate-400">Indexed Pages:</span>
-                    <span id="indexedPagesCount" class="font-bold text-[#00787c] dark:text-[#38f2f5]">...</span>
-                </div>
-                <div class="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 flex justify-between py-1 border-t border-sky-100 dark:border-slate-800">
-                    <span class="text-slate-500 dark:text-slate-400">Embed Model:</span>
-                    <span class="font-mono text-slate-700 dark:text-slate-300 font-semibold">gemini-embedding-2</span>
-                </div>
-                <div class="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 flex justify-between py-1 border-t border-sky-100 dark:border-slate-800">
-                    <span class="text-slate-500 dark:text-slate-400">QA Model:</span>
-                    <span id="qaModelName" class="font-mono text-slate-700 dark:text-slate-300 truncate max-w-[140px] font-semibold" title="gemini-3.5-flash-lite">gemini-3.5-flash-lite</span>
-                </div>
-            </div>
-
-            <!-- Retrieval Controls: Multi-Manual Selection -->
-            <div class="space-y-3.5 sm:space-y-4 mb-5">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="fa-solid fa-filter text-[#00b5b8]"></i>
-                        <span>Target Manuals</span>
-                    </h2>
-                    <span id="sidebarManualCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30">All</span>
-                </div>
-                
-                <div class="bg-[#f4f9fd] dark:bg-slate-850 border border-sky-200/80 dark:border-slate-800 rounded-xl p-2.5 space-y-1.5 shadow-sm">
-                    <div class="flex items-center justify-between pb-1.5 mb-1 border-b border-sky-200 dark:border-slate-800 text-[11px]">
-                        <label class="flex items-center space-x-2 cursor-pointer font-bold text-slate-700 dark:text-slate-200 select-none">
-                            <input type="checkbox" id="selectAllSidebarManuals" onchange="toggleAllManuals(this.checked)" checked
-                                   class="w-3.5 h-3.5 rounded text-[#00b5b8] bg-white dark:bg-slate-900 border-sky-300 dark:border-slate-700 focus:ring-[#00b5b8] cursor-pointer">
-                            <span>Select All</span>
-                        </label>
-                        <button type="button" onclick="clearAllManuals()" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition">Clear All</button>
-                    </div>
-                    
-                    <div id="sidebarManualsChecklist" class="space-y-1 max-h-48 overflow-y-auto pr-0.5">
-                        <div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">Loading manuals...</div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-xs text-slate-700 dark:text-slate-300 mb-1.5 font-semibold">
-                <div>
-                    <div class="flex justify-between text-xs text-slate-700 dark:text-slate-300 mb-1.5 font-semibold">
-                        <label for="topKSlider">Top-K Seed Pages:</label>
-                        <span id="topKValue" class="font-bold text-[#00787c] dark:text-[#38f2f5]">5</span>
-                    </div>
-                    <input type="range" id="topKSlider" min="1" max="15" value="5" 
-                           class="w-full h-2 bg-sky-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#00b5b8]">
-                </div>
-
-                <div class="flex items-center justify-between pt-0.5">
-                    <label for="showScoresToggle" class="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">Show Similarity Scores</label>
-                    <input type="checkbox" id="showScoresToggle" checked 
-                           class="w-4 h-4 rounded text-[#00b5b8] bg-white dark:bg-slate-900 border-sky-300 dark:border-slate-700 focus:ring-[#00b5b8] cursor-pointer">
-                </div>
-
-                <!-- AI Visual Output Mode Switcher in Sidebar -->
-                <div class="pt-2 border-t border-sky-100 dark:border-slate-800 space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-images text-[#00b5b8]"></i>
-                            <span>AI Visual Output</span>
-                        </label>
-                        <span id="sidebarVisualModeBadge" class="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30">Strict</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 bg-[#e0effa]/50 dark:bg-slate-900 p-1 rounded-xl border border-sky-200 dark:border-slate-800 text-[10px] font-bold shadow-inner">
-                        <button type="button" onclick="setVisualMode('strict')" id="vModeBtnStrict" 
-                                class="py-1.5 px-1 rounded-lg transition text-center bg-[#00b5b8] text-white shadow-sm" title="Show photo if directly cited in answer">
-                            Strict
-                        </button>
-                        <button type="button" onclick="setVisualMode('nearest')" id="vModeBtnNearest" 
-                                class="py-1.5 px-1 rounded-lg transition text-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Show photo as near as possible (might have hallucination)">
-                            Nearest
-                        </button>
-                        <button type="button" onclick="setVisualMode('off')" id="vModeBtnOff" 
-                                class="py-1.5 px-1 rounded-lg transition text-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Hide visual preview photos">
-                            Off
-                        </button>
-                    </div>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight" id="visualModeDesc">
-                        <i class="fa-solid fa-check text-emerald-500 mr-0.5"></i> Strict: Show photo if cited in page.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Quick Suggestions -->
-            <div class="mb-4">
-                <h2 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2.5">Sample Questions</h2>
-                <div class="space-y-2">
-                    <button onclick="setQueryAndClose('How do I calibrate the sensor array?')" 
-                            class="w-full text-left text-xs bg-[#f4f9fd] dark:bg-slate-850 hover:bg-[#e0f7f7] dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#00787c] dark:hover:text-white p-2.5 rounded-lg border border-sky-200/80 dark:border-slate-800 hover:border-[#a8eeec] dark:hover:border-slate-700 transition font-medium shadow-sm">
-                        <i class="fa-solid fa-compass text-[#00b5b8] mr-1.5"></i> How do I calibrate the sensor array?
-                    </button>
-                    <button onclick="setQueryAndClose('How to troubleshoot pallet docking issues?')" 
-                            class="w-full text-left text-xs bg-[#f4f9fd] dark:bg-slate-850 hover:bg-[#e0f7f7] dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#00787c] dark:hover:text-white p-2.5 rounded-lg border border-sky-200/80 dark:border-slate-800 hover:border-[#a8eeec] dark:hover:border-slate-700 transition font-medium shadow-sm">
-                        <i class="fa-solid fa-wrench text-[#00b5b8] mr-1.5"></i> Pallet docking troubleshooting?
-                    </button>
-                    <button onclick="setQueryAndClose('Explain critical NavWiz parameters for AGV obstacle sensors.')" 
-                            class="w-full text-left text-xs bg-[#f4f9fd] dark:bg-slate-850 hover:bg-[#e0f7f7] dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#00787c] dark:hover:text-white p-2.5 rounded-lg border border-sky-200/80 dark:border-slate-800 hover:border-[#a8eeec] dark:hover:border-slate-700 transition font-medium shadow-sm">
-                        <i class="fa-solid fa-sliders text-[#00b5b8] mr-1.5"></i> Critical obstacle sensor parameters?
-                    </button>
-                </div>
-            </div>
-
-            <!-- Bottom Actions Bar -->
-            <div class="mt-auto pt-4 border-t border-sky-100 dark:border-slate-800 space-y-2">
-                <button onclick="exportChatTranscript()" class="w-full py-2 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-[#f4f9fd] dark:bg-slate-850 hover:bg-sky-100 dark:hover:bg-slate-800 rounded-lg border border-sky-200 dark:border-slate-800 transition flex items-center justify-center space-x-2 shadow-sm">
-                    <i class="fa-solid fa-download text-[#00b5b8]"></i>
-                    <span>Export Transcript (.md)</span>
-                </button>
-                <button id="clearChatBtn" class="w-full py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 bg-[#f4f9fd] dark:bg-slate-850 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-sky-200 dark:border-slate-800 hover:border-rose-200 dark:hover:border-rose-900/50 transition flex items-center justify-center space-x-2 shadow-sm">
-                    <i class="fa-solid fa-trash-can"></i>
-                    <span>Clear Active Tab</span>
-                </button>
             </div>
         </div>
     </aside>
 
     <!-- Main Chat Workspace -->
-    <main class="flex-1 flex flex-col h-full bg-[#f0f7fc] dark:bg-slate-950 min-w-0 transition-colors duration-200">
+    <main class="flex-1 flex flex-col h-full bg-[#f0f4f9] dark:bg-[#131314] min-w-0 transition-colors duration-200">
         
-        <!-- Header Bar -->
-        <header class="h-14 sm:h-16 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between px-3.5 sm:px-6 bg-white/95 dark:bg-slate-900/90 backdrop-blur z-10 shrink-0 shadow-sm transition-colors duration-200">
+        <!-- Header Bar (Google Workspace / Gemini Minimalist Header) -->
+        <header class="h-14 sm:h-16 border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between px-3.5 sm:px-6 bg-white/95 dark:bg-[#131314]/95 backdrop-blur z-10 shrink-0 shadow-sm transition-colors duration-200">
             <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-                <!-- Hamburger menu button on mobile/tablet -->
-                <button onclick="openMobileSidebar()" class="lg:hidden w-9 h-9 rounded-lg bg-[#f0f7fc] dark:bg-slate-850 hover:bg-sky-100 dark:hover:bg-slate-800 border border-sky-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shrink-0 shadow-sm" title="Open navigation">
-                    <i class="fa-solid fa-bars text-sm"></i>
+                <!-- Sidebar Toggle button (Visible on BOTH mobile and desktop) -->
+                <button onclick="toggleSidebar()" id="headerSidebarToggleBtn" class="w-9 h-9 rounded-full hover:bg-slate-200/70 dark:hover:bg-[#282a2c] flex items-center justify-center text-slate-600 dark:text-[#c4c7c5] hover:text-slate-900 dark:hover:text-white transition shrink-0" title="Toggle Sidebar">
+                    <i id="headerSidebarToggleIcon" class="fa-solid fa-bars text-sm"></i>
                 </button>
                 
-                <div class="flex items-center space-x-2.5 min-w-0">
-                    <div class="w-7 h-7 rounded-lg bg-[#00b5b8] p-1 flex items-center justify-center shadow-md shadow-[#00b5b8]/20 shrink-0">
+                <div class="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1 flex items-center justify-center shadow-sm shrink-0">
                         <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                     </div>
-                    <span class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate" id="headerTabTitle">
+                    <span class="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#e3e3e3] truncate" id="headerTabTitle">
                         Tab: New Chat
                     </span>
-                    <span class="hidden sm:inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30">
-                        Memory Active
+                    <span class="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#e8f0fe] dark:bg-[#004a77]/40 text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#004a77]">
+                        <i class="fa-solid fa-sparkles text-[9px]"></i> Memory Active
                     </span>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-2 sm:space-x-2.5 text-xs shrink-0">
+            <div class="flex items-center space-x-1.5 sm:space-x-2 text-xs shrink-0">
+                <!-- New Chat Quick Action in Header -->
+                <button type="button" onclick="createNewTab()" class="hidden xs:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#c2e7ff] hover:bg-[#b0d8f5] dark:bg-[#004a77] dark:hover:bg-[#005b94] text-[#001d35] dark:text-[#c2e7ff] font-bold transition shadow-sm" title="New Chat Session">
+                    <i class="fa-solid fa-plus text-[11px] text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                    <span class="hidden sm:inline">New Chat</span>
+                </button>
+
+                <!-- Settings Button in Header -->
+                <button type="button" onclick="openSettingsModal()" id="headerSettingsBtn"
+                        class="w-9 h-9 rounded-full hover:bg-slate-200/70 dark:hover:bg-[#282a2c] text-slate-600 dark:text-[#c4c7c5] hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] flex items-center justify-center transition shrink-0" title="Settings Panel">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                </button>
+
                 <!-- Quick Theme Cycle Button in Header -->
                 <button type="button" onclick="cycleTheme()" id="headerThemeBtn" 
-                        class="w-9 h-9 rounded-lg bg-[#f0f7fc] dark:bg-slate-850 hover:bg-sky-100 dark:hover:bg-slate-800 border border-sky-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 transition shrink-0 shadow-sm" title="Switch Theme (Light / Dark / Follow System)">
-                    <i id="headerThemeIcon" class="fa-solid fa-moon text-xs text-[#00b5b8]"></i>
+                        class="w-9 h-9 rounded-full hover:bg-slate-200/70 dark:hover:bg-[#282a2c] text-slate-600 dark:text-[#c4c7c5] flex items-center justify-center transition shrink-0" title="Switch Theme (Light / Dark / Follow System)">
+                    <i id="headerThemeIcon" class="fa-solid fa-moon text-xs"></i>
                 </button>
 
                 <!-- User Login/Profile status in header -->
                 <div id="headerAuthArea" class="flex items-center space-x-2">
-                    <button onclick="openAuthModal('login')" id="headerLoginBtn" class="px-3.5 py-1.5 rounded-lg bg-[#00b5b8] hover:bg-[#00979b] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#00b5b8]/20 transition active:scale-[0.99]">
-                        <i class="fa-solid fa-user"></i>
+                    <button onclick="openAuthModal('login')" id="headerLoginBtn" class="px-4 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0b57d0]/20 transition active:scale-[0.99]">
+                        <i class="fa-solid fa-user text-[11px]"></i>
                         <span>Log In</span>
                     </button>
                 </div>
 
-                <a href="/admin" class="hover:text-amber-800 dark:hover:text-amber-300 transition flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 font-bold shadow-sm">
-                    <i class="fa-solid fa-sliders text-amber-500 dark:text-amber-400"></i>
-                    <span class="hidden xs:inline">Admin</span> Console
+                <a href="/admin" class="transition flex items-center gap-1.5 bg-[#fef7e0] dark:bg-[#332b00] hover:bg-[#feefc3] dark:hover:bg-[#473b00] px-3 py-1.5 rounded-full border border-[#fdd663]/60 text-[#7a5900] dark:text-[#fdd663] font-bold text-xs shadow-sm">
+                    <i class="fa-solid fa-sliders text-amber-600 dark:text-amber-400"></i>
+                    <span class="hidden xs:inline">Admin</span>
                 </a>
             </div>
         </header>
 
         <!-- Chat History Window -->
-        <div id="chatContainer" class="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 bg-[#f0f7fc] dark:bg-slate-950 transition-colors duration-200">
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 bg-[#f0f4f9] dark:bg-[#131314] transition-colors duration-200">
             <!-- Welcome message rendered dynamically or on load -->
         </div>
 
-        <!-- Chat Input Form (Sticky Bottom) -->
-        <div class="p-3 sm:p-4 border-t border-sky-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur pb-safe shadow-lg transition-colors duration-200">
+        <!-- Chat Input Form (Floating Gemini Capsule at Bottom) -->
+        <div class="p-3 sm:p-4 bg-gradient-to-t from-[#f0f4f9] via-[#f0f4f9]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent pb-safe transition-colors duration-200">
             <div class="max-w-4xl mx-auto space-y-2">
                 <!-- Quick Manual Multi-Filter, Visual Mode & Attachment Bar -->
-                <div class="flex flex-wrap items-center justify-between gap-1.5 text-xs px-0.5 pb-0.5">
+                <div class="flex flex-wrap items-center justify-between gap-1.5 text-xs px-1 pb-0.5">
                     <div class="flex items-center flex-wrap gap-1.5 min-w-0">
                         <!-- Multi-Manual Filter Pill Trigger Button -->
                         <button type="button" onclick="toggleQuickManualDropdown(event)" id="quickManualBtn"
-                                class="inline-flex items-center gap-1.5 bg-[#f0f7fc] dark:bg-slate-850 hover:bg-[#e0effa] dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99] max-w-[210px] sm:max-w-md">
-                            <i class="fa-solid fa-book-bookmark text-[#00b5b8] text-xs shrink-0"></i>
-                            <span id="quickManualLabel" class="truncate font-semibold text-slate-800 dark:text-slate-200">Manuals: All</span>
-                            <span id="quickManualCountBadge" class="font-extrabold px-1.5 py-0.2 rounded-full bg-[#00b5b8] text-white text-[10px]">All</span>
+                                class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99] max-w-[210px] sm:max-w-md">
+                            <i class="fa-solid fa-book-bookmark text-[#0b57d0] dark:text-[#a8c7fa] text-xs shrink-0"></i>
+                            <span id="quickManualLabel" class="truncate font-semibold text-slate-800 dark:text-[#e3e3e3]">Manuals: All</span>
+                            <span id="quickManualCountBadge" class="font-extrabold px-1.5 py-0.2 rounded-full bg-[#0b57d0] text-white text-[10px]">All</span>
                             <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 ml-0.5 shrink-0"></i>
                         </button>
 
                         <!-- Quick Visual Mode Toggle Button -->
                         <button type="button" onclick="cycleVisualMode()" id="quickVisualModeBtn"
-                                class="inline-flex items-center gap-1.5 bg-[#f0f7fc] dark:bg-slate-850 hover:bg-[#e0effa] dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99]" title="Click to cycle AI photo output mode">
-                            <i id="quickVisualIcon" class="fa-solid fa-camera text-[#00b5b8] text-xs shrink-0"></i>
-                            <span id="quickVisualLabel" class="truncate font-semibold text-slate-800 dark:text-slate-200">Visuals: Strict [Photo if have]</span>
+                                class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99]" title="Click to cycle AI photo output mode">
+                            <i id="quickVisualIcon" class="fa-solid fa-camera text-[#0b57d0] dark:text-[#a8c7fa] text-xs shrink-0"></i>
+                            <span id="quickVisualLabel" class="truncate font-semibold text-slate-800 dark:text-[#e3e3e3]">Visuals: Strict [Photo if have]</span>
                         </button>
 
                         <!-- Floating Popover for Multi-Manual Selection -->
-                        <div id="quickManualPopover" class="hidden absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 z-30 space-y-2 text-slate-800 dark:text-slate-200">
-                            <div class="flex items-center justify-between pb-2 border-b border-sky-100 dark:border-slate-800 text-xs">
-                                <span class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-book-open text-[#00b5b8]"></i>
+                        <div id="quickManualPopover" class="hidden absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-3xl shadow-2xl p-4 z-30 space-y-2.5 text-slate-800 dark:text-[#e3e3e3]">
+                            <div class="flex items-center justify-between pb-2 border-b border-[#e0e3e7] dark:border-[#37393b] text-xs">
+                                <span class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                    <i class="fa-solid fa-book-open text-[#0b57d0] dark:text-[#a8c7fa]"></i>
                                     <span>Select Target Manuals</span>
                                 </span>
-                                <button type="button" onclick="closeQuickManualDropdown()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-0.5">
+                                <button type="button" onclick="closeQuickManualDropdown()" class="w-6 h-6 rounded-full hover:bg-slate-100 dark:hover:bg-[#282a2c] text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center">
                                     <i class="fa-solid fa-xmark text-xs"></i>
                                 </button>
                             </div>
@@ -537,7 +402,7 @@
                             <div class="flex items-center justify-between text-[11px] px-1 font-semibold text-slate-600 dark:text-slate-300">
                                 <label class="flex items-center space-x-2 cursor-pointer select-none">
                                     <input type="checkbox" id="selectAllQuickManuals" onchange="toggleAllManuals(this.checked)" checked
-                                           class="w-3.5 h-3.5 rounded text-[#00b5b8] bg-white dark:bg-slate-950 border-sky-300 dark:border-slate-700 focus:ring-[#00b5b8] cursor-pointer">
+                                           class="w-3.5 h-3.5 rounded text-[#0b57d0] bg-white dark:bg-[#131314] border-slate-300 dark:border-slate-600 focus:ring-[#0b57d0] cursor-pointer">
                                     <span>Select All</span>
                                 </label>
                                 <button type="button" onclick="clearAllManuals()" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition">Clear All</button>
@@ -547,8 +412,8 @@
                                 <div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">Loading manuals...</div>
                             </div>
 
-                            <div class="pt-2 border-t border-sky-100 dark:border-slate-800 flex items-center justify-end">
-                                <button type="button" onclick="closeQuickManualDropdown()" class="px-3.5 py-1 bg-[#00b5b8] hover:bg-[#00979b] text-white text-[11px] font-bold rounded-lg shadow-sm">
+                            <div class="pt-2 border-t border-[#e0e3e7] dark:border-[#37393b] flex items-center justify-end">
+                                <button type="button" onclick="closeQuickManualDropdown()" class="px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold rounded-full shadow-sm">
                                     Done
                                 </button>
                             </div>
@@ -556,84 +421,414 @@
                     </div>
                     
                     <div class="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium ml-auto">
-                        <span class="hidden sm:inline"><i class="fa-solid fa-paperclip text-[#00b5b8] mr-0.5"></i> Max 5 files</span>
+                        <span class="hidden sm:inline"><i class="fa-solid fa-paperclip text-[#0b57d0] dark:text-[#a8c7fa] mr-0.5"></i> Max 5 files</span>
                     </div>
                 </div>
 
                 <!-- 0-Manual Warning Banner (Shown when no manual is ticked) -->
-                <div id="noManualWarningBanner" class="hidden flex items-center justify-between gap-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold shadow-sm animate-fade-in">
+                <div id="noManualWarningBanner" class="hidden flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold shadow-sm animate-fade-in">
                     <div class="flex items-center gap-2 min-w-0">
                         <i class="fa-solid fa-triangle-exclamation text-rose-500 text-sm shrink-0"></i>
                         <span class="truncate">You should choose at least one source to ask a question.</span>
                     </div>
-                    <button type="button" onclick="toggleAllManuals(true)" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold shadow-sm transition shrink-0">
+                    <button type="button" onclick="toggleAllManuals(true)" class="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold shadow-sm transition shrink-0">
                         Select All
                     </button>
                 </div>
 
                 <!-- Attachment Preview Bar (Shown when files are selected) -->
-                <div id="attachmentPreviewBar" class="hidden flex flex-wrap items-center gap-2 p-2.5 bg-[#f0f7fc] dark:bg-slate-950 rounded-xl border border-sky-200 dark:border-slate-800 shadow-inner">
+                <div id="attachmentPreviewBar" class="hidden flex flex-wrap items-center gap-2 p-2.5 bg-white dark:bg-[#1e1f20] rounded-2xl border border-[#e0e3e7] dark:border-[#37393b] shadow-sm">
                     <!-- Dynamic File Chips -->
                 </div>
 
-                <!-- Input form with Attachment Button -->
-                <form id="chatForm" class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Floating Gemini Input Box -->
+                <form id="chatForm" class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] p-1.5 sm:p-2 shadow-[0_2px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex items-center space-x-2">
                     <input type="file" id="chatFileInput" multiple accept="image/png, image/jpeg, image/webp, image/gif, .pdf" class="hidden" onchange="handleChatFileSelect(event)">
                     
-                    <button type="button" onclick="triggerChatFileInput()" id="attachBtn" class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#f0f7fc] dark:bg-slate-850 hover:bg-sky-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#00787c] dark:hover:text-[#38f2f5] border border-sky-200 dark:border-slate-700 flex items-center justify-center transition shrink-0 shadow-sm" title="Attach photos or PDFs (max 5)">
+                    <button type="button" onclick="triggerChatFileInput()" id="attachBtn" class="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-[#282a2c] text-slate-500 dark:text-[#c4c7c5] hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] flex items-center justify-center transition shrink-0" title="Attach photos or PDFs (max 5)">
                         <i class="fa-solid fa-paperclip text-sm sm:text-base"></i>
                     </button>
 
                     <div class="relative flex-1">
-                        <input type="text" id="userInput" placeholder="Ask a question or describe your attached photo/PDF..." autocomplete="off"
-                                class="w-full bg-[#f8fbfe] dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm sm:text-base rounded-xl pl-3.5 sm:pl-4 pr-12 py-3 sm:py-3.5 border border-sky-200 dark:border-slate-700 focus:outline-none focus:border-[#00b5b8] focus:ring-2 focus:ring-[#00b5b8]/30 transition shadow-inner">
-                        <button type="submit" id="sendBtn" 
-                                class="absolute right-1.5 top-1.5 bottom-1.5 w-9 sm:w-10 rounded-lg bg-[#00b5b8] hover:bg-[#00979b] text-white transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#00b5b8]/30 active:scale-95">
-                            <i class="fa-solid fa-paper-plane text-xs sm:text-sm"></i>
-                        </button>
+                        <input type="text" id="userInput" placeholder="Ask a question about DF manuals or describe attached photos..." autocomplete="off"
+                                class="w-full bg-transparent text-slate-900 dark:text-[#e3e3e3] placeholder-slate-400 dark:placeholder-slate-500 text-sm sm:text-base px-2 py-2 focus:outline-none">
                     </div>
+
+                    <button type="submit" id="sendBtn" 
+                            class="w-10 h-10 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white transition flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-[#0b57d0]/25 active:scale-95 shrink-0">
+                        <i class="fa-solid fa-arrow-up text-sm"></i>
+                    </button>
                 </form>
 
-                <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1 font-medium">
-                    <span class="truncate"><i class="fa-solid fa-bolt text-[#00b5b8] mr-1"></i> Fast direct responses & Multimodal Gemini vision</span>
-                    <span class="text-slate-400 dark:text-slate-500 shrink-0"><i class="fa-solid fa-paperclip text-[#00b5b8] mr-0.5"></i> Max 5 photos/PDFs</span>
+                <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-[#9aa0a6] px-2 font-medium">
+                    <span class="truncate"><i class="fa-solid fa-sparkles text-[#0b57d0] dark:text-[#a8c7fa] mr-1"></i> Multimodal Gemini 3.5 & embedding-2 grounding</span>
+                    <span class="text-slate-400 dark:text-[#5f6368] shrink-0"><i class="fa-solid fa-paperclip mr-0.5"></i> Max 5 files</span>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- ===================================================================== -->
+    <!-- Modal: Settings Panel (Material Design 3 Dialog) -->
+    <!-- ===================================================================== -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="relative max-w-2xl w-full bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-2 flex items-center justify-center shadow-md shadow-[#00b5b8]/25 shrink-0">
+                        <i class="fa-solid fa-gear text-white text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Settings & Preferences</h3>
+                        <p class="text-xs text-slate-500 dark:text-[#9aa0a6]">Configure appearance, RAG parameters, and data tools</p>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center transition" title="Close Settings">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Settings Tab Navigation (Material Pill Navigation) -->
+            <div class="flex border-b border-[#e0e3e7] dark:border-[#282a2c] bg-[#f0f4f9] dark:bg-[#131314] px-4 pt-2.5 gap-1.5 overflow-x-auto shrink-0">
+                <button type="button" onclick="switchSettingsTab('appearance')" id="setTabBtn_appearance" class="py-2 px-4 rounded-t-2xl text-xs font-bold transition flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] text-[#0b57d0] dark:text-[#a8c7fa] border-t border-x border-[#e0e3e7] dark:border-[#37393b] shadow-sm">
+                    <i class="fa-solid fa-palette text-xs"></i>
+                    <span>Appearance</span>
+                </button>
+                <button type="button" onclick="switchSettingsTab('rag')" id="setTabBtn_rag" class="py-2 px-4 rounded-t-2xl text-xs font-semibold transition flex items-center gap-1.5 text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-sliders text-xs"></i>
+                    <span>RAG & Retrieval</span>
+                </button>
+                <button type="button" onclick="switchSettingsTab('tools')" id="setTabBtn_tools" class="py-2 px-4 rounded-t-2xl text-xs font-semibold transition flex items-center gap-1.5 text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-screwdriver-wrench text-xs"></i>
+                    <span>Tools & Data</span>
+                </button>
+                <button type="button" onclick="switchSettingsTab('account')" id="setTabBtn_account" class="py-2 px-4 rounded-t-2xl text-xs font-semibold transition flex items-center gap-1.5 text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-user-circle text-xs"></i>
+                    <span>Account</span>
+                </button>
+            </div>
+
+            <!-- Settings Body -->
+            <!-- Settings Body -->
+            <div class="p-5 overflow-y-auto space-y-5 flex-1 bg-[#f0f4f9] dark:bg-[#131314]">
+                
+                <!-- Tab 1: Appearance -->
+                <div id="settingsPane_appearance" class="space-y-4">
+                    <!-- Theme Mode Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-half-stroke text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                    <span>Color Theme</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Select your preferred color mode or follow your system theme</p>
+                            </div>
+                            <span id="activeThemeIndicator" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] font-mono capitalize">Dark</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 bg-[#f0f4f9] dark:bg-[#131314] p-1.5 rounded-2xl border border-[#e0e3e7] dark:border-[#282a2c] text-xs">
+                            <button type="button" onclick="setTheme('light')" id="themeBtnLight" 
+                                    class="py-2 px-3 rounded-full font-bold flex items-center justify-center gap-1.5 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Light theme">
+                                <i class="fa-solid fa-sun text-amber-500 text-xs"></i>
+                                <span>Light</span>
+                            </button>
+                            <button type="button" onclick="setTheme('dark')" id="themeBtnDark" 
+                                    class="py-2 px-3 rounded-full font-bold flex items-center justify-center gap-1.5 transition bg-[#0b57d0] text-white shadow-sm" title="Dark theme (Default)">
+                                <i class="fa-solid fa-moon text-sky-200 text-xs"></i>
+                                <span>Dark</span>
+                            </button>
+                            <button type="button" onclick="setTheme('system')" id="themeBtnSystem" 
+                                    class="py-2 px-3 rounded-full font-bold flex items-center justify-center gap-1.5 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Follow system theme">
+                                <i class="fa-solid fa-laptop text-slate-400 text-xs"></i>
+                                <span>System</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI Visual Output Mode Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fa-solid fa-images text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                    <span>AI Visual Output Mode</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Control how manual reference photos are previewed below answers</p>
+                            </div>
+                            <span id="sidebarVisualModeBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]">Strict</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 bg-[#f0f4f9] dark:bg-[#131314] p-1.5 rounded-2xl border border-[#e0e3e7] dark:border-[#282a2c] text-xs font-bold">
+                            <button type="button" onclick="setVisualMode('strict')" id="vModeBtnStrict" 
+                                    class="py-2 px-2 rounded-full transition text-center bg-[#0b57d0] text-white shadow-sm" title="Show photo if directly cited in answer">
+                                Strict
+                            </button>
+                            <button type="button" onclick="setVisualMode('nearest')" id="vModeBtnNearest" 
+                                    class="py-2 px-2 rounded-full transition text-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Show nearest photo">
+                                Nearest
+                            </button>
+                            <button type="button" onclick="setVisualMode('off')" id="vModeBtnOff" 
+                                    class="py-2 px-2 rounded-full transition text-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Hide photos">
+                                Off
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] leading-tight" id="visualModeDesc">
+                            <i class="fa-solid fa-check text-emerald-500 mr-1"></i> Strict: Show photo only if cited in page.
+                        </p>
+                    </div>
+
+                    <!-- Similarity Scores Toggle Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200">Show Vector Similarity Scores</h4>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Display cosine similarity badges on Top-K candidate seed pages</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="showScoresToggle" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-[#0b57d0]"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tab 2: RAG & Retrieval -->
+                <div id="settingsPane_rag" class="hidden space-y-4">
+                    <!-- Top-K Slider Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fa-solid fa-layer-group text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                    <span>Top-K Retrieval Seeds</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Number of direct visual seed pages retrieved before chapter expansion</p>
+                            </div>
+                            <span id="topKValue" class="text-sm font-extrabold text-[#0b57d0] dark:text-[#a8c7fa] font-mono px-3 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 border border-[#c2e7ff] dark:border-[#004a77]">5</span>
+                        </div>
+
+                        <input type="range" id="topKSlider" min="1" max="15" value="5" 
+                               class="w-full h-2 bg-[#dfe3e8] dark:bg-[#282a2c] rounded-lg appearance-none cursor-pointer accent-[#0b57d0]">
+                        
+                        <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                            <span>1 page (Precise)</span>
+                            <span>5 pages (Balanced)</span>
+                            <span>15 pages (Deep Search)</span>
+                        </div>
+
+                        <!-- Top-K Default Status & Action Bar -->
+                        <div class="pt-2 border-t border-[#e0e3e7] dark:border-[#282a2c] flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center space-x-1.5 text-xs">
+                                <span id="topKDefaultBadge" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-check text-[9px]"></i> Default (5)
+                                </span>
+                            </div>
+
+                            <div class="flex items-center space-x-1.5">
+                                <button type="button" onclick="setTopKAsDefault()" id="topKSetDefaultBtn" 
+                                        class="px-3 py-1 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 hover:bg-[#b0d8f5] text-[#001d35] dark:text-[#c2e7ff] text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Save this value as your default Top-K">
+                                    <i class="fa-solid fa-bookmark text-[10px]"></i>
+                                    <span>Set as Default</span>
+                                </button>
+                                <button type="button" onclick="resetTopKToDefault()" id="topKResetDefaultBtn" 
+                                        class="hidden px-3 py-1 rounded-full bg-slate-100 dark:bg-[#282a2c] hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium transition flex items-center gap-1" title="Reset slider to saved default value">
+                                    <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                                    <span>Reset</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Manuals Multi-Filter Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fa-solid fa-filter text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                    <span>Target Manuals Filter</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Select which indexed source manuals to search across</p>
+                            </div>
+                            <span id="sidebarManualCountBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 text-[#001d35] dark:text-[#c2e7ff]">All</span>
+                        </div>
+
+                        <div class="bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c] rounded-2xl p-3.5 space-y-2">
+                            <div class="flex items-center justify-between pb-2 border-b border-[#e0e3e7] dark:border-[#282a2c] text-xs">
+                                <label class="flex items-center space-x-2 cursor-pointer font-bold text-slate-700 dark:text-slate-200 select-none">
+                                    <input type="checkbox" id="selectAllSidebarManuals" onchange="toggleAllManuals(this.checked)" checked
+                                           class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-slate-300 dark:border-slate-600 focus:ring-[#0b57d0] cursor-pointer">
+                                    <span>Select All Available Manuals</span>
+                                </label>
+                                <button type="button" onclick="clearAllManuals()" class="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition">Clear All</button>
+                            </div>
+                            
+                            <div id="sidebarManualsChecklist" class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                                <div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">Loading manuals...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vector Store & Model Status Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-2.5">
+                        <div class="flex items-center justify-between text-xs pb-2 border-b border-[#e0e3e7] dark:border-[#282a2c]">
+                            <span class="text-slate-800 dark:text-slate-200 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-database text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                <span>ChromaDB Vector Store</span>
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/50">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1.5 animate-pulse"></span>
+                                Active
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                            <div class="p-3 rounded-xl bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c]">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold block">Indexed Pages</span>
+                                <span id="indexedPagesCount" class="font-extrabold text-sm text-[#0b57d0] dark:text-[#a8c7fa]">...</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c]">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold block">Embedding Model</span>
+                                <span class="font-mono text-xs text-slate-700 dark:text-slate-300 font-bold">gemini-embedding-2</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c]">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold block">QA Generation Model</span>
+                                <span id="qaModelName" class="font-mono text-xs text-slate-700 dark:text-slate-300 font-bold truncate block">gemini-3.5-flash-lite</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Tools & Data -->
+                <div id="settingsPane_tools" class="hidden space-y-4">
+                    <!-- Export Transcript Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-download text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                <span>Export Conversation Transcript</span>
+                            </h4>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Download your active chat session transcript</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="exportChatTranscript()" class="py-2 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-[#f0f4f9] dark:bg-[#131314] hover:bg-slate-200 dark:hover:bg-[#282a2c] rounded-full border border-[#e0e3e7] dark:border-[#37393b] transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-file-lines text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                <span>Export Markdown (.md)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clear Active Tab Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200">Clear Active Tab Messages</h4>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Reset messages in current tab and start fresh</p>
+                        </div>
+                        <button id="clearChatBtn" class="py-2 px-4 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-full border border-rose-200 dark:border-rose-800/60 transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Clear Chat</span>
+                        </button>
+                    </div>
+
+                    <!-- Sample Questions Card -->
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-4 shadow-sm space-y-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                                <span>Sample Diagnostic Questions</span>
+                            </h4>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] mt-0.5">Click any question to immediately populate the chat box</p>
+                        </div>
+                        <div class="space-y-2">
+                            <button onclick="setQueryAndClose('How do I calibrate the sensor array?')" 
+                                    class="w-full text-left text-xs bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] text-slate-700 dark:text-slate-300 hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] p-3 rounded-xl border border-[#e0e3e7] dark:border-[#282a2c] transition font-medium shadow-sm">
+                                <i class="fa-solid fa-compass text-[#0b57d0] dark:text-[#a8c7fa] mr-1.5"></i> How do I calibrate the sensor array?
+                            </button>
+                            <button onclick="setQueryAndClose('How to troubleshoot pallet docking issues?')" 
+                                    class="w-full text-left text-xs bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] text-slate-700 dark:text-slate-300 hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] p-3 rounded-xl border border-[#e0e3e7] dark:border-[#282a2c] transition font-medium shadow-sm">
+                                <i class="fa-solid fa-wrench text-[#0b57d0] dark:text-[#a8c7fa] mr-1.5"></i> Pallet docking troubleshooting?
+                            </button>
+                            <button onclick="setQueryAndClose('Explain critical NavWiz parameters for AGV obstacle sensors.')" 
+                                    class="w-full text-left text-xs bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] text-slate-700 dark:text-slate-300 hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] p-3 rounded-xl border border-[#e0e3e7] dark:border-[#282a2c] transition font-medium shadow-sm">
+                                <i class="fa-solid fa-sliders text-[#0b57d0] dark:text-[#a8c7fa] mr-1.5"></i> Critical obstacle sensor parameters?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Account & Profile -->
+                <div id="settingsPane_account" class="hidden space-y-4">
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-2xl p-5 shadow-sm space-y-4">
+                        <div class="flex items-center space-x-3.5">
+                            <div id="settingsAvatarPreview" class="w-14 h-14 rounded-full overflow-hidden border-2 border-[#0b57d0] bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] flex items-center justify-center text-xl font-bold font-mono shrink-0 shadow-md">
+                                <span id="settingsUserInitial">U</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="text-sm font-bold text-slate-900 dark:text-white" id="settingsUsername">User Account</h4>
+                                <p class="text-xs text-slate-500 dark:text-[#9aa0a6] font-medium" id="settingsUserRole">Online</p>
+                            </div>
+                            <button onclick="openProfilePicModal()" class="px-3.5 py-1.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 hover:bg-[#b0d8f5] text-[#001d35] dark:text-[#c2e7ff] text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>Change Photo</span>
+                            </button>
+                        </div>
+
+                        <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
+                            <span class="text-xs text-slate-500 dark:text-[#9aa0a6]">Manage account authentication</span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition shadow-sm">
+                                    Switch / Log In
+                                </button>
+                                <button onclick="handleLogout()" class="px-3.5 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold transition">
+                                    Log Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 bg-white dark:bg-[#1e1f20] border-t border-[#e0e3e7] dark:border-[#282a2c] flex justify-end shrink-0">
+                <button onclick="closeSettingsModal()" class="px-5 py-2 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition shadow-md shadow-[#0b57d0]/25">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: User Authentication (Login / Create Account) -->
     <div id="authModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="relative max-w-md w-full bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+        <div class="relative max-w-md w-full bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl">
             <!-- Modal Header -->
-            <div class="p-4 bg-[#f0f7fc] dark:bg-slate-850 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
-                <div class="flex items-center space-x-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-[#00b5b8] p-1.5 flex items-center justify-center shadow-md shadow-[#00b5b8]/20 shrink-0">
+            <div class="p-5 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-2 flex items-center justify-center shadow-md shadow-[#00b5b8]/25 shrink-0">
                         <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100" id="authModalTitle">User Log In</h3>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Access saved tabs & conversation memory</p>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="authModalTitle">User Log In</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">Access saved tabs & conversation memory</p>
                     </div>
                 </div>
-                <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+                <button onclick="closeAuthModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center transition">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
             <!-- Tab Switcher (Log In vs Create Account) -->
-            <div class="flex border-b border-sky-100 dark:border-slate-800 bg-[#f4f9fd] dark:bg-slate-950 p-1">
-                <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-2 rounded-lg text-xs font-bold text-[#00787c] dark:text-[#38f2f5] bg-white dark:bg-slate-850 shadow-sm transition">
+            <div class="flex border-b border-[#e0e3e7] dark:border-[#282a2c] bg-[#f0f4f9] dark:bg-[#131314] p-1.5">
+                <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-2 rounded-full text-xs font-bold text-[#0b57d0] dark:text-[#a8c7fa] bg-white dark:bg-[#1e1f20] shadow-sm transition">
                     Log In
                 </button>
-                <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+                <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-2 rounded-full text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
                     Create Account
                 </button>
             </div>
 
             <!-- Modal Body -->
             <div class="p-5 space-y-4">
-                <div id="authErrorMsg" class="hidden p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium"></div>
+                <div id="authErrorMsg" class="hidden p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium"></div>
 
                 <!-- Log In Form -->
                 <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-3.5">
@@ -641,20 +836,20 @@
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Name / Username (No spaces)</label>
                         <input type="text" id="loginUsername" required placeholder="e.g. engineer_alex" 
                                oninput="cleanNoSpaces(this)"
-                               class="w-full bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] font-mono shadow-inner">
+                               class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0b57d0] focus:ring-1 focus:ring-[#0b57d0] font-mono">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password (No spaces)</label>
                         <input type="password" id="loginPassword" required placeholder="Enter password" 
                                oninput="cleanNoSpaces(this)"
-                               class="w-full bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] font-mono shadow-inner">
+                               class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0b57d0] focus:ring-1 focus:ring-[#0b57d0] font-mono">
                     </div>
-                    <button type="submit" id="loginSubmitBtn" class="w-full py-2.5 rounded-xl bg-[#00b5b8] hover:bg-[#00979b] text-white text-xs font-bold transition shadow-lg shadow-[#00b5b8]/30 flex items-center justify-center gap-2">
+                    <button type="submit" id="loginSubmitBtn" class="w-full py-2.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold transition shadow-md shadow-[#0b57d0]/25 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-right-to-bracket"></i>
                         <span>Log In</span>
                     </button>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center font-medium">
-                        Admin credentials: username <code class="text-amber-800 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-1 py-0.5 rounded">admin</code> with admin password.
+                    <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] text-center font-medium">
+                        Admin account: <code class="text-amber-800 dark:text-amber-300 font-bold bg-[#fef7e0] dark:bg-[#332b00] border border-[#fdd663]/50 px-1.5 py-0.5 rounded">df</code>
                     </p>
                 </form>
 
@@ -664,21 +859,21 @@
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Name / Username (No spaces)</label>
                         <input type="text" id="regUsername" required placeholder="e.g. robotics_user" 
                                oninput="cleanNoSpaces(this)"
-                               class="w-full bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] font-mono shadow-inner">
+                               class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0b57d0] focus:ring-1 focus:ring-[#0b57d0] font-mono">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password (No spaces)</label>
                         <input type="password" id="regPassword" required placeholder="Choose password" 
                                oninput="cleanNoSpaces(this)"
-                               class="w-full bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] font-mono shadow-inner">
+                               class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0b57d0] focus:ring-1 focus:ring-[#0b57d0] font-mono">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Re-enter Password to Confirm</label>
                         <input type="password" id="regConfirmPassword" required placeholder="Re-enter password" 
                                oninput="cleanNoSpaces(this)"
-                               class="w-full bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#00b5b8] focus:ring-1 focus:ring-[#00b5b8] font-mono shadow-inner">
+                               class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#0b57d0] focus:ring-1 focus:ring-[#0b57d0] font-mono">
                     </div>
-                    <button type="submit" id="regSubmitBtn" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
+                    <button type="submit" id="regSubmitBtn" class="w-full py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i>
                         <span>Create Account</span>
                     </button>
@@ -687,15 +882,15 @@
                 <!-- Guest Mode Quick Entry -->
                 <div class="pt-2">
                     <div class="relative flex items-center justify-center mb-3">
-                        <div class="border-t border-sky-100 dark:border-slate-800 w-full"></div>
-                        <span class="bg-white dark:bg-slate-900 px-2.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">or</span>
+                        <div class="border-t border-[#e0e3e7] dark:border-[#282a2c] w-full"></div>
+                        <span class="bg-white dark:bg-[#1e1f20] px-2.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">or</span>
                     </div>
 
-                    <button type="button" onclick="handleGuestLogin()" id="guestLoginBtn" class="w-full py-2.5 rounded-xl bg-[#f0f7fc] dark:bg-slate-850 hover:bg-sky-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-bold border border-sky-200 dark:border-slate-700 transition flex items-center justify-center gap-2 shadow-sm">
-                        <i class="fa-solid fa-user-ninja text-[#00b5b8] text-sm"></i>
+                    <button type="button" onclick="handleGuestLogin()" id="guestLoginBtn" class="w-full py-2.5 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-slate-200 dark:hover:bg-[#282a2c] text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-bold border border-[#e0e3e7] dark:border-[#37393b] transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-user-ninja text-[#0b57d0] dark:text-[#a8c7fa] text-sm"></i>
                         <span>Continue as Guest</span>
                     </button>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400 text-center mt-1.5">
+                    <p class="text-[10px] text-slate-500 dark:text-[#9aa0a6] text-center mt-1.5">
                         Ask questions and upload photos without creating an account.
                     </p>
                 </div>
@@ -705,31 +900,31 @@
 
     <!-- Modal: Top-K Result Inspector (Expanded on User Click) -->
     <div id="topKModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="relative max-w-4xl w-full max-h-[90vh] bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+        <div class="relative max-w-4xl w-full max-h-[90vh] bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl">
             <!-- Modal Header -->
-            <div class="p-3.5 sm:p-4 bg-[#f0f7fc] dark:bg-slate-850 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+            <div class="p-4 sm:p-5 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between shrink-0">
                 <div class="flex items-center space-x-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-layer-group"></i>
+                    <div class="w-9 h-9 rounded-2xl bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-layer-group text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100" id="topKModalTitle">Top-K Retrieved Seed Pages</h3>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium" id="topKModalSubtitle">Visual candidate pages matched from vector store</p>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="topKModalTitle">Top-K Retrieved Seed Pages</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium" id="topKModalSubtitle">Visual candidate pages matched from vector store</p>
                     </div>
                 </div>
-                <button onclick="closeTopKModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+                <button onclick="closeTopKModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center transition">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
             <!-- Modal Content Grid -->
-            <div class="p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 bg-[#f0f7fc] dark:bg-slate-950" id="topKModalGrid">
+            <div class="p-4 sm:p-5 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 bg-[#f0f4f9] dark:bg-[#131314]" id="topKModalGrid">
                 <!-- Page cards rendered dynamically -->
             </div>
 
             <!-- Modal Footer -->
-            <div class="p-3 bg-[#f0f7fc] dark:bg-slate-850 border-t border-sky-100 dark:border-slate-800 flex justify-end shrink-0">
-                <button onclick="closeTopKModal()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition">
+            <div class="p-4 bg-white dark:bg-[#1e1f20] border-t border-[#e0e3e7] dark:border-[#282a2c] flex justify-end shrink-0">
+                <button onclick="closeTopKModal()" class="px-5 py-2 rounded-full bg-slate-200 dark:bg-[#282a2c] hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition">
                     Close
                 </button>
             </div>
@@ -738,37 +933,37 @@
 
     <!-- Modal: Profile Picture Upload -->
     <div id="profilePicModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="relative max-w-sm w-full bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-            <div class="p-4 bg-[#f0f7fc] dark:bg-slate-850 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="relative max-w-sm w-full bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden shadow-2xl">
+            <div class="p-4 sm:p-5 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-camera text-[#00b5b8]"></i>
-                    <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Upload Profile Picture</h3>
+                    <i class="fa-solid fa-camera text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Upload Profile Picture</h3>
                 </div>
-                <button onclick="closeProfilePicModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800">
+                <button onclick="closeProfilePicModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
             <form onsubmit="handleAvatarUpload(event)" class="p-5 space-y-4">
                 <div class="flex flex-col items-center justify-center space-y-3">
-                    <div id="modalAvatarPreview" class="w-24 h-24 rounded-full overflow-hidden border-2 border-[#00b5b8] bg-[#e0f7f7] dark:bg-slate-800 flex items-center justify-center text-3xl font-bold font-mono text-[#00787c] dark:text-[#38f2f5] shadow-md shadow-[#00b5b8]/20">
+                    <div id="modalAvatarPreview" class="w-24 h-24 rounded-full overflow-hidden border-2 border-[#0b57d0] bg-[#c2e7ff] dark:bg-[#004a77] flex items-center justify-center text-3xl font-bold font-mono text-[#001d35] dark:text-[#c2e7ff] shadow-md">
                         <span id="modalAvatarInitial">U</span>
                     </div>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center font-medium">Stored in <code class="text-[#00787c] dark:text-[#38f2f5] bg-sky-100 dark:bg-slate-950 border border-sky-200 dark:border-slate-800 px-1 py-0.5 rounded font-mono">User database/profile_pictures</code></p>
+                    <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] text-center font-medium">Stored in <code class="text-[#0b57d0] dark:text-[#a8c7fa] bg-[#edf2fa] dark:bg-[#131314] border border-[#c2e7ff] dark:border-[#37393b] px-1.5 py-0.5 rounded-full font-mono">User database/profile_pictures</code></p>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Select Image File</label>
                     <input type="file" id="avatarFileInput" accept="image/png, image/jpeg, image/webp, image/gif" onchange="previewSelectedAvatar(event)" required
-                           class="w-full text-xs text-slate-700 dark:text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#00b5b8]/20 file:text-[#00787c] dark:file:text-[#38f2f5] hover:file:bg-[#00b5b8]/30 file:cursor-pointer bg-[#f8fbfe] dark:bg-slate-950 border border-sky-200 dark:border-slate-700 rounded-lg p-1">
+                           class="w-full text-xs text-slate-700 dark:text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#c2e7ff] file:text-[#001d35] dark:file:bg-[#004a77] dark:file:text-[#c2e7ff] hover:file:bg-[#b0d8f5] file:cursor-pointer bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl p-1.5">
                 </div>
 
-                <div id="avatarUploadMsg" class="hidden p-2 rounded text-xs font-medium"></div>
+                <div id="avatarUploadMsg" class="hidden p-2.5 rounded-xl text-xs font-medium"></div>
 
                 <div class="flex items-center justify-end space-x-2 pt-2">
-                    <button type="button" onclick="closeProfilePicModal()" class="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold">
+                    <button type="button" onclick="closeProfilePicModal()" class="px-4 py-2 rounded-full bg-slate-200 dark:bg-[#282a2c] hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold">
                         Cancel
                     </button>
-                    <button type="submit" id="avatarSaveBtn" class="px-4 py-2 rounded-xl bg-[#00b5b8] hover:bg-[#00979b] text-white text-xs font-bold shadow-md shadow-[#00b5b8]/30 flex items-center gap-1.5">
+                    <button type="submit" id="avatarSaveBtn" class="px-5 py-2 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold shadow-md shadow-[#0b57d0]/25 flex items-center gap-1.5">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                         <span>Upload & Save</span>
                     </button>
@@ -779,15 +974,15 @@
 
     <!-- Modal: Full Image Preview Lightbox -->
     <div id="imageModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4" onclick="closeImageModal()">
-        <div class="relative max-w-5xl w-full max-h-[92vh] bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl" onclick="event.stopPropagation()">
-            <div class="p-3 bg-[#f0f7fc] dark:bg-slate-850 border-b border-sky-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="relative max-w-5xl w-full max-h-[92vh] bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl" onclick="event.stopPropagation()">
+            <div class="p-4 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
                 <span id="modalImageTitle" class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate pr-2">Page Inspection</span>
-                <button onclick="closeImageModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="Close preview">
+                <button onclick="closeImageModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center transition" title="Close preview">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
-            <div class="flex-1 overflow-auto p-3 bg-[#f0f7fc] dark:bg-slate-950 flex items-center justify-center">
-                <img id="modalImage" src="" alt="Manual Page" class="max-h-[80vh] max-w-full object-contain rounded-lg shadow-2xl border border-sky-200 dark:border-slate-800 bg-white">
+            <div class="flex-1 overflow-auto p-4 bg-[#f0f4f9] dark:bg-[#131314] flex items-center justify-center">
+                <img id="modalImage" src="" alt="Manual Page" class="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl border border-[#e0e3e7] dark:border-[#37393b] bg-white">
             </div>
         </div>
     </div>
@@ -820,8 +1015,70 @@
         const chatFileInput = document.getElementById('chatFileInput');
         const attachmentPreviewBar = document.getElementById('attachmentPreviewBar');
 
-        topKSlider.addEventListener('input', (e) => {
-            topKValue.textContent = e.target.value;
+        // =====================================================================
+        // Top-K Seed Pages & Default Management
+        // =====================================================================
+        function getDefaultTopK() {
+            const saved = localStorage.getItem('df_default_top_k');
+            return saved ? parseInt(saved, 10) : 5;
+        }
+
+        function updateTopKUI() {
+            if (!topKSlider) return;
+            const currentVal = parseInt(topKSlider.value, 10);
+            const defaultVal = getDefaultTopK();
+            if (topKValue) topKValue.textContent = currentVal;
+
+            const badge = document.getElementById('topKDefaultBadge');
+            const setDefBtn = document.getElementById('topKSetDefaultBtn');
+            const resetBtn = document.getElementById('topKResetDefaultBtn');
+
+            if (currentVal === defaultVal) {
+                if (badge) {
+                    badge.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition";
+                    badge.innerHTML = `<i class="fa-solid fa-check text-[9px]"></i> Default (${defaultVal})`;
+                }
+                if (setDefBtn) {
+                    setDefBtn.className = "px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-semibold cursor-default transition flex items-center gap-1";
+                    setDefBtn.disabled = true;
+                    setDefBtn.innerHTML = '<i class="fa-solid fa-circle-check text-[10px]"></i> <span>Is Default</span>';
+                }
+                if (resetBtn) {
+                    resetBtn.classList.add('hidden');
+                }
+            } else {
+                if (badge) {
+                    badge.className = "text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition";
+                    badge.innerHTML = `<i class="fa-solid fa-circle-info text-[9px]"></i> Active: ${currentVal} (Default: ${defaultVal})`;
+                }
+                if (setDefBtn) {
+                    setDefBtn.className = "px-3 py-1 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white border border-[#0b57d0] text-xs font-bold transition flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer";
+                    setDefBtn.disabled = false;
+                    setDefBtn.innerHTML = `<i class="fa-solid fa-bookmark text-[10px]"></i> <span>Set as Default (${currentVal})</span>`;
+                }
+                if (resetBtn) {
+                    resetBtn.classList.remove('hidden');
+                    resetBtn.innerHTML = `<i class="fa-solid fa-rotate-left text-[10px]"></i> <span>Reset (${defaultVal})</span>`;
+                }
+            }
+        }
+
+        function setTopKAsDefault() {
+            if (!topKSlider) return;
+            const currentVal = parseInt(topKSlider.value, 10);
+            localStorage.setItem('df_default_top_k', currentVal.toString());
+            updateTopKUI();
+        }
+
+        function resetTopKToDefault() {
+            if (!topKSlider) return;
+            const defaultVal = getDefaultTopK();
+            topKSlider.value = defaultVal;
+            updateTopKUI();
+        }
+
+        topKSlider.addEventListener('input', () => {
+            updateTopKUI();
         });
 
         function cleanNoSpaces(inputEl) {
@@ -857,23 +1114,23 @@
             const quickIcon = document.getElementById('quickVisualIcon');
             const quickLabel = document.getElementById('quickVisualLabel');
 
-            const activeCls = 'bg-[#00b5b8] text-white shadow-sm';
+            const activeCls = 'bg-[#0b57d0] text-white shadow-sm';
             const inactiveCls = 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent shadow-none';
 
-            if (btnStrict) btnStrict.className = `py-1.5 px-1 rounded-lg transition text-center ${visualMode === 'strict' ? activeCls : inactiveCls}`;
-            if (btnNearest) btnNearest.className = `py-1.5 px-1 rounded-lg transition text-center ${visualMode === 'nearest' ? activeCls : inactiveCls}`;
-            if (btnOff) btnOff.className = `py-1.5 px-1 rounded-lg transition text-center ${visualMode === 'off' ? activeCls : inactiveCls}`;
+            if (btnStrict) btnStrict.className = `py-1.5 px-1 rounded-full transition text-center ${visualMode === 'strict' ? activeCls : inactiveCls}`;
+            if (btnNearest) btnNearest.className = `py-1.5 px-1 rounded-full transition text-center ${visualMode === 'nearest' ? activeCls : inactiveCls}`;
+            if (btnOff) btnOff.className = `py-1.5 px-1 rounded-full transition text-center ${visualMode === 'off' ? activeCls : inactiveCls}`;
 
             if (badge) {
                 if (visualMode === 'strict') {
                     badge.textContent = 'Strict';
-                    badge.className = 'text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30';
+                    badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]';
                 } else if (visualMode === 'nearest') {
                     badge.textContent = 'Nearest';
-                    badge.className = 'text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40';
+                    badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40';
                 } else {
                     badge.textContent = 'Off';
-                    badge.className = 'text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700';
+                    badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700';
                 }
             }
 
@@ -899,7 +1156,7 @@
 
             if (quickIcon) {
                 if (visualMode === 'strict') {
-                    quickIcon.className = 'fa-solid fa-camera text-[#00b5b8] text-xs shrink-0';
+                    quickIcon.className = 'fa-solid fa-camera text-[#0b57d0] dark:text-[#a8c7fa] text-xs shrink-0';
                 } else if (visualMode === 'nearest') {
                     quickIcon.className = 'fa-solid fa-camera-rotate text-amber-500 text-xs shrink-0';
                 } else {
@@ -953,20 +1210,20 @@
 
             attachmentPreviewBar.classList.remove('hidden');
             attachmentPreviewBar.innerHTML = `
-                <div class="w-full flex items-center justify-between text-[11px] text-slate-400 pb-1 mb-1 border-b border-slate-800">
-                    <span class="font-semibold text-slate-300"><i class="fa-solid fa-paperclip text-sky-400 mr-1"></i> Attached Files (${attachedFiles.length}/5)</span>
-                    <button type="button" onclick="clearAllAttachments()" class="text-slate-500 hover:text-rose-400 transition text-[10px]">Clear all</button>
+                <div class="w-full flex items-center justify-between text-[11px] text-slate-400 pb-1 mb-1 border-b border-slate-200 dark:border-slate-800">
+                    <span class="font-semibold text-slate-700 dark:text-slate-300"><i class="fa-solid fa-paperclip text-[#0b57d0] dark:text-[#a8c7fa] mr-1"></i> Attached Files (${attachedFiles.length}/5)</span>
+                    <button type="button" onclick="clearAllAttachments()" class="text-slate-400 hover:text-rose-500 transition text-[10px]">Clear all</button>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     ${attachedFiles.map((file, idx) => {
                         const isPdf = file.name.toLowerCase().endsWith('.pdf');
                         const sizeKb = (file.size / 1024).toFixed(0);
                         return `
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80 text-xs text-slate-200 shadow-sm animate-fade-in">
-                                <i class="fa-solid ${isPdf ? 'fa-file-pdf text-rose-400' : 'fa-file-image text-sky-400'} text-xs"></i>
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] text-xs text-slate-800 dark:text-[#e3e3e3] shadow-sm animate-fade-in">
+                                <i class="fa-solid ${isPdf ? 'fa-file-pdf text-rose-500' : 'fa-file-image text-[#0b57d0] dark:text-[#a8c7fa]'} text-xs"></i>
                                 <span class="truncate max-w-[120px] sm:max-w-[160px] font-mono text-[11px]" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
-                                <span class="text-[10px] text-slate-500 font-mono">${sizeKb}KB</span>
-                                <button type="button" onclick="removeAttachedFile(${idx})" class="text-slate-400 hover:text-rose-400 p-0.5 ml-1 transition" title="Remove">
+                                <span class="text-[10px] text-slate-400 font-mono">${sizeKb}KB</span>
+                                <button type="button" onclick="removeAttachedFile(${idx})" class="text-slate-400 hover:text-rose-500 p-0.5 ml-1 transition" title="Remove">
                                     <i class="fa-solid fa-xmark text-[10px]"></i>
                                 </button>
                             </div>
@@ -1026,12 +1283,12 @@
             const indicator = document.getElementById('activeThemeIndicator');
             const headerIcon = document.getElementById('headerThemeIcon');
             
-            const activeClasses = 'bg-[#00b5b8] text-white shadow-sm';
+            const activeClasses = 'bg-[#0b57d0] text-white shadow-sm';
             const inactiveClasses = 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent shadow-none';
             
-            if (btnLight) btnLight.className = `flex-1 py-1.5 rounded-lg transition text-xs font-bold text-center ${mode === 'light' ? activeClasses : inactiveClasses}`;
-            if (btnDark) btnDark.className = `flex-1 py-1.5 rounded-lg transition text-xs font-bold text-center ${mode === 'dark' ? activeClasses : inactiveClasses}`;
-            if (btnSystem) btnSystem.className = `flex-1 py-1.5 rounded-lg transition text-xs font-bold text-center ${mode === 'system' ? activeClasses : inactiveClasses}`;
+            if (btnLight) btnLight.className = `flex-1 py-1.5 rounded-full transition text-xs font-bold text-center ${mode === 'light' ? activeClasses : inactiveClasses}`;
+            if (btnDark) btnDark.className = `flex-1 py-1.5 rounded-full transition text-xs font-bold text-center ${mode === 'dark' ? activeClasses : inactiveClasses}`;
+            if (btnSystem) btnSystem.className = `flex-1 py-1.5 rounded-full transition text-xs font-bold text-center ${mode === 'system' ? activeClasses : inactiveClasses}`;
             
             if (indicator) {
                 if (mode === 'system') {
@@ -1045,9 +1302,9 @@
             
             if (headerIcon) {
                 if (mode === 'system') {
-                    headerIcon.className = 'fa-solid fa-laptop text-xs text-[#00b5b8]';
+                    headerIcon.className = 'fa-solid fa-laptop text-xs text-[#0b57d0] dark:text-[#a8c7fa]';
                 } else if (effective === 'dark') {
-                    headerIcon.className = 'fa-solid fa-moon text-xs text-[#00b5b8]';
+                    headerIcon.className = 'fa-solid fa-moon text-xs text-[#0b57d0] dark:text-[#a8c7fa]';
                 } else {
                     headerIcon.className = 'fa-solid fa-sun text-xs text-amber-500';
                 }
@@ -1072,6 +1329,21 @@
             applyTheme(savedTheme);
             const savedVisualMode = localStorage.getItem('df_visual_mode') || 'strict';
             applyVisualMode(savedVisualMode);
+
+            // Restore desktop sidebar collapsed state
+            const isDesktop = window.innerWidth >= 1024;
+            if (isDesktop && localStorage.getItem('df_sidebar_collapsed') === '1') {
+                sidebar.classList.add('sidebar-collapsed');
+            }
+            updateSidebarToggleUI();
+
+            // Initialize Top-K from saved default
+            if (topKSlider) {
+                const defaultTopK = getDefaultTopK();
+                topKSlider.value = defaultTopK;
+                updateTopKUI();
+            }
+
             await checkAuth();
             await fetchStatus();
             await loadTabs();
@@ -1094,74 +1366,79 @@
         }
 
         function updateUserUI() {
-            const loggedInEl = document.getElementById('sidebarUserLoggedIn');
-            const loggedOutEl = document.getElementById('sidebarUserLoggedOut');
             const headerAuth = document.getElementById('headerAuthArea');
-            const avatarContainer = document.getElementById('userAvatarContainer');
+            const setAvatarPreview = document.getElementById('settingsAvatarPreview');
+            const setUsernameEl = document.getElementById('settingsUsername');
+            const setUserRoleEl = document.getElementById('settingsUserRole');
 
             if (currentUser) {
-                loggedInEl.classList.remove('hidden');
-                loggedOutEl.classList.add('hidden');
-
                 const isGuest = currentUser.role === 'guest' || currentUser.is_guest || currentUser.username.toLowerCase() === 'guest';
 
                 if (isGuest) {
-                    document.getElementById('sidebarUsername').textContent = 'Guest User';
-                    document.getElementById('sidebarUserRole').innerHTML = '<span class="text-amber-500 dark:text-amber-400 font-bold">Guest Mode</span> (Session only)';
-                    avatarContainer.innerHTML = `<i class="fa-solid fa-user-ninja text-[#00787c] dark:text-[#38f2f5] text-sm"></i>`;
+                    if (setUsernameEl) setUsernameEl.textContent = 'Guest User';
+                    if (setUserRoleEl) setUserRoleEl.innerHTML = '<span class="text-amber-500 font-bold">Guest Mode</span> (Temporary session)';
+                    if (setAvatarPreview) setAvatarPreview.innerHTML = `<i class="fa-solid fa-user-ninja text-2xl text-[#0b57d0] dark:text-[#a8c7fa]"></i>`;
 
                     // Header Profile Badge for Guest
-                    headerAuth.innerHTML = `
-                        <div class="flex items-center space-x-2 bg-[#f0f7fc] dark:bg-slate-850 border border-sky-200 dark:border-slate-700 px-2.5 py-1.5 rounded-lg text-xs shadow-sm">
-                            <i class="fa-solid fa-user-ninja text-[#00b5b8]"></i>
-                            <span class="font-mono text-slate-800 dark:text-slate-200 font-bold">Guest</span>
-                            <button onclick="openAuthModal('login')" class="ml-1 text-[11px] text-[#00787c] dark:text-[#38f2f5] hover:underline font-bold" title="Log in to save multiple tabs">
-                                Log In
-                            </button>
-                            <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 ml-1 p-0.5" title="Exit Guest Mode">
-                                <i class="fa-solid fa-right-from-bracket"></i>
-                            </button>
-                        </div>
-                    `;
+                    if (headerAuth) {
+                        headerAuth.innerHTML = `
+                            <div class="flex items-center space-x-2 bg-[#f0f4f9] dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] px-3 py-1.5 rounded-full text-xs shadow-sm">
+                                <i class="fa-solid fa-user-ninja text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                <span class="font-mono text-slate-800 dark:text-[#e3e3e3] font-bold">Guest</span>
+                                <button onclick="openAuthModal('login')" class="ml-1 text-[11px] text-[#0b57d0] dark:text-[#a8c7fa] hover:underline font-bold" title="Log in to save multiple tabs">
+                                    Log In
+                                </button>
+                                <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 ml-1 p-0.5" title="Exit Guest Mode">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
                 } else {
-                    document.getElementById('sidebarUsername').textContent = currentUser.username;
-                    document.getElementById('sidebarUserRole').textContent = currentUser.role === 'admin' ? 'Administrator' : 'User';
+                    if (setUsernameEl) setUsernameEl.textContent = currentUser.username;
+                    if (setUserRoleEl) setUserRoleEl.textContent = currentUser.role === 'admin' ? 'Administrator' : 'Verified User';
 
-                    // Render avatar image or initial
+                    // Render avatar image or initial in Settings Modal
                     if (currentUser.profile_pic) {
-                        avatarContainer.innerHTML = `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-full h-full object-cover" alt="${escapeAttr(currentUser.username)}">`;
+                        if (setAvatarPreview) setAvatarPreview.innerHTML = `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-full h-full object-cover" alt="${escapeAttr(currentUser.username)}">`;
                     } else {
-                        avatarContainer.innerHTML = `<span id="userInitial">${currentUser.username.charAt(0).toUpperCase()}</span>`;
+                        const initial = currentUser.username.charAt(0).toUpperCase();
+                        if (setAvatarPreview) setAvatarPreview.innerHTML = `<span>${initial}</span>`;
                     }
 
                     // Header Profile Badge
                     const avatarHtml = currentUser.profile_pic
-                        ? `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-5 h-5 rounded-full object-cover border border-[#00b5b8] shrink-0">`
+                        ? `<img src="/api/user/profile-picture/${escapeAttr(currentUser.profile_pic)}?t=${Date.now()}" class="w-5 h-5 rounded-full object-cover border border-[#0b57d0] shrink-0">`
                         : `<span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0"></span>`;
 
-                    headerAuth.innerHTML = `
-                        <div class="flex items-center space-x-2 bg-[#f0f7fc] dark:bg-slate-850 border border-sky-200 dark:border-slate-700 px-2.5 py-1.5 rounded-lg shadow-sm">
-                            ${avatarHtml}
-                            <span class="font-mono text-slate-800 dark:text-slate-200 font-bold truncate max-w-[120px]">${escapeHtml(currentUser.username)}</span>
-                            <button onclick="openProfilePicModal()" class="text-slate-400 hover:text-[#00b5b8] text-[10px] p-0.5 ml-0.5" title="Change Avatar">
-                                <i class="fa-solid fa-camera"></i>
-                            </button>
-                            <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 ml-1 p-0.5" title="Logout">
-                                <i class="fa-solid fa-right-from-bracket"></i>
-                            </button>
-                        </div>
-                    `;
+                    if (headerAuth) {
+                        headerAuth.innerHTML = `
+                            <div class="flex items-center space-x-2 bg-[#f0f4f9] dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] px-3 py-1.5 rounded-full shadow-sm">
+                                ${avatarHtml}
+                                <span class="font-mono text-slate-800 dark:text-[#e3e3e3] font-bold truncate max-w-[120px]">${escapeHtml(currentUser.username)}</span>
+                                <button onclick="openProfilePicModal()" class="text-slate-400 hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] text-[10px] p-0.5 ml-0.5" title="Change Avatar">
+                                    <i class="fa-solid fa-camera"></i>
+                                </button>
+                                <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 ml-1 p-0.5" title="Logout">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
             } else {
-                loggedInEl.classList.add('hidden');
-                loggedOutEl.classList.remove('hidden');
+                if (setUsernameEl) setUsernameEl.textContent = 'Not Logged In';
+                if (setUserRoleEl) setUserRoleEl.textContent = 'Guest / Anonymous';
+                if (setAvatarPreview) setAvatarPreview.innerHTML = `<i class="fa-solid fa-user-xmark text-xl text-slate-400"></i>`;
 
-                headerAuth.innerHTML = `
-                    <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 rounded-lg bg-[#00b5b8] hover:bg-[#00979b] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#00b5b8]/20 transition active:scale-[0.99]">
-                        <i class="fa-solid fa-user"></i>
-                        <span>Log In</span>
-                    </button>
-                `;
+                if (headerAuth) {
+                    headerAuth.innerHTML = `
+                        <button onclick="openAuthModal('login')" class="px-4 py-1.5 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0b57d0]/25 transition active:scale-[0.99]">
+                            <i class="fa-solid fa-user"></i>
+                            <span>Log In</span>
+                        </button>
+                    `;
+                }
             }
         }
 
@@ -1443,28 +1720,29 @@
 
         function renderTabsList() {
             const container = document.getElementById('tabsListContainer');
+            const countBadge = document.getElementById('sidebarTabsCountBadge');
+            if (countBadge) countBadge.textContent = userTabs.length;
+
             if (userTabs.length === 0) {
-                container.innerHTML = `<div class="p-2 text-center text-slate-500 text-xs">No tabs yet.</div>`;
+                container.innerHTML = `<div class="p-3 text-center text-slate-400 dark:text-[#9aa0a6] text-xs">No chat tabs yet.</div>`;
                 return;
             }
 
             container.innerHTML = userTabs.map(t => {
                 const isActive = (t.id === activeTabId);
                 return `
-                    <div class="group flex items-center justify-between rounded-lg p-2 text-xs transition cursor-pointer ${
+                    <div class="group flex items-center justify-between rounded-full px-3 py-2 text-xs transition cursor-pointer ${
                         isActive 
-                            ? 'bg-[#00b5b8] text-white font-bold shadow-md shadow-[#00b5b8]/20' 
-                            : 'bg-[#f4f9fd] dark:bg-slate-850 hover:bg-[#e0f7f7] dark:hover:bg-slate-800 border border-sky-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#00787c] dark:hover:text-white'
+                            ? 'bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] font-bold shadow-sm' 
+                            : 'text-slate-700 dark:text-[#c4c7c5] hover:bg-slate-200/60 dark:hover:bg-[#282a2c] hover:text-slate-900 dark:hover:text-white font-medium'
                     }" onclick="switchTab('${t.id}')">
-                        <div class="flex items-center space-x-2 min-w-0 flex-1">
-                            <i class="fa-solid fa-message text-[11px] ${isActive ? 'text-white' : 'text-[#00b5b8]'} shrink-0"></i>
+                        <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+                            <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : 'text-slate-400 dark:text-slate-500'} shrink-0"></i>
                             <span class="truncate font-semibold" title="${escapeHtml(t.title)}">${escapeHtml(t.title || 'New Chat')}</span>
                         </div>
-                        ${currentUser && userTabs.length > 1 ? `
-                            <button onclick="deleteTab('${t.id}', event)" class="opacity-0 group-hover:opacity-100 ${isActive ? 'text-white/80 hover:text-white' : 'text-slate-400 hover:text-rose-500'} p-1 transition" title="Delete tab">
-                                <i class="fa-solid fa-trash-can text-[10px]"></i>
-                            </button>
-                        ` : ''}
+                        <button onclick="deleteTab('${t.id}', event)" class="${isActive ? 'text-[#001d35]/60 hover:text-rose-600 dark:text-[#c2e7ff]/60 dark:hover:text-rose-400' : 'text-slate-400 hover:text-rose-500'} p-1 transition rounded-full hover:bg-black/10 shrink-0" title="Delete chat tab">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        </button>
                     </div>
                 `;
             }).join('');
@@ -1506,9 +1784,51 @@
             closeMobileSidebar();
         }
 
+        async function deleteActiveChat() {
+            if (!activeTabId) return;
+            const currentTab = userTabs.find(t => t.id === activeTabId);
+            const tabName = currentTab ? currentTab.title : 'this chat';
+            
+            if (!confirm(`Are you sure you want to delete "${tabName}" and its messages?`)) {
+                return;
+            }
+
+            await executeDeleteTab(activeTabId);
+        }
+
         async function deleteTab(tabId, event) {
-            event.stopPropagation();
-            if (!confirm("Are you sure you want to delete this chat tab and its history?")) {
+            if (event) event.stopPropagation();
+            const currentTab = userTabs.find(t => t.id === tabId);
+            const tabName = currentTab ? currentTab.title : 'this chat';
+
+            if (!confirm(`Are you sure you want to delete "${tabName}"?`)) {
+                return;
+            }
+
+            await executeDeleteTab(tabId);
+        }
+
+        async function executeDeleteTab(tabId) {
+            const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
+            if (isGuest || !currentUser || tabId === 'guest-tab' || userTabs.length <= 1) {
+                chatMessagesHistory = [];
+                messageSeedsMap = {};
+                if (currentUser && !isGuest && tabId !== 'guest-tab') {
+                    try {
+                        const res = await fetch(`/api/chat/tabs/${encodeURIComponent(tabId)}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (data.status === 'ok') {
+                            await createNewTab();
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("Delete tab error:", err);
+                    }
+                }
+                userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: 0 }];
+                activeTabId = 'guest-tab';
+                renderTabsList();
+                renderWelcomeScreen(userTabs[0].title);
                 return;
             }
 
@@ -1517,11 +1837,13 @@
                 const data = await res.json();
                 if (data.status === 'ok') {
                     userTabs = data.tabs || [];
-                    if (activeTabId === tabId) {
-                        activeTabId = userTabs.length > 0 ? userTabs[0].id : null;
-                    }
-                    renderTabsList();
-                    if (activeTabId) {
+                    if (userTabs.length === 0) {
+                        await createNewTab();
+                    } else {
+                        if (activeTabId === tabId) {
+                            activeTabId = userTabs[0].id;
+                        }
+                        renderTabsList();
                         await loadTabMessages(activeTabId);
                     }
                 }
@@ -1536,8 +1858,8 @@
             document.getElementById('headerTabTitle').textContent = `Tab: ${title}`;
 
             chatContainer.innerHTML = `
-                <div class="py-16 text-center text-slate-400 dark:text-slate-500 text-xs">
-                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base text-[#00b5b8]"></i> Loading tab conversation...
+                <div class="py-16 text-center text-slate-400 dark:text-[#9aa0a6] text-xs">
+                    <i class="fa-solid fa-spinner fa-spin mr-2 text-base text-[#0b57d0] dark:text-[#a8c7fa]"></i> Loading tab conversation...
                 </div>
             `;
 
@@ -1577,43 +1899,118 @@
 
         function renderWelcomeScreen(title = "New Chat") {
             chatContainer.innerHTML = `
-                <div class="flex items-start space-x-3 sm:space-x-4 max-w-4xl mx-auto">
-                    <!-- DF Automation Logo Avatar -->
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/20 shrink-0">
-                        <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
-                    </div>
-                    <div class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl rounded-tl-sm p-4 sm:p-5 text-xs sm:text-sm text-slate-800 dark:text-slate-200 max-w-3xl shadow-sm dark:shadow-xl space-y-3">
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-black text-base text-slate-900 dark:text-white">DFleet 4.0 Assistant</h2>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30">
-                                ${escapeHtml(title)}
+                <div class="max-w-3xl mx-auto py-6 sm:py-10 space-y-6 sm:space-y-8 animate-fade-in">
+                    <!-- Google Gemini Greeting Hero -->
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-2 flex items-center justify-center shadow-lg shadow-[#00b5b8]/25 shrink-0">
+                                <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 text-[#001d35] dark:text-[#c2e7ff] border border-[#c2e7ff] dark:border-[#004a77]">
+                                <i class="fa-solid fa-sparkles text-[10px] text-[#0b57d0] dark:text-[#a8c7fa] mr-1"></i> ${escapeHtml(title)}
                             </span>
                         </div>
-                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                            Welcome to the <strong>DFleet 4.0 & NavWiz Multimodal Technical Assistant</strong> by DF Automation. Ask any technical questions regarding AGV/AMR navigation, obstacle sensor calibration, hardware deployment, or fleet management troubleshooting.
+                        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[#1a73e8] via-[#7c3aed] to-[#db2777] bg-clip-text text-transparent">
+                            Hello, How can I help you today?
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-600 dark:text-[#9aa0a6] leading-relaxed">
+                            DF Chatbot — Multimodal Technical Assistant by DF Automation. Powered by multimodal Gemini AI and verified manual page citations.
                         </p>
-                        <div class="p-3 bg-[#f0f7fc] dark:bg-slate-950 border border-sky-100 dark:border-slate-800 rounded-xl space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                            <p class="font-bold text-[#00787c] dark:text-[#38f2f5] flex items-center gap-1.5">
-                                <i class="fa-solid fa-lightbulb text-[#00b5b8]"></i>
-                                <span>Multimodal Visual Support</span>
-                            </p>
-                            <p class="text-[12px] text-slate-600 dark:text-slate-400">
-                                You can <strong>attach up to 5 photos or PDF extracts</strong> of error screens, wiring schematics, or physical sensors for immediate multimodal analysis alongside the technical manuals.
-                            </p>
+                    </div>
+
+                    <!-- Prompt Suggestion Cards (Google Drive / Gemini Style) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div onclick="setQueryAndClose('How do I calibrate the AGV sensor array in NavWiz?')" 
+                             class="p-4 rounded-2xl bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] border border-[#e0e3e7] dark:border-[#37393b] shadow-sm hover:shadow transition cursor-pointer space-y-1.5 group">
+                            <div class="flex items-center justify-between">
+                                <span class="w-7 h-7 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#0b57d0] dark:text-[#a8c7fa] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-compass"></i>
+                                </span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-slate-400 group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] group-hover:translate-x-0.5 transition"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3]">Sensor Calibration</p>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">How do I calibrate the AGV sensor array in NavWiz?</p>
                         </div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400 border-t border-sky-100 dark:border-slate-800 pt-2.5 flex flex-wrap items-center gap-3 sm:gap-4 font-semibold">
-                            <span class="flex items-center gap-1 text-[#00787c] dark:text-[#38f2f5]"><i class="fa-solid fa-bolt text-[#00b5b8]"></i> Instant Direct Retrieval</span>
-                            <span class="flex items-center gap-1 text-[#00787c] dark:text-[#38f2f5]"><i class="fa-solid fa-camera text-[#00b5b8]"></i> Gemini Vision Analysis</span>
-                            <span class="flex items-center gap-1 text-[#00787c] dark:text-[#38f2f5]"><i class="fa-solid fa-book-bookmark text-[#00b5b8]"></i> Verified Page Citations</span>
+
+                        <div onclick="setQueryAndClose('How to troubleshoot pallet docking error codes?')" 
+                             class="p-4 rounded-2xl bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] border border-[#e0e3e7] dark:border-[#37393b] shadow-sm hover:shadow transition cursor-pointer space-y-1.5 group">
+                            <div class="flex items-center justify-between">
+                                <span class="w-7 h-7 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#0b57d0] dark:text-[#a8c7fa] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-wrench"></i>
+                                </span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-slate-400 group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] group-hover:translate-x-0.5 transition"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3]">Pallet Docking</p>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">Troubleshoot pallet docking errors and tolerances</p>
                         </div>
+
+                        <div onclick="setQueryAndClose('Explain obstacle sensor safety zones and slow down distances.')" 
+                             class="p-4 rounded-2xl bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] border border-[#e0e3e7] dark:border-[#37393b] shadow-sm hover:shadow transition cursor-pointer space-y-1.5 group">
+                            <div class="flex items-center justify-between">
+                                <span class="w-7 h-7 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#0b57d0] dark:text-[#a8c7fa] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-slate-400 group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] group-hover:translate-x-0.5 transition"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3]">Safety Sensor Zones</p>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">Obstacle sensor safety zones and slow down parameters</p>
+                        </div>
+
+                        <div onclick="triggerChatFileInput()" 
+                             class="p-4 rounded-2xl bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] border border-[#e0e3e7] dark:border-[#37393b] shadow-sm hover:shadow transition cursor-pointer space-y-1.5 group">
+                            <div class="flex items-center justify-between">
+                                <span class="w-7 h-7 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#0b57d0] dark:text-[#a8c7fa] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-camera"></i>
+                                </span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-slate-400 group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] group-hover:translate-x-0.5 transition"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3]">Attach Photo / PDF</p>
+                            <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">Upload error screen photos or wiring diagrams (max 5)</p>
+                        </div>
+                    </div>
+
+                    <!-- Bottom badges -->
+                    <div class="pt-2 flex flex-wrap items-center gap-3 sm:gap-4 text-[11px] font-semibold text-slate-500 dark:text-[#9aa0a6]">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-bolt text-[#0b57d0] dark:text-[#a8c7fa]"></i> Direct Hybrid Retrieval</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-camera text-[#0b57d0] dark:text-[#a8c7fa]"></i> Multimodal Vision</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-book-bookmark text-[#0b57d0] dark:text-[#a8c7fa]"></i> Page PDF Citations</span>
                     </div>
                 </div>
             `;
         }
 
         // =====================================================================
-        // Mobile Sidebar Controls
+        // Sidebar & Settings Modal Controls
         // =====================================================================
+        function toggleSidebar() {
+            const isDesktop = window.innerWidth >= 1024;
+            if (isDesktop) {
+                sidebar.classList.toggle('sidebar-collapsed');
+                const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                localStorage.setItem('df_sidebar_collapsed', isCollapsed ? '1' : '0');
+                updateSidebarToggleUI();
+            } else {
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    openMobileSidebar();
+                } else {
+                    closeMobileSidebar();
+                }
+            }
+        }
+
+        function updateSidebarToggleUI() {
+            const isDesktop = window.innerWidth >= 1024;
+            const icon = document.getElementById('headerSidebarToggleIcon');
+            const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            if (icon) {
+                if (isDesktop) {
+                    icon.className = isCollapsed ? 'fa-solid fa-bars text-sm text-[#0b57d0] dark:text-[#a8c7fa]' : 'fa-solid fa-bars-staggered text-sm text-slate-700 dark:text-[#c4c7c5]';
+                } else {
+                    icon.className = 'fa-solid fa-bars text-sm text-slate-700 dark:text-[#c4c7c5]';
+                }
+            }
+        }
+
         function openMobileSidebar() {
             sidebar.classList.remove('-translate-x-full');
             sidebarOverlay.classList.remove('hidden');
@@ -1632,9 +2029,41 @@
             }, 300);
         }
 
+        function openSettingsModal(tab = 'appearance') {
+            switchSettingsTab(tab);
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function switchSettingsTab(tabName) {
+            const tabs = ['appearance', 'rag', 'tools', 'account'];
+            tabs.forEach(t => {
+                const pane = document.getElementById(`settingsPane_${t}`);
+                const btn = document.getElementById(`setTabBtn_${t}`);
+                if (pane) {
+                    if (t === tabName) {
+                        pane.classList.remove('hidden');
+                    } else {
+                        pane.classList.add('hidden');
+                    }
+                }
+                if (btn) {
+                    if (t === tabName) {
+                        btn.className = 'py-2 px-4 rounded-full text-xs font-bold transition flex items-center gap-1.5 bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] shadow-sm';
+                    } else {
+                        btn.className = 'py-2 px-4 rounded-full text-xs font-semibold transition flex items-center gap-1.5 text-slate-600 dark:text-[#c4c7c5] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-[#282a2c]';
+                    }
+                }
+            });
+        }
+
         function setQueryAndClose(text) {
             userInput.value = text;
             closeMobileSidebar();
+            closeSettingsModal();
             userInput.focus();
         }
 
@@ -1645,10 +2074,10 @@
             if (isZero) {
                 // Turn prompt bar light red
                 userInput.classList.remove(
-                    'bg-[#f8fbfe]', 'dark:bg-slate-950', 
-                    'border-sky-200', 'dark:border-slate-700', 
-                    'text-slate-800', 'dark:text-slate-100', 
-                    'placeholder-slate-400', 'dark:placeholder-slate-500'
+                    'bg-white', 'dark:bg-[#1e1f20]', 
+                    'border-[#e0e3e7]', 'dark:border-[#37393b]', 
+                    'text-slate-800', 'dark:text-[#e3e3e3]', 
+                    'placeholder-slate-400', 'dark:placeholder-[#9aa0a6]'
                 );
                 userInput.classList.add(
                     'bg-rose-50', 'dark:bg-rose-950/40', 
@@ -1673,10 +2102,10 @@
                     'ring-1', 'ring-rose-400/40'
                 );
                 userInput.classList.add(
-                    'bg-[#f8fbfe]', 'dark:bg-slate-950', 
-                    'border-sky-200', 'dark:border-slate-700', 
-                    'text-slate-800', 'dark:text-slate-100', 
-                    'placeholder-slate-400', 'dark:placeholder-slate-500'
+                    'bg-white', 'dark:bg-[#1e1f20]', 
+                    'border-[#e0e3e7]', 'dark:border-[#37393b]', 
+                    'text-slate-800', 'dark:text-[#e3e3e3]', 
+                    'placeholder-slate-400', 'dark:placeholder-[#9aa0a6]'
                 );
                 userInput.placeholder = "Ask a question or describe your attached photo/PDF...";
                 if (noWarnBanner) noWarnBanner.classList.add('hidden');
@@ -1697,8 +2126,8 @@
             const selectAllQuick = document.getElementById('selectAllQuickManuals');
 
             if (!availableSources || availableSources.length === 0) {
-                if (sidebarChecklist) sidebarChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">No manuals available.</div>';
-                if (quickChecklist) quickChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">No manuals available.</div>';
+                if (sidebarChecklist) sidebarChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
+                if (quickChecklist) quickChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
                 updatePromptBarValidation();
                 return;
             }
@@ -1714,13 +2143,13 @@
             if (sidebarBadge) {
                 if (isAllSelected) {
                     sidebarBadge.textContent = `All (${totalCount})`;
-                    sidebarBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30';
+                    sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]';
                 } else if (isNoneSelected) {
                     sidebarBadge.textContent = '0 Selected';
-                    sidebarBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800';
+                    sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800';
                 } else {
                     sidebarBadge.textContent = `${countSelected} Selected`;
-                    sidebarBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#00b5b8] text-white shadow-sm';
+                    sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#0b57d0] text-white shadow-sm';
                 }
             }
 
@@ -1739,13 +2168,13 @@
             if (quickBadge) {
                 if (isAllSelected) {
                     quickBadge.textContent = 'All';
-                    quickBadge.className = 'font-extrabold px-1.5 py-0.2 rounded-full bg-[#00b5b8] text-white text-[10px]';
+                    quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] text-[10px]';
                 } else if (isNoneSelected) {
                     quickBadge.textContent = '0';
-                    quickBadge.className = 'font-extrabold px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]';
+                    quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px]';
                 } else {
                     quickBadge.textContent = `${countSelected}`;
-                    quickBadge.className = 'font-extrabold px-1.5 py-0.2 rounded-full bg-[#00787c] text-white text-[10px] shadow-sm';
+                    quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-[#0b57d0] text-white text-[10px] shadow-sm';
                 }
             }
 
@@ -1754,9 +2183,9 @@
                 sidebarChecklist.innerHTML = availableSources.map(src => {
                     const isChecked = selectedManualFilters.includes(src);
                     return `
-                        <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-sky-100/60 dark:hover:bg-slate-800 transition cursor-pointer select-none text-xs text-slate-700 dark:text-slate-300 font-medium">
+                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
                             <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked)"
-                                   class="w-3.5 h-3.5 rounded text-[#00b5b8] bg-white dark:bg-slate-900 border-sky-300 dark:border-slate-700 focus:ring-[#00b5b8] cursor-pointer">
+                                   class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#0b57d0] cursor-pointer">
                             <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
                         </label>
                     `;
@@ -1768,9 +2197,9 @@
                 quickChecklist.innerHTML = availableSources.map(src => {
                     const isChecked = selectedManualFilters.includes(src);
                     return `
-                        <label class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 transition cursor-pointer select-none text-xs text-slate-700 dark:text-slate-300 font-medium">
+                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
                             <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked)"
-                                   class="w-3.5 h-3.5 rounded text-[#00b5b8] bg-white dark:bg-slate-950 border-sky-300 dark:border-slate-700 focus:ring-[#00b5b8] cursor-pointer">
+                                   class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#0b57d0] cursor-pointer">
                             <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
                         </label>
                     `;
@@ -1872,28 +2301,28 @@
             const showScores = showScoresToggle.checked;
 
             if (seeds.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 dark:text-slate-500 text-xs">No seed candidates recorded for this response.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 dark:text-[#9aa0a6] text-xs">No seed candidates recorded for this response.</div>`;
             } else {
                 grid.innerHTML = seeds.map(s => `
-                    <div class="bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 hover:border-[#00b5b8] rounded-xl p-2.5 transition flex flex-col justify-between space-y-2 shadow-sm dark:shadow-md">
+                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#282a2c] hover:border-[#0b57d0] dark:hover:border-[#a8c7fa] rounded-2xl p-3 transition flex flex-col justify-between space-y-2 shadow-sm">
                         <div>
-                            <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-lg overflow-hidden relative cursor-pointer group border border-sky-100 dark:border-slate-800" onclick="openImageModal('${s.image_url}', '${escapeAttr(s.page_image)}')">
+                            <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-xl overflow-hidden relative cursor-pointer group border border-[#e0e3e7] dark:border-[#282a2c]" onclick="openImageModal('${s.image_url}', '${escapeAttr(s.page_image)}')">
                                 <img src="${s.image_url}" alt="Page" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" loading="lazy">
                                 <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                    <span class="text-[10px] font-bold bg-[#00b5b8] text-white px-2.5 py-1 rounded-md shadow-md">Inspect Preview</span>
+                                    <span class="text-[10px] font-bold bg-[#0b57d0] text-white px-3 py-1 rounded-full shadow-md">Inspect Preview</span>
                                 </div>
                                 ${showScores ? `
-                                    <span class="absolute bottom-1 right-1 bg-white/95 dark:bg-slate-950/90 text-[#00787c] dark:text-[#38f2f5] text-[10px] px-1.5 py-0.5 rounded font-mono border border-sky-200 dark:border-slate-700 shadow-sm">
+                                    <span class="absolute bottom-1 right-1 bg-white/95 dark:bg-[#131314]/90 text-[#0b57d0] dark:text-[#a8c7fa] text-[10px] px-2 py-0.5 rounded-full font-mono border border-[#e0e3e7] dark:border-[#37393b] shadow-sm">
                                         ${s.similarity.toFixed(3)}
                                     </span>
                                 ` : ''}
                             </div>
-                            <div class="mt-2">
-                                <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title="${escapeHtml(s.page_image)}">${escapeHtml(s.page_image)}</p>
-                                <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">Ch: ${escapeHtml(s.chapter || 'General')}</p>
+                            <div class="mt-2.5">
+                                <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3] truncate" title="${escapeHtml(s.page_image)}">${escapeHtml(s.page_image)}</p>
+                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium truncate">Ch: ${escapeHtml(s.chapter || 'General')}</p>
                             </div>
                         </div>
-                        <a href="/pdf-viewer?file=${encodeURIComponent(s.pdf_stem)}&page=${s.page_number}" target="_blank" class="w-full py-1.5 px-2 rounded-lg bg-[#e0f7f7] dark:bg-[#00b5b8]/15 hover:bg-[#c5f2f0] dark:hover:bg-[#00b5b8]/30 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30 text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
+                        <a href="/pdf-viewer?file=${encodeURIComponent(s.pdf_stem)}&page=${s.page_number}" target="_blank" class="w-full py-2 px-3 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 hover:bg-[#b0d8f5] text-[#001d35] dark:text-[#c2e7ff] border border-[#c2e7ff] dark:border-[#004a77] text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
                             <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                             <span>Open PDF Page ${s.page_number}</span>
                         </a>
@@ -1911,6 +2340,7 @@
         // Close modals on Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                closeSettingsModal();
                 closeImageModal();
                 closeTopKModal();
                 closeAuthModal();
@@ -1920,10 +2350,13 @@
             }
         });
 
-        clearChatBtn.addEventListener('click', () => {
-            renderWelcomeScreen(document.getElementById('headerTabTitle').textContent);
-            closeMobileSidebar();
-        });
+        if (clearChatBtn) {
+            clearChatBtn.addEventListener('click', () => {
+                renderWelcomeScreen(document.getElementById('headerTabTitle').textContent);
+                closeMobileSidebar();
+                closeSettingsModal();
+            });
+        }
 
         function exportChatTranscript() {
             const transcript = chatContainer.innerText;
@@ -1932,12 +2365,12 @@
                 return;
             }
 
-            const mdContent = `# DFleet 4.0 Assistant Conversation Transcript\n\nGenerated on: ${new Date().toLocaleString()}\n\n---\n\n${transcript}`;
+            const mdContent = `# DF Chatbot Assistant Conversation Transcript\n\nGenerated on: ${new Date().toLocaleString()}\n\n---\n\n${transcript}`;
             const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `dfleet_rag_chat_${Date.now()}.md`;
+            a.download = `df_chatbot_transcript_${Date.now()}.md`;
             a.click();
             URL.revokeObjectURL(url);
             closeMobileSidebar();
@@ -2066,19 +2499,19 @@
             let attachmentsHtml = '';
             if (attachments && attachments.length > 0) {
                 attachmentsHtml = `
-                    <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-white/30">
+                    <div class="flex flex-wrap gap-2 mb-2 pb-2 border-b border-slate-300 dark:border-slate-700">
                         ${attachments.map(att => {
                             if (att.type === 'pdf') {
                                 return `
-                                    <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold shadow-sm transition">
-                                        <i class="fa-solid fa-file-pdf text-amber-200"></i>
+                                    <a href="${att.url}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#131314] text-slate-800 dark:text-[#e3e3e3] text-xs font-bold shadow-sm transition border border-[#e0e3e7] dark:border-[#37393b]">
+                                        <i class="fa-solid fa-file-pdf text-rose-500"></i>
                                         <span class="truncate max-w-[140px]">${escapeHtml(att.name || 'Document.pdf')}</span>
-                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-80"></i>
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
                                     </a>
                                 `;
                             } else {
                                 return `
-                                    <div class="relative group max-w-[120px] max-h-[100px] rounded-lg overflow-hidden border border-white/40 cursor-pointer shadow-sm" onclick="openImageModal('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
+                                    <div class="relative group max-w-[120px] max-h-[100px] rounded-2xl overflow-hidden border border-[#e0e3e7] dark:border-[#37393b] cursor-pointer shadow-sm" onclick="openImageModal('${att.url}', '${escapeAttr(att.name || 'Photo')}')">
                                         <img src="${att.url}" alt="${escapeAttr(att.name || 'Uploaded photo')}" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
                                         <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white text-[10px]">
                                             <i class="fa-solid fa-magnifying-glass-plus"></i>
@@ -2092,11 +2525,11 @@
             }
 
             div.innerHTML = `
-                <div class="bg-[#00b5b8] text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 text-xs sm:text-sm max-w-[88%] sm:max-w-xl md:max-w-2xl shadow-md shadow-[#00b5b8]/20 break-words font-medium">
+                <div class="bg-[#e8f0fe] dark:bg-[#282a2c] text-slate-900 dark:text-[#e3e3e3] rounded-3xl rounded-tr-lg p-4 sm:p-4.5 text-xs sm:text-sm max-w-[88%] sm:max-w-xl md:max-w-2xl shadow-sm border border-[#d3e3fd] dark:border-[#37393b] break-words font-medium">
                     ${attachmentsHtml}
                     ${text ? `<p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(text)}</p>` : ''}
                 </div>
-                <div class="w-8 h-8 rounded-xl bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                     <i class="fa-solid fa-user"></i>
                 </div>
             `;
@@ -2110,12 +2543,12 @@
             div.id = id;
             div.className = "flex items-start space-x-2.5 sm:space-x-3.5 max-w-4xl mx-auto";
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-xl bg-[#00b5b8] p-1 flex items-center justify-center shadow-md shadow-[#00b5b8]/20 shrink-0">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1 flex items-center justify-center shadow-md shadow-[#00b5b8]/25 shrink-0">
                     <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain animate-pulse">
                 </div>
-                <div class="bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-800 rounded-2xl rounded-tl-sm p-3.5 sm:p-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300 max-w-3xl shadow-sm dark:shadow-lg flex items-center space-x-2.5">
-                    <i class="fa-solid fa-circle-notch fa-spin text-[#00b5b8] text-base"></i>
-                    <span class="font-medium text-slate-800 dark:text-slate-200">Searching manuals & analyzing visual pages...</span>
+                <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-3xl rounded-tl-lg p-4 text-xs sm:text-sm text-slate-700 dark:text-[#c4c7c5] max-w-3xl shadow-sm flex items-center space-x-3">
+                    <i class="fa-solid fa-sparkles fa-spin text-[#0b57d0] dark:text-[#a8c7fa] text-base"></i>
+                    <span class="font-medium text-slate-800 dark:text-[#e3e3e3]">Searching manuals & analyzing visual pages...</span>
                 </div>
             `;
             chatContainer.appendChild(div);
@@ -2131,7 +2564,7 @@
             return rawAnswer.replace(regex, (match, manualTitle, pageNum) => {
                 const cleanManual = manualTitle.trim();
                 const cleanPage = pageNum.trim();
-                return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 mx-1 my-0.5 rounded-lg bg-[#e0f7f7] dark:bg-[#00b5b8]/15 hover:bg-[#c5f2f0] dark:hover:bg-[#00b5b8]/30 text-[#00787c] dark:text-[#38f2f5] border border-[#a8eeec] dark:border-[#00b5b8]/30 text-xs font-bold font-mono transition cursor-pointer shadow-sm no-underline" title="Open ${cleanManual} at Page ${cleanPage} in new tab"><i class="fa-solid fa-file-pdf text-rose-500 dark:text-rose-400"></i> <span>${cleanManual}, p.${cleanPage}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-[#00787c] dark:text-[#38f2f5]"></i></a>`;
+                return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-[#edf2fa] dark:bg-[#282a2c] hover:bg-[#d3e3fd] dark:hover:bg-[#37393b] text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#37393b] text-xs font-semibold font-mono transition cursor-pointer shadow-sm no-underline" title="Open ${cleanManual} at Page ${cleanPage} in new tab"><i class="fa-solid fa-file-pdf text-rose-500"></i> <span>${cleanManual}, p.${cleanPage}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i></a>`;
             });
         }
 
@@ -2152,26 +2585,26 @@
             let visualsHtml = '';
             if (hasVisuals) {
                 const noticeBadge = isNearest ? `
-                    <div class="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-2.5 py-1.5 rounded-xl mb-2.5">
+                    <div class="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-3 py-1.5 rounded-full mb-2.5">
                         <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs"></i>
                         <span>Nearest Visual Reference (Approximate - might have hallucination)</span>
                     </div>
                 ` : `
-                    <div class="flex items-center gap-1.5 text-[11px] font-bold text-[#00787c] dark:text-[#38f2f5] bg-[#e0f7f7] dark:bg-[#00b5b8]/15 border border-[#a8eeec] dark:border-[#00b5b8]/30 px-2.5 py-1.5 rounded-xl mb-2.5">
-                        <i class="fa-solid fa-camera text-[#00b5b8] text-xs"></i>
+                    <div class="flex items-center gap-1.5 text-[11px] font-bold text-[#0b57d0] dark:text-[#a8c7fa] bg-[#edf2fa] dark:bg-[#004a77]/40 border border-[#c2e7ff] dark:border-[#004a77] px-3 py-1.5 rounded-full mb-2.5">
+                        <i class="fa-solid fa-camera text-xs"></i>
                         <span>Cited Visual Reference Pages (${previews.length})</span>
                     </div>
                 `;
 
                 visualsHtml = `
-                    <div id="photoGalleryWrapper_${msgKey}" class="mt-3 pt-3 border-t border-sky-100 dark:border-slate-800">
+                    <div id="photoGalleryWrapper_${msgKey}" class="mt-3 pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c]">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                <i class="fa-solid fa-images text-[#00b5b8]"></i>
+                                <i class="fa-solid fa-images text-[#0b57d0] dark:text-[#a8c7fa]"></i>
                                 <span>Visual Reference Photos (${previews.length})</span>
                             </span>
                             <button type="button" onclick="toggleMessagePhotos('${msgKey}')" id="togglePhotoBtn_${msgKey}" 
-                                    class="text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-[#00787c] dark:hover:text-[#38f2f5] px-2 py-1 rounded-lg bg-[#f0f7fc] dark:bg-slate-850 hover:bg-[#e0effa] dark:hover:bg-slate-800 border border-sky-200 dark:border-slate-700 transition flex items-center gap-1 shadow-sm">
+                                    class="text-[11px] font-bold text-slate-600 dark:text-[#c4c7c5] hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] px-3 py-1 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-slate-200 dark:hover:bg-[#282a2c] border border-[#e0e3e7] dark:border-[#37393b] transition flex items-center gap-1 shadow-sm">
                                 <i class="fa-solid fa-eye-slash text-xs"></i>
                                 <span>Hide Photos</span>
                             </button>
@@ -2180,17 +2613,17 @@
                             ${noticeBadge}
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 ${previews.map(p => `
-                                    <div class="bg-[#f4f9fd] dark:bg-slate-850 border border-sky-200 dark:border-slate-800 hover:border-[#00b5b8] rounded-xl p-2 transition flex flex-col justify-between space-y-2 shadow-sm">
-                                        <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-lg overflow-hidden relative cursor-pointer group border border-sky-100 dark:border-slate-800" onclick="openImageModal('${p.image_url}', '${escapeAttr(p.caption || p.page_image)}')">
+                                    <div class="bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c] hover:border-[#0b57d0] dark:hover:border-[#a8c7fa] rounded-2xl p-2 transition flex flex-col justify-between space-y-2 shadow-sm">
+                                        <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-xl overflow-hidden relative cursor-pointer group border border-[#e0e3e7] dark:border-[#282a2c]" onclick="openImageModal('${p.image_url}', '${escapeAttr(p.caption || p.page_image)}')">
                                             <img src="${p.image_url}" alt="Page" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" loading="lazy">
                                             <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                                <span class="text-[10px] font-bold bg-[#00b5b8] text-white px-2.5 py-1 rounded-md shadow-md">Inspect Photo</span>
+                                                <span class="text-[10px] font-bold bg-[#0b57d0] text-white px-3 py-1 rounded-full shadow-md">Inspect Photo</span>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between text-[11px] pt-1">
                                             <span class="font-bold text-slate-800 dark:text-slate-200 truncate pr-1" title="${escapeHtml(p.caption || p.manual)}">${escapeHtml(p.caption || p.manual)}</span>
                                             <a href="/pdf-viewer?file=${encodeURIComponent(p.manual)}&page=${p.page_number}" target="_blank" 
-                                               class="px-2 py-0.5 rounded-md bg-[#e0f7f7] dark:bg-[#00b5b8]/15 text-[#00787c] dark:text-[#38f2f5] font-bold border border-[#a8eeec] dark:border-[#00b5b8]/30 hover:bg-[#c5f2f0] dark:hover:bg-[#00b5b8]/30 text-[10px] shrink-0 transition flex items-center gap-1">
+                                               class="px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 text-[#001d35] dark:text-[#c2e7ff] font-bold border border-[#c2e7ff] dark:border-[#004a77] hover:bg-[#b0d8f5] text-[10px] shrink-0 transition flex items-center gap-1">
                                                 <span>p.${p.page_number}</span>
                                                 <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
                                             </a>
@@ -2206,11 +2639,11 @@
             const div = document.createElement('div');
             div.className = "flex items-start space-x-2.5 sm:space-x-3.5 max-w-4xl mx-auto";
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-xl bg-[#00b5b8] p-1 flex items-center justify-center shadow-md shadow-[#00b5b8]/20 shrink-0">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1 flex items-center justify-center shadow-md shadow-[#00b5b8]/25 shrink-0">
                     <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                 </div>
-                <div class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl rounded-tl-sm p-4 sm:p-5 text-xs sm:text-sm text-slate-800 dark:text-slate-200 max-w-3xl shadow-sm dark:shadow-xl flex-1 min-w-0 space-y-3">
-                    <div class="prose text-slate-800 dark:text-slate-200 text-xs sm:text-sm overflow-x-auto break-words">
+                <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-3xl rounded-tl-lg p-4 sm:p-5 text-xs sm:text-sm text-slate-800 dark:text-[#e3e3e3] max-w-3xl shadow-sm flex-1 min-w-0 space-y-3">
+                    <div class="prose text-slate-800 dark:text-[#e3e3e3] text-xs sm:text-sm overflow-x-auto break-words">
                         ${parsedHtml}
                     </div>
 
@@ -2218,13 +2651,13 @@
 
                     <!-- Bottom Action Controls: Top-K Result Button -->
                     ${hasSeeds ? `
-                        <div class="pt-3 border-t border-sky-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                            <button onclick="openTopKModal('${msgKey}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f7fc] dark:bg-slate-850 hover:bg-[#e0effa] dark:hover:bg-slate-800 hover:border-[#00b5b8] text-slate-700 dark:text-slate-200 text-xs border border-sky-200 dark:border-slate-700 font-bold shadow-sm transition">
-                                <i class="fa-solid fa-layer-group text-[#00b5b8]"></i>
+                        <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] flex flex-wrap items-center justify-between gap-2">
+                            <button onclick="openTopKModal('${msgKey}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] hover:border-[#0b57d0] text-slate-700 dark:text-slate-200 text-xs border border-[#e0e3e7] dark:border-[#37393b] font-bold shadow-sm transition">
+                                <i class="fa-solid fa-layer-group text-[#0b57d0] dark:text-[#a8c7fa]"></i>
                                 <span>Top-K Matches (${seedCount} candidate pages)</span>
-                                <span class="text-[#00787c] dark:text-[#38f2f5] font-extrabold ml-1">Inspect <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                                <span class="text-[#0b57d0] dark:text-[#a8c7fa] font-extrabold ml-1">Inspect <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
                             </button>
-                            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Expanded ${data.expanded_count} continuous pages</span>
+                            <span class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium">Expanded ${data.expanded_count} continuous pages</span>
                         </div>
                     ` : ''}
                 </div>

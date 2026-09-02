@@ -102,14 +102,10 @@ def init_db():
             )
             logger.info("Initialized default admin user 'df' (password: 'df') in User database.")
 
-        # Also seed 'admin' alias
-        cursor.execute("SELECT id FROM users WHERE username = 'admin'")
-        if not cursor.fetchone():
-            default_admin_hash = generate_password_hash(config.ADMIN_PASSWORD)
-            cursor.execute(
-                "INSERT INTO users (username, password_hash, role, profile_pic, login_count) VALUES (?, ?, ?, ?, ?)",
-                ("admin", default_admin_hash, "admin", "", 1)
-            )
+        # Ensure no legacy 'admin' user alias exists and only 'df' has admin role
+        cursor.execute("DELETE FROM users WHERE username = 'admin'")
+        cursor.execute("UPDATE users SET role = 'user' WHERE username != 'df'")
+        cursor.execute("UPDATE users SET role = 'admin' WHERE username = 'df'")
         
         conn.commit()
 
@@ -136,6 +132,9 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
     validate_no_spaces(username, "Username / Name")
     validate_no_spaces(password, "Password")
 
+    if username.lower() == "df":
+        raise ValueError("Username 'df' is reserved for the system administrator.")
+
     if password != confirm_password:
         raise ValueError("Passwords do not match. Please re-enter to confirm.")
 
@@ -143,7 +142,7 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
         raise ValueError("Password must be at least 2 characters long.")
 
     pw_hash = generate_password_hash(password)
-    role = "admin" if username.lower() in ["df", "admin"] else "user"
+    role = "user"
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -182,38 +181,40 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     validate_no_spaces(username, "Username / Name")
     validate_no_spaces(password, "Password")
 
-    # If logging in as admin (ID 'df' with password 'df' or ADMIN_PASSWORD)
-    if username.lower() in ["df", "admin"] and (password == "df" or config.verify_admin_password(password)):
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = ?", (username.lower(),))
-            row = cursor.fetchone()
-            if row:
-                user_id = row["id"]
-                new_count = (row["login_count"] or 0) + 1
-                cursor.execute("UPDATE users SET login_count = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (new_count, user_id))
-                conn.commit()
-                return {
-                    "id": user_id,
-                    "username": row["username"],
-                    "role": "admin",
-                    "profile_pic": row["profile_pic"] or "",
-                    "login_count": new_count
-                }
-            else:
-                pw_hash = generate_password_hash(password)
-                cursor.execute(
-                    "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES (?, ?, 'admin', '', 1, CURRENT_TIMESTAMP)",
-                    (username.lower(), pw_hash)
-                )
-                conn.commit()
-                return {
-                    "id": cursor.lastrowid,
-                    "username": username.lower(),
-                    "role": "admin",
-                    "profile_pic": "",
-                    "login_count": 1
-                }
+    # If logging in as admin (ID 'df' with password 'df')
+    if username.lower() == "df":
+        if password == "df" or config.verify_admin_password(password):
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM users WHERE username = 'df'")
+                row = cursor.fetchone()
+                if row:
+                    user_id = row["id"]
+                    new_count = (row["login_count"] or 0) + 1
+                    cursor.execute("UPDATE users SET login_count = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (new_count, user_id))
+                    conn.commit()
+                    return {
+                        "id": user_id,
+                        "username": "df",
+                        "role": "admin",
+                        "profile_pic": row["profile_pic"] or "",
+                        "login_count": new_count
+                    }
+                else:
+                    pw_hash = generate_password_hash("df")
+                    cursor.execute(
+                        "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES ('df', ?, 'admin', '', 1, CURRENT_TIMESTAMP)",
+                        (pw_hash,)
+                    )
+                    conn.commit()
+                    return {
+                        "id": cursor.lastrowid,
+                        "username": "df",
+                        "role": "admin",
+                        "profile_pic": "",
+                        "login_count": 1
+                    }
+        return None
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -279,9 +280,9 @@ def delete_user(user_id: int) -> bool:
         if not row:
             return False
 
-        # Protect primary admin 'df' and 'admin' from deletion
-        if row["username"].lower() in ["df", "admin"]:
-            raise ValueError("The primary administrator account ('df') cannot be deleted.")
+        # Protect primary admin 'df' from deletion
+        if row["username"].lower() == "df":
+            raise ValueError("The administrator account ('df') cannot be deleted.")
 
         # Clean up profile picture file if exists
         if row["profile_pic"]:
@@ -391,6 +392,27 @@ def get_user_full_chat_history(user_id: int) -> Optional[dict]:
         user_data["total_tabs"] = len(tabs)
         user_data["total_messages"] = sum(t["message_count"] for t in tabs)
         return user_data
+
+
+def get_multiple_users_full_chat_history(user_ids: Optional[List[int]] = None) -> List[dict]:
+    """
+    Returns full chat history and tabs for multiple specified users (or all users if user_ids is None).
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if user_ids:
+            placeholders = ",".join("?" for _ in user_ids)
+            cursor.execute(f"SELECT id FROM users WHERE id IN ({placeholders}) ORDER BY id ASC", tuple(user_ids))
+        else:
+            cursor.execute("SELECT id FROM users ORDER BY id ASC")
+        rows = cursor.fetchall()
+        
+    results = []
+    for r in rows:
+        u_data = get_user_full_chat_history(r["id"])
+        if u_data:
+            results.append(u_data)
+    return results
 
 
 # ============================================================================
