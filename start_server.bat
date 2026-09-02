@@ -1,9 +1,9 @@
 @echo off
-TITLE NavWiz & DFleet RAG Assistant Server
+TITLE DF Chatbot Assistant Server
 COLOR 0B
 
 echo =====================================================================
-echo       NavWiz & DFleet Multimodal RAG Assistant - Windows Server
+echo       DF Chatbot Multimodal Assistant - Windows Server
 echo =====================================================================
 echo.
 
