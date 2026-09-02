@@ -10,16 +10,32 @@ ENV_FILE = PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=ENV_FILE, override=True)
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths (Supports unified data/ storage or root folders)
 # ---------------------------------------------------------------------------
-SOURCE_DIR = PROJECT_ROOT / "source"
-OUTPUT_DIR = PROJECT_ROOT / "output"
+DATA_DIR = PROJECT_ROOT / "data"
+
+# Source documents directory (PDF manuals)
+if (DATA_DIR / "source_docs").exists():
+    SOURCE_DIR = DATA_DIR / "source_docs"
+else:
+    SOURCE_DIR = PROJECT_ROOT / "source"
+
+# Pipeline output directory (ChromaDB, rendered images, metadata)
+if (DATA_DIR / "output").exists():
+    OUTPUT_DIR = DATA_DIR / "output"
+else:
+    OUTPUT_DIR = PROJECT_ROOT / "output"
+
 IMAGE_CACHE_DIR = OUTPUT_DIR / "rendered_pages"
 CHROMA_DIR = OUTPUT_DIR / "chroma_db"
 CHROMA_COLLECTION_NAME = "pdf_pages"
 
 # User database and profile pictures folder
-USER_DB_DIR = PROJECT_ROOT / "User database"
+if (DATA_DIR / "user_storage").exists():
+    USER_DB_DIR = DATA_DIR / "user_storage"
+else:
+    USER_DB_DIR = PROJECT_ROOT / "User database"
+
 USER_DB_PATH = USER_DB_DIR / "users_and_chats.db"
 USER_AVATAR_DIR = USER_DB_DIR / "profile_pictures"
 USER_UPLOADS_DIR = USER_DB_DIR / "uploaded_attachments"

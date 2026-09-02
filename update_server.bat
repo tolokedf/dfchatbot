@@ -19,57 +19,41 @@ echo [INFO] Ensuring background Python servers are closed to release file locks.
 taskkill /F /IM python.exe 2>nul
 taskkill /F /IM pythonw.exe 2>nul
 
-:: 3. Stash local runtime changes (database files, temp logs, etc.)
+:: 3. Pull latest code from remote repository
 echo.
-echo [INFO] Stashing local runtime changes before pull...
-git stash
-
-:: 4. Pull latest code from remote repository
-echo.
-echo [INFO] Fetching and pulling latest changes from origin/main...
+echo [INFO] Fetching and pulling latest code from origin/main...
 git pull origin main
 
 if errorlevel 1 (
     echo.
     echo =====================================================================
-    echo [ERROR] Standard Git pull encountered conflicts or remote mismatch.
+    echo [ERROR] Git pull failed. Please check your network or repository URL.
     echo =====================================================================
     echo.
-    echo Attempting clean fetch and hard reset to match remote repository...
-    echo.
-    git fetch origin main
-    git reset --hard origin/main
-    if errorlevel 1 (
-        echo.
-        echo [ERROR] Reset failed.
-        echo If the repository URL has changed to a new GitHub account, update it with:
-        echo   git remote set-url origin https://github.com/NEW_USERNAME/DF_RAG_PROJECT.git
-        echo.
-        pause
-        exit /b 1
-    )
-    echo [SUCCESS] Local workspace synced to latest GitHub commit.
+    pause
+    exit /b 1
 )
 
-:: 5. Activate virtual environment and update packages
+:: 4. Activate virtual environment and update packages
 echo.
 echo [INFO] Updating Python dependencies...
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
+if exist ".venv\Scripts\activate.bat" (
+    call .venv\Scripts\activate.bat
     python -m pip install --upgrade pip
     pip install -r requirements.txt
-) else if exist ".venv\Scripts\activate.bat" (
-    call .venv\Scripts\activate.bat
+) else if exist "venv\Scripts\activate.bat" (
+    call venv\Scripts\activate.bat
     python -m pip install --upgrade pip
     pip install -r requirements.txt
 ) else (
     echo [WARNING] venv not found. Run start_server.bat to set up environment.
 )
 
-:: 6. Restart server
+:: 5. Restart server
 echo.
 echo [INFO] Update complete! Starting server...
 python run_server.py
 
 pause
+
 
