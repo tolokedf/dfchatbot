@@ -371,53 +371,56 @@
                 <!-- Quick Manual Multi-Filter, Visual Mode & Attachment Bar -->
                 <div class="flex flex-wrap items-center justify-between gap-1.5 text-xs px-1 pb-0.5">
                     <div class="flex items-center flex-wrap gap-1.5 min-w-0">
-                        <!-- Multi-Manual Filter Pill Trigger Button -->
-                        <button type="button" onclick="toggleQuickManualDropdown(event)" id="quickManualBtn"
-                                class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99] max-w-[210px] sm:max-w-md">
-                            <i class="fa-solid fa-book-bookmark text-[#0b57d0] dark:text-[#a8c7fa] text-xs shrink-0"></i>
-                            <span id="quickManualLabel" class="truncate font-semibold text-slate-800 dark:text-[#e3e3e3]">Manuals: All</span>
-                            <span id="quickManualCountBadge" class="font-extrabold px-1.5 py-0.2 rounded-full bg-[#0b57d0] text-white text-[10px]">All</span>
-                            <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 ml-0.5 shrink-0"></i>
-                        </button>
+                        <!-- Multi-Manual Filter Pill Wrapper (Relative Anchor) -->
+                        <div class="relative inline-block" id="quickManualDropdownWrapper">
+                            <!-- Multi-Manual Filter Pill Trigger Button -->
+                            <button type="button" onclick="toggleQuickManualDropdown(event)" id="quickManualBtn"
+                                    class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99] max-w-[220px] sm:max-w-md cursor-pointer">
+                                <i class="fa-solid fa-book-bookmark text-[#00787c] dark:text-[#00b5b8] text-xs shrink-0"></i>
+                                <span id="quickManualLabel" class="truncate font-semibold text-slate-800 dark:text-[#e3e3e3]">Manuals: All</span>
+                                <span id="quickManualCountBadge" class="font-extrabold px-1.5 py-0.2 rounded-full bg-[#00787c] text-white text-[10px]">All</span>
+                                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 ml-0.5 shrink-0"></i>
+                            </button>
+
+                            <!-- Floating Popover for Multi-Manual Selection -->
+                            <div id="quickManualPopover" onclick="event.stopPropagation()" class="hidden absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-3xl shadow-2xl p-4 z-50 space-y-2.5 text-slate-800 dark:text-[#e3e3e3]">
+                                <div class="flex items-center justify-between pb-2 border-b border-[#e0e3e7] dark:border-[#37393b] text-xs">
+                                    <span class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                        <i class="fa-solid fa-book-open text-[#00787c] dark:text-[#00b5b8]"></i>
+                                        <span>Select Target Manuals</span>
+                                    </span>
+                                    <button type="button" onclick="closeQuickManualDropdown(event)" class="w-6 h-6 rounded-full hover:bg-slate-100 dark:hover:bg-[#282a2c] text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center cursor-pointer">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center justify-between text-[11px] px-1 font-semibold text-slate-600 dark:text-slate-300">
+                                    <label class="flex items-center space-x-2 cursor-pointer select-none">
+                                        <input type="checkbox" id="selectAllQuickManuals" onchange="toggleAllManuals(this.checked, event)" checked
+                                               class="w-3.5 h-3.5 rounded text-[#00787c] bg-white dark:bg-[#131314] border-slate-300 dark:border-slate-600 focus:ring-[#00787c] cursor-pointer">
+                                        <span>Select All</span>
+                                    </label>
+                                    <button type="button" onclick="clearAllManuals(event)" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition cursor-pointer">Clear All</button>
+                                </div>
+
+                                <div id="quickManualsChecklist" class="space-y-1 max-h-48 overflow-y-auto pr-0.5 pt-1">
+                                    <div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">Loading manuals...</div>
+                                </div>
+
+                                <div class="pt-2 border-t border-[#e0e3e7] dark:border-[#37393b] flex items-center justify-end">
+                                    <button type="button" onclick="closeQuickManualDropdown(event)" class="px-4 py-1.5 bg-[#00787c] hover:bg-[#00979b] text-white text-xs font-bold rounded-full shadow-sm cursor-pointer">
+                                        Done
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Quick Visual Mode Toggle Button -->
                         <button type="button" onclick="cycleVisualMode()" id="quickVisualModeBtn"
-                                class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99]" title="Click to cycle AI photo output mode">
-                            <i id="quickVisualIcon" class="fa-solid fa-camera text-[#0b57d0] dark:text-[#a8c7fa] text-xs shrink-0"></i>
+                                class="inline-flex items-center gap-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] text-slate-800 dark:text-[#e3e3e3] border border-[#e0e3e7] dark:border-[#37393b] rounded-full px-3 py-1 text-[11px] font-bold shadow-sm transition active:scale-[0.99] cursor-pointer" title="Click to cycle AI photo output mode">
+                            <i id="quickVisualIcon" class="fa-solid fa-camera text-[#00787c] dark:text-[#00b5b8] text-xs shrink-0"></i>
                             <span id="quickVisualLabel" class="truncate font-semibold text-slate-800 dark:text-[#e3e3e3]">Visuals: Strict [Photo if have]</span>
                         </button>
-
-                        <!-- Floating Popover for Multi-Manual Selection -->
-                        <div id="quickManualPopover" class="hidden absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-3xl shadow-2xl p-4 z-30 space-y-2.5 text-slate-800 dark:text-[#e3e3e3]">
-                            <div class="flex items-center justify-between pb-2 border-b border-[#e0e3e7] dark:border-[#37393b] text-xs">
-                                <span class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                    <i class="fa-solid fa-book-open text-[#0b57d0] dark:text-[#a8c7fa]"></i>
-                                    <span>Select Target Manuals</span>
-                                </span>
-                                <button type="button" onclick="closeQuickManualDropdown()" class="w-6 h-6 rounded-full hover:bg-slate-100 dark:hover:bg-[#282a2c] text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center">
-                                    <i class="fa-solid fa-xmark text-xs"></i>
-                                </button>
-                            </div>
-
-                            <div class="flex items-center justify-between text-[11px] px-1 font-semibold text-slate-600 dark:text-slate-300">
-                                <label class="flex items-center space-x-2 cursor-pointer select-none">
-                                    <input type="checkbox" id="selectAllQuickManuals" onchange="toggleAllManuals(this.checked)" checked
-                                           class="w-3.5 h-3.5 rounded text-[#0b57d0] bg-white dark:bg-[#131314] border-slate-300 dark:border-slate-600 focus:ring-[#0b57d0] cursor-pointer">
-                                    <span>Select All</span>
-                                </label>
-                                <button type="button" onclick="clearAllManuals()" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition">Clear All</button>
-                            </div>
-
-                            <div id="quickManualsChecklist" class="space-y-1 max-h-48 overflow-y-auto pr-0.5 pt-1">
-                                <div class="text-xs text-slate-400 dark:text-slate-500 py-2 text-center">Loading manuals...</div>
-                            </div>
-
-                            <div class="pt-2 border-t border-[#e0e3e7] dark:border-[#37393b] flex items-center justify-end">
-                                <button type="button" onclick="closeQuickManualDropdown()" class="px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold rounded-full shadow-sm">
-                                    Done
-                                </button>
-                            </div>
-                        </div>
                     </div>
                     
                     <div class="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium ml-auto">
@@ -656,11 +659,11 @@
                         <div class="bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#282a2c] rounded-2xl p-3.5 space-y-2">
                             <div class="flex items-center justify-between pb-2 border-b border-[#e0e3e7] dark:border-[#282a2c] text-xs">
                                 <label class="flex items-center space-x-2 cursor-pointer font-bold text-slate-700 dark:text-slate-200 select-none">
-                                    <input type="checkbox" id="selectAllSidebarManuals" onchange="toggleAllManuals(this.checked)" checked
-                                           class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-slate-300 dark:border-slate-600 focus:ring-[#0b57d0] cursor-pointer">
+                                    <input type="checkbox" id="selectAllSidebarManuals" onchange="toggleAllManuals(this.checked, event)" checked
+                                           class="w-4 h-4 rounded text-[#00787c] bg-white dark:bg-[#1e1f20] border-slate-300 dark:border-slate-600 focus:ring-[#00787c] cursor-pointer">
                                     <span>Select All Available Manuals</span>
                                 </label>
-                                <button type="button" onclick="clearAllManuals()" class="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition">Clear All</button>
+                                <button type="button" onclick="clearAllManuals(event)" class="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition cursor-pointer">Clear All</button>
                             </div>
                             
                             <div id="sidebarManualsChecklist" class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
@@ -2119,18 +2122,60 @@
         function renderManualFiltersUI() {
             const sidebarChecklist = document.getElementById('sidebarManualsChecklist');
             const quickChecklist = document.getElementById('quickManualsChecklist');
+
+            if (!availableSources || availableSources.length === 0) {
+                if (sidebarChecklist) sidebarChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
+                if (quickChecklist) quickChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
+                updateManualBadgesAndLabels();
+                updatePromptBarValidation();
+                return;
+            }
+
+            // Render Sidebar Checklist DOM
+            if (sidebarChecklist) {
+                sidebarChecklist.innerHTML = availableSources.map(src => {
+                    const isChecked = selectedManualFilters.includes(src);
+                    return `
+                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
+                            <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked, event)"
+                                   class="manual-filter-checkbox w-4 h-4 rounded text-[#00787c] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#00787c] cursor-pointer">
+                            <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
+                        </label>
+                    `;
+                }).join('');
+            }
+
+            // Render Quick Popover Checklist DOM
+            if (quickChecklist) {
+                quickChecklist.innerHTML = availableSources.map(src => {
+                    const isChecked = selectedManualFilters.includes(src);
+                    return `
+                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
+                            <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked, event)"
+                                   class="manual-filter-checkbox w-4 h-4 rounded text-[#00787c] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#00787c] cursor-pointer">
+                            <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
+                        </label>
+                    `;
+                }).join('');
+            }
+
+            updateManualBadgesAndLabels();
+            updatePromptBarValidation();
+        }
+
+        function syncManualCheckboxesState() {
+            // Synchronize individual checkboxes across sidebar & popover in-place without rebuilding DOM
+            document.querySelectorAll('.manual-filter-checkbox').forEach(cb => {
+                cb.checked = selectedManualFilters.includes(cb.value);
+            });
+        }
+
+        function updateManualBadgesAndLabels() {
             const sidebarBadge = document.getElementById('sidebarManualCountBadge');
             const quickLabel = document.getElementById('quickManualLabel');
             const quickBadge = document.getElementById('quickManualCountBadge');
             const selectAllSidebar = document.getElementById('selectAllSidebarManuals');
             const selectAllQuick = document.getElementById('selectAllQuickManuals');
-
-            if (!availableSources || availableSources.length === 0) {
-                if (sidebarChecklist) sidebarChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
-                if (quickChecklist) quickChecklist.innerHTML = '<div class="text-xs text-slate-400 dark:text-[#9aa0a6] py-2 text-center">No manuals available.</div>';
-                updatePromptBarValidation();
-                return;
-            }
 
             const totalCount = availableSources.length;
             const countSelected = selectedManualFilters.length;
@@ -2149,7 +2194,7 @@
                     sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800';
                 } else {
                     sidebarBadge.textContent = `${countSelected} Selected`;
-                    sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#0b57d0] text-white shadow-sm';
+                    sidebarBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#00787c] text-white shadow-sm';
                 }
             }
 
@@ -2174,42 +2219,13 @@
                     quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px]';
                 } else {
                     quickBadge.textContent = `${countSelected}`;
-                    quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-[#0b57d0] text-white text-[10px] shadow-sm';
+                    quickBadge.className = 'font-extrabold px-2 py-0.5 rounded-full bg-[#00787c] text-white text-[10px] shadow-sm';
                 }
             }
-
-            // Render Sidebar Checklist
-            if (sidebarChecklist) {
-                sidebarChecklist.innerHTML = availableSources.map(src => {
-                    const isChecked = selectedManualFilters.includes(src);
-                    return `
-                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
-                            <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked)"
-                                   class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#0b57d0] cursor-pointer">
-                            <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
-                        </label>
-                    `;
-                }).join('');
-            }
-
-            // Render Quick Popover Checklist
-            if (quickChecklist) {
-                quickChecklist.innerHTML = availableSources.map(src => {
-                    const isChecked = selectedManualFilters.includes(src);
-                    return `
-                        <label class="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-[#edf2fa] dark:hover:bg-[#282a2c] transition cursor-pointer select-none text-xs text-slate-700 dark:text-[#c4c7c5] font-medium">
-                            <input type="checkbox" value="${escapeAttr(src)}" ${isChecked ? 'checked' : ''} onchange="toggleManualFilter('${escapeAttr(src)}', this.checked)"
-                                   class="w-4 h-4 rounded text-[#0b57d0] bg-white dark:bg-[#1e1f20] border-[#e0e3e7] dark:border-[#37393b] focus:ring-[#0b57d0] cursor-pointer">
-                            <span class="truncate" title="${escapeHtml(src)}">${escapeHtml(src)}</span>
-                        </label>
-                    `;
-                }).join('');
-            }
-
-            updatePromptBarValidation();
         }
 
-        function toggleManualFilter(stem, isChecked) {
+        function toggleManualFilter(stem, isChecked, event) {
+            if (event) event.stopPropagation();
             if (isChecked) {
                 if (!selectedManualFilters.includes(stem)) {
                     selectedManualFilters.push(stem);
@@ -2217,46 +2233,62 @@
             } else {
                 selectedManualFilters = selectedManualFilters.filter(s => s !== stem);
             }
-            renderManualFiltersUI();
+            syncManualCheckboxesState();
+            updateManualBadgesAndLabels();
+            updatePromptBarValidation();
         }
 
-        function toggleAllManuals(selectAll) {
+        function toggleAllManuals(selectAll, event) {
+            if (event) event.stopPropagation();
             if (selectAll) {
                 selectedManualFilters = [...availableSources];
             } else {
                 selectedManualFilters = [];
             }
-            renderManualFiltersUI();
+            syncManualCheckboxesState();
+            updateManualBadgesAndLabels();
+            updatePromptBarValidation();
         }
 
-        function clearAllManuals() {
+        function clearAllManuals(event) {
+            if (event) event.stopPropagation();
             selectedManualFilters = [];
-            renderManualFiltersUI();
+            syncManualCheckboxesState();
+            updateManualBadgesAndLabels();
+            updatePromptBarValidation();
         }
 
         function toggleQuickManualDropdown(e) {
-            if (e) e.stopPropagation();
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             const popover = document.getElementById('quickManualPopover');
             if (popover) {
                 popover.classList.toggle('hidden');
             }
         }
 
-        function closeQuickManualDropdown() {
+        function closeQuickManualDropdown(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             const popover = document.getElementById('quickManualPopover');
             if (popover) {
                 popover.classList.add('hidden');
             }
         }
 
-        // Close popover on outside click
+        // Close popover only on genuine outside clicks
         document.addEventListener('click', (e) => {
             const popover = document.getElementById('quickManualPopover');
             const btn = document.getElementById('quickManualBtn');
             if (popover && !popover.classList.contains('hidden')) {
-                if (!popover.contains(e.target) && (!btn || !btn.contains(e.target))) {
-                    popover.classList.add('hidden');
+                if (e.target.closest('#quickManualPopover') || e.target.closest('#quickManualBtn')) {
+                    return;
                 }
+                popover.classList.add('hidden');
             }
         });
 
