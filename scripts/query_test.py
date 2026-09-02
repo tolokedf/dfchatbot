@@ -9,8 +9,17 @@ Usage:
 from __future__ import annotations
 
 import sys
-import chromadb
+from pathlib import Path
 
+# Add project root and src/ to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import chromadb
 import config
 from embedders import gemini_multimodal_embedder as embedder
 

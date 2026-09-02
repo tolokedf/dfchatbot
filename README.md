@@ -78,7 +78,7 @@ python run_embedding_pipeline.py
 
 Launch the Flask server:
 ```bash
-python app.py
+python scripts/run_server.py
 ```
 Open your browser at **`http://localhost:5000`**:
 
@@ -91,26 +91,55 @@ Open your browser at **`http://localhost:5000`**:
 
 ```
 df_rag_project/
-├── config.py                       # Global configuration, hyperparameters, instructions, ChromaDB & User DB paths
-├── run_embedding_pipeline.py       # Batch pipeline: TOC parsing, page rendering, ChromaDB upsert
-├── query_test.py                   # CLI diagnostic tool to query ChromaDB and rank pages
-├── auth_and_chat_db.py             # User authentication, chat tabs & message history SQLite manager
-├── pipeline_service.py             # Re-embedding, page deletion, metadata editor, SSE progress
-├── app.py                          # Flask web application, REST APIs, profile picture upload & Admin session auth
-├── templates/
-│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic, Top-K, Citations)
-│   ├── admin.html                  # Password-protected Admin Console (Auth gate ID: df / Pass: df, PDF manager)
-│   └── pdf_viewer.html             # Dedicated PDF page citation viewer
+├── .env.example                    # Sample environment template (Committed)
+├── .env                            # Environment secrets (IGNORED by Git)
+├── .gitignore                      # Git ignore rules for clean dev/deployment sync
 ├── requirements.txt                # Python package dependencies
-├── .env                            # Environment secrets (GEMINI_API_KEY, ADMIN_ID, ADMIN_PASSWORD)
-├── User database/                  # Dedicated directory for user credentials, tabs, history & avatars
-│   ├── users_and_chats.db          # Persistent SQLite database (users, chat_tabs, chat_messages)
-│   └── profile_pictures/           # User-uploaded avatar images
-├── source/                         # Input directory for source PDF documents
-└── output/                         # Generated artifacts and vector index
-    ├── chroma_db/                  # Persistent ChromaDB vector database (SQLite + HNSW index)
-    ├── pipeline_state.json         # State tracking for incremental processing
-    └── rendered_pages/             # Cached PNG renderings of all PDF pages
+├── README.md                       # Project documentation
+├── PROJECT_CONTEXT.md              # Architecture & pipeline context
+├── start_server.bat                # Root launcher wrapper for Windows
+├── update_server.bat               # Root update wrapper for Windows
+│
+├── src/                            # Core Application Package (Tracked)
+│   ├── __init__.py
+│   ├── app.py                      # Flask web application & REST endpoints
+│   ├── config.py                   # Central path & setting resolver
+│   ├── pipeline_service.py         # RAG embedding & search service
+│   ├── auth_and_chat_db.py         # User authentication & chat history SQLite manager
+│   ├── report_exporter.py          # PDF / Markdown / Chat export engine
+│   └── embedders/
+│       ├── __init__.py
+│       └── gemini_multimodal_embedder.py
+│
+├── templates/                      # UI HTML Templates (Tracked)
+│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic)
+│   ├── admin.html                  # Password-protected Admin Console
+│   └── pdf_viewer.html             # Dedicated PDF page citation viewer
+│
+├── static/                         # UI Static Assets (Tracked)
+│   └── df_logo_*.png               # Branding logos and badges
+│
+├── scripts/                        # Utilities & Diagnostic CLI Tools (Tracked)
+│   ├── run_server.py               # WSGI multi-threaded production server launcher
+│   ├── run_embedding_pipeline.py   # Batch pipeline CLI
+│   ├── query_test.py               # CLI diagnostic tool to query ChromaDB
+│   └── stress_test.py              # Concurrent benchmark suite
+│
+├── deploy/                         # Windows Deployment Scripts (Tracked)
+│   ├── start_server.bat            # Auto-venv creation & startup
+│   └── update_server.bat           # Safe git pull & server restart
+│
+└── data/                           # Runtime Data & Storage (IGNORED BY GIT)
+    ├── source_docs/                # Source PDF manuals to index
+    ├── output/                     # Generated artifacts and vector index
+    │   ├── chroma_db/              # Persistent ChromaDB vector database
+    │   ├── pipeline_state.json     # Incremental pipeline state tracking
+    │   ├── custom_page_metadata.json # Custom page metadata overrides
+    │   └── rendered_pages/         # Cached PNG renderings of PDF pages
+    └── user_storage/               # User database & uploads
+        ├── users_and_chats.db      # SQLite database (persists on deployment PC)
+        ├── profile_pictures/       # User avatars
+        └── uploaded_attachments/   # User attachments
 ```
 
 ---

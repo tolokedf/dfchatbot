@@ -4,6 +4,16 @@ Recommended for Windows PC and Server environments.
 """
 import sys
 import logging
+from pathlib import Path
+
+# Add project root and src/ to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from app import app
 import config
 

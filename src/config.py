@@ -2,12 +2,24 @@
 Shared configuration for the Gemini Embedding 2 pipeline.
 """
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+# Base Paths
+SRC_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SRC_DIR.parent
 ENV_FILE = PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=ENV_FILE, override=True)
+
+# Ensure src/ and PROJECT_ROOT are on sys.path
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+TEMPLATES_DIR = PROJECT_ROOT / "templates"
+STATIC_DIR = PROJECT_ROOT / "static"
 
 # ---------------------------------------------------------------------------
 # Paths (Supports unified data/ storage or root folders)
