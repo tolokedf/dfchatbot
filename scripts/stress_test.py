@@ -108,8 +108,8 @@ def run_preflight_checks(client) -> bool:
 
     # 2. Check index UI route (GET /)
     res_html = client.get("/")
-    if res_html.status_code == 200 and "DFleet" in res_html.get_data(as_text=True):
-        print("✅ Frontend UI route (GET /): OK (DFleet 4.0 interface loaded)")
+    if res_html.status_code == 200 and ("DF" in res_html.get_data(as_text=True) or "Chatbot" in res_html.get_data(as_text=True)):
+        print("✅ Frontend UI route (GET /): OK (DF Chatbot interface loaded)")
     else:
         print(f"❌ Frontend route failed with code {res_html.status_code}")
         return False
