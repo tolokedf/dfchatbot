@@ -69,10 +69,10 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 - **Interactive UI**: Real-time SSE streaming progress bar, live ETA, page counters, and a green "Done" button.
 
 ### 6. User Authentication, Chat Tabs & Conversational Memory
-- **Dedicated User Database Folder (`User database/`)**:
-  - `User database/users_and_chats.db`: SQLite database storing user credentials, chat tabs, and multi-turn message histories.
-  - `User database/profile_pictures/`: Stores user-uploaded profile picture avatars (`avatar_u<id>_<timestamp>.<ext>`).
-  - `User database/uploaded_attachments/`: Stores user-uploaded chat photos and PDF attachments (`att_u<id>_<timestamp>_<name>`).
+- **Isolated User Storage (`data/user_storage/`)**:
+  - `data/user_storage/users_and_chats.db`: SQLite database storing user credentials, chat tabs, and multi-turn message histories.
+  - `data/user_storage/profile_pictures/`: Stores user-uploaded profile picture avatars (`avatar_u<id>_<timestamp>.<ext>`).
+  - `data/user_storage/uploaded_attachments/`: Stores user-uploaded chat photos and PDF attachments (`att_u<id>_<timestamp>_<name>`).
 - **User Authentication (`auth_and_chat_db.py`)**:
   - Validates `username` (Name) and `password` with strict no-spaces rules.
   - Registration includes re-enter password confirmation.
@@ -85,7 +85,7 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
     - Guest mode operates in a local session, with immediate access to all technical manuals and QA features.
   - Profile picture upload support (`POST /api/user/profile-picture` and `GET /api/user/profile-picture/<filename>`).
 - **Per-User Chat Tabs & Memory Isolation**:
-  - Each user has independent chat tabs stored in SQLite (`User database/users_and_chats.db`).
+  - Each user has independent chat tabs stored in SQLite (`data/user_storage/users_and_chats.db`).
   - Users can create new tabs (`+ New Tab`) or delete unwanted tabs (`🗑️`).
   - **Conversational Memory**: Chatbot conditioning includes prior turns from that specific tab to seamlessly understand follow-up questions.
 - **Conversational Fast Path (Zero-Vector Latency Optimization)**:
@@ -115,35 +115,28 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 ## 2. Codebase Architecture & File Map
 
 ```
-/home/tinonn/df_rag_project/
-├── config.py                       # Global configuration, hyperparameters, instructions, ChromaDB & User DB paths
-├── run_embedding_pipeline.py       # Batch pipeline: TOC parsing, page rendering, ChromaDB upsert
-├── query_test.py                   # CLI diagnostic tool to query ChromaDB and rank pages
-├── auth_and_chat_db.py             # User authentication, chat tabs & message history SQLite manager
-├── pipeline_service.py             # Re-embedding, page deletion, metadata editor, SSE progress
-├── app.py                          # Flask web app, fast-path intent classifier, multimodal uploads & REST APIs
+dfchatbot/
+├── src/
+│   ├── config.py                   # Global configuration, data paths, instructions
+│   ├── app.py                      # Flask web application & REST API endpoints
+│   ├── auth_and_chat_db.py         # User authentication, chat tabs & SQLite manager
+│   ├── pipeline_service.py         # Incremental sync, page deletion, metadata editor
+│   ├── report_exporter.py          # PDF conversation report generator
+│   └── embedders/
+│       ├── __init__.py
+│       └── gemini_multimodal_embedder.py # Gemini 2 Embedding wrapper
 ├── templates/
-│   ├── index.html                  # Responsive Chat UI (Tabs, Conversational Memory, Profile Pic, Attachments, Top-K, Citations)
-│   ├── admin.html                  # Password-protected Admin Console (Auth gate ID: df / Pass: df, PDF manager)
+│   ├── index.html                  # Responsive Chat UI
+│   ├── admin.html                  # Password-protected Admin Console
 │   └── pdf_viewer.html             # Dedicated PDF page citation viewer
-├── requirements.txt                # Python package dependencies (google-genai, PyMuPDF, chromadb, flask, etc.)
-├── .env                            # Environment secrets (GEMINI_API_KEY, ADMIN_ID, ADMIN_PASSWORD)
-├── User database/                  # Dedicated directory for user credentials, tabs, history & avatars
-│   ├── users_and_chats.db          # Persistent SQLite database (users, chat_tabs, chat_messages)
-│   ├── profile_pictures/           # User-uploaded avatar images
-│   └── uploaded_attachments/       # User-uploaded chat photos & PDF files
-├── embedders/
-│   ├── __init__.py
-│   └── gemini_multimodal_embedder.py # Google GenAI SDK wrapper for image & query embeddings
-├── source/                         # Input directory for source PDF documents
-│   ├── Copy of Field Deployment Handbook.pdf
-│   ├── DFleet 4.0 User Manual.pdf
-│   └── NavWiz 4.0 User Manual 1.0.pdf
-└── output/                         # Generated artifacts and vector index
-    ├── chroma_db/                  # Persistent ChromaDB vector database (SQLite + HNSW index)
-    ├── pipeline_state.json         # State tracking for incremental processing
-    └── rendered_pages/             # Cached PNG renderings of all PDF pages
-        └── <pdf_stem>_page_<num>.png
+├── static/                         # Static assets and branding logos
+├── scripts/                        # CLI diagnostic & server utilities
+├── deploy/                         # Windows deployment scripts
+├── data/                           # Runtime Data & Storage (IGNORED BY GIT)
+│   ├── source_docs/                # Source PDF manuals to index
+│   ├── output/                     # ChromaDB vector store, page renderings & metadata
+│   └── user_storage/               # SQLite user database, avatars & chat attachments
+└── requirements.txt                # Python package dependencies
 ```
 
 ### Detailed Component Roles

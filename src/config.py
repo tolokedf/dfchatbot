@@ -22,36 +22,27 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 STATIC_DIR = PROJECT_ROOT / "static"
 
 # ---------------------------------------------------------------------------
-# Paths (Supports unified data/ storage or root folders)
+# Storage & Data Paths (Unified under data/ and ignored by git)
 # ---------------------------------------------------------------------------
 DATA_DIR = PROJECT_ROOT / "data"
 
 # Source documents directory (PDF manuals)
-if (DATA_DIR / "source_docs").exists():
-    SOURCE_DIR = DATA_DIR / "source_docs"
-else:
-    SOURCE_DIR = PROJECT_ROOT / "source"
+SOURCE_DIR = DATA_DIR / "source_docs"
 
 # Pipeline output directory (ChromaDB, rendered images, metadata)
-if (DATA_DIR / "output").exists():
-    OUTPUT_DIR = DATA_DIR / "output"
-else:
-    OUTPUT_DIR = PROJECT_ROOT / "output"
-
+OUTPUT_DIR = DATA_DIR / "output"
 IMAGE_CACHE_DIR = OUTPUT_DIR / "rendered_pages"
 CHROMA_DIR = OUTPUT_DIR / "chroma_db"
 CHROMA_COLLECTION_NAME = "pdf_pages"
 
-# User database and profile pictures folder
-if (DATA_DIR / "user_storage").exists():
-    USER_DB_DIR = DATA_DIR / "user_storage"
-else:
-    USER_DB_DIR = PROJECT_ROOT / "User database"
-
+# User database and profile storage folder
+USER_DB_DIR = DATA_DIR / "user_storage"
 USER_DB_PATH = USER_DB_DIR / "users_and_chats.db"
 USER_AVATAR_DIR = USER_DB_DIR / "profile_pictures"
 USER_UPLOADS_DIR = USER_DB_DIR / "uploaded_attachments"
 
+# Ensure all data directories exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)

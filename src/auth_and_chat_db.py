@@ -1,6 +1,6 @@
 """
 Database management module for User Authentication, Chat Tabs, and Chat Message History with Conversational Memory.
-Uses SQLite stored persistently in config.OUTPUT_DIR / "users_and_chats.db".
+Uses SQLite stored persistently in config.USER_DB_PATH ("data/user_storage/users_and_chats.db").
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ def get_db_connection() -> sqlite3.Connection:
 
 
 def init_db():
-    """Initializes the database schema if not already present in the 'User database' folder."""
+    """Initializes the database schema if not already present in 'data/user_storage'."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         

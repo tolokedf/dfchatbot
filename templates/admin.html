@@ -240,7 +240,7 @@
                                 <i class="fa-solid fa-folder-open text-[#a8c7fa]"></i>
                                 Source PDF Manuals (<span id="fileCountBadge">0</span>)
                             </h2>
-                            <p class="text-xs text-[#9aa0a6] mt-0.5">Manage source manuals in the <code class="text-[#a8c7fa] bg-[#131314] px-1.5 py-0.5 rounded border border-[#282a2c]">source/</code> folder and trigger ChromaDB vector embedding.</p>
+                            <p class="text-xs text-[#9aa0a6] mt-0.5">Manage source manuals in the <code class="text-[#a8c7fa] bg-[#131314] px-1.5 py-0.5 rounded border border-[#282a2c]">data/source_docs/</code> folder and trigger ChromaDB vector embedding.</p>
                         </div>
 
                         <div class="flex items-center gap-2">
@@ -477,7 +477,7 @@
                             <div class="p-3.5 bg-[#131314]/80 rounded-2xl border border-[#282a2c] space-y-2">
                                 <div class="flex justify-between">
                                     <span class="text-[#9aa0a6]">ChromaDB Path:</span>
-                                    <span class="font-mono text-slate-300">output/chroma_db/</span>
+                                    <span class="font-mono text-slate-300">data/output/chroma_db/</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-[#9aa0a6]">Collection Name:</span>
@@ -1117,13 +1117,13 @@
                         tbody.innerHTML = `
                             <tr>
                                 <td colspan="6" class="px-5 py-8 text-center text-slate-500">
-                                    No PDF manuals found in <code class="text-slate-400">source/</code>. Upload a PDF above to get started.
+                                    No PDF manuals found in <code class="text-slate-400">data/source_docs/</code>. Upload a PDF above to get started.
                                 </td>
                             </tr>
                         `;
                         mobileContainer.innerHTML = `
                             <div class="p-6 text-center text-slate-500 text-xs bg-slate-950/50 rounded-xl border border-slate-800">
-                                No PDF manuals found in <code class="text-slate-400">source/</code>. Upload a PDF above to get started.
+                                No PDF manuals found in <code class="text-slate-400">data/source_docs/</code>. Upload a PDF above to get started.
                             </div>
                         `;
                         return;
@@ -1545,7 +1545,7 @@
                 const totalMissing = allFiles.reduce((acc, f) => acc + (f.missing_pages_count || 0), 0);
 
                 docInfoEl.innerHTML = `
-                    <div class="flex justify-between items-center"><span class="text-slate-400">Scope:</span> <span class="font-bold text-slate-100">All ${allFiles.length} PDF Manuals in source/</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-400">Scope:</span> <span class="font-bold text-slate-100">All ${allFiles.length} PDF Manuals in data/source_docs/</span></div>
                     <div class="flex justify-between items-center"><span class="text-slate-400">Total Pages:</span> <span class="text-slate-200 font-medium">${totalPDFPages} PDF pages (${totalIndexed} indexed, ${totalMissing} missing)</span></div>
                 `;
             }

@@ -390,7 +390,7 @@ def auth_me():
 @app.route("/api/user/profile-picture", methods=["POST"])
 @user_required
 def upload_profile_picture():
-    """Uploads and saves user profile picture inside the 'User database/profile_pictures' directory."""
+    """Uploads and saves user profile picture inside the 'data/user_storage/profile_pictures' directory."""
     user_id = session.get("user_id")
     if "file" not in request.files:
         return jsonify({"status": "error", "error": "No file uploaded."}), 400
@@ -411,7 +411,7 @@ def upload_profile_picture():
     except Exception as e:
         return jsonify({"status": "error", "error": f"Invalid image file: {e}"}), 400
 
-    # Save to User database/profile_pictures/
+    # Save to data/user_storage/profile_pictures/
     saved_filename = f"avatar_u{user_id}_{int(time.time())}{ext}"
     save_path = config.USER_AVATAR_DIR / saved_filename
     file.save(save_path)
@@ -431,13 +431,13 @@ def upload_profile_picture():
 
 @app.route("/api/user/profile-picture/<path:filename>", methods=["GET"])
 def serve_profile_picture(filename: str):
-    """Serves user profile picture from 'User database/profile_pictures'."""
+    """Serves user profile picture from 'data/user_storage/profile_pictures'."""
     return send_from_directory(config.USER_AVATAR_DIR, filename)
 
 
 @app.route("/api/user/uploads/<path:filename>", methods=["GET"])
 def serve_user_upload(filename: str):
-    """Serves user-uploaded chat attachments (photos/PDFs) from 'User database/uploaded_attachments'."""
+    """Serves user-uploaded chat attachments (photos/PDFs) from 'data/user_storage/uploaded_attachments'."""
     return send_from_directory(config.USER_UPLOADS_DIR, filename)
 
 

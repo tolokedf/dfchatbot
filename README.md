@@ -9,9 +9,9 @@ Instead of traditional OCR/text extraction pipelines, this system renders PDF pa
 ## Key Features
 
 - **Direct Multimodal Embeddings (3072 dims):** Preserves complex diagrams, wiring schematics, UI screenshots, tables, and sensor layout flowcharts.
-- **Dedicated User Database Folder (`User database/`):**
-  - Persistent SQLite database (`User database/users_and_chats.db`) tracking accounts, sessions, and multi-turn message history.
-  - Avatar storage (`User database/profile_pictures/`) supporting user-uploaded profile pictures with real-time UI previews.
+- **Isolated Data & User Storage (`data/user_storage/`):**
+  - Persistent SQLite database (`data/user_storage/users_and_chats.db`) tracking accounts, sessions, and multi-turn message history.
+  - Avatar storage (`data/user_storage/profile_pictures/`) supporting user-uploaded profile pictures with real-time UI previews.
 - **User Authentication & Multi-Tab Experience:**
   - Strict no-space validation for Names and Passwords, with confirm password match validation.
   - Independent **Chat Tabs** (`+ New Tab`, delete tab `🗑️`, auto-topic naming).
