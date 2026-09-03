@@ -22,9 +22,13 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 STATIC_DIR = PROJECT_ROOT / "static"
 
 # ---------------------------------------------------------------------------
-# Storage & Data Paths (Unified under data/ and ignored by git)
+# Storage & Data Paths (Centralized Database Hub with local data/ fallback)
 # ---------------------------------------------------------------------------
-DATA_DIR = PROJECT_ROOT / "data"
+ROOT_DATABASE_DIR = PROJECT_ROOT.parent / "Database" / "dfchatbot"
+if ROOT_DATABASE_DIR.parent.exists():
+    DATA_DIR = ROOT_DATABASE_DIR
+else:
+    DATA_DIR = PROJECT_ROOT / "data"
 
 # Source documents directory (PDF manuals)
 SOURCE_DIR = DATA_DIR / "source_docs"
