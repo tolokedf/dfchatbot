@@ -1,12 +1,22 @@
-# Project Context & Technical Reference: Multimodal PDF RAG
+# Project Context & Technical Reference: DF Chatbot (Multimodal PDF RAG)
 
-> **Purpose:** This document serves as the persistent cross-session architectural and operational reference for the `df_rag_project` codebase.
+> **Purpose:** This document serves as the persistent cross-session architectural, operational, and development reference for the `dfchatbot` codebase.
+
+---
+
+## ⚠️ Cross-Session Development Rules & Core Principles
+
+### 1. Strict Scope Adherence
+> **MANDATORY RULE:** **Do not add additional feature/button/text that did not mention in instruction.**
+- **Zero Unsolicited Additions:** Never add unrequested buttons, icons, links, menu items, placeholder cards, badges, or UI text unless explicitly specified by the user.
+- **Precise Implementations:** Implement only the exact requested behavior or fix. Avoid adding "nice-to-have" auxiliary features or side-effects that bloat the UI or alter workflow without request.
+- **Maintain Existing Logic & Clean State:** When fixing bugs, preserve existing working features and adhere to established patterns rather than refactoring unrelated modules.
 
 ---
 
 ## 1. Executive Summary
 
-`df_rag_project` is a **Vision-First Multimodal Retrieval-Augmented Generation (RAG)** system designed specifically for complex technical documentation (robotics manuals, hardware deployment handbooks, and software user guides such as NavWiz and DFleet).
+`dfchatbot` is a **Vision-First Multimodal Retrieval-Augmented Generation (RAG)** system designed specifically for complex technical documentation (robotics manuals, hardware deployment handbooks, and software user guides such as NavWiz and DFleet).
 
 ### Core Paradigm: Direct Multimodal Embeddings + ChromaDB
 Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extraction → Text Embedding), this system renders PDF pages directly into high-resolution images and embeds them into a shared vector space using Google's **`gemini-embedding-2`** model, persisting embeddings and document topology into **ChromaDB**.
@@ -32,17 +42,17 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
                  ▼               ▼
    ┌───────────────────────────────────────────┐
    │        ChromaDB Vector Collection         │
-   │   (output/chroma_db/ - 3072 dims, cosine) │
+   │   (data/output/chroma_db/ - 3072 dims)    │
    └─────────────────────┬─────────────────────┘
                          │
         ┌────────────────┴────────────────┐
         ▼                                 ▼
 ┌───────────────────────┐     ┌───────────────────────┐
-│   Flask App (app.py)  │     │  CLI Diagnostic Tool  │
-│ • Tailwind UI / API   │     │  (query_test.py)      │
+│   Flask App (src/app) │     │  CLI Diagnostic Tool  │
+│ • Tailwind UI / API   │     │  (scripts/query_test) │
 │ • ChromaDB Retrieval  │     │  • ChromaDB Query     │
 │ • Chapter Expansion   │     │  • Cosine Similarity  │
-│ • gemini-3.5-flash-lite QA │ └───────────────────────┘
+│ • gemini-3.5-flash-lite│    └───────────────────────┘
 └───────────────────────┘
 ```
 
@@ -51,7 +61,12 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 2. **Persistent Vector Database (ChromaDB):** Replaces flat `.npy`/`.jsonl` arrays with indexed HNSW vector storage, native metadata querying, and unified multi-PDF aggregation.
 3. **Native Outline-Aware Filtering & Expansion:** Uses document outline hierarchy (TOC) to filter out non-informative front-matter (covers, copyright, TOCs) and expands retrieved seed pages across neighboring pages strictly bounded within the same chapter.
 4. **Single-Hop Embedding:** Eliminates text extraction artifacts, caption hallucination, and multi-model pipeline latency.
-### 5. Multi-Mode Embedding Engine & Differential Sync
+
+---
+
+## 2. Key System Features & Operational Mechanics
+
+### 2.1 Multi-Mode Embedding Engine & Differential Sync
 - **Option 1: Embed Required Only (`mode="required"`, Default/Recommended)**:
   - Smart differential sync:
     1. Scans ChromaDB for any unindexed / lost page IDs (`{stem}_page_XXX`).
@@ -68,47 +83,44 @@ Instead of the traditional two-stage text RAG pipeline (PDF → OCR/Text Extract
 - **Resilient Per-Page Retry & Backoff**: Catches HTTP 429 quota exhaustion with exponential backoff ($5.0\text{s} \times 1.5$ factor up to $60\text{s} + \text{jitter}$) up to 20 retries per page.
 - **Interactive UI**: Real-time SSE streaming progress bar, live ETA, page counters, and a green "Done" button.
 
-### 6. User Authentication, Chat Tabs & Conversational Memory
+### 2.2 User Authentication, Chat Tabs & Session Lifecycle
 - **Isolated User Storage (`data/user_storage/`)**:
   - `data/user_storage/users_and_chats.db`: SQLite database storing user credentials, chat tabs, and multi-turn message histories.
   - `data/user_storage/profile_pictures/`: Stores user-uploaded profile picture avatars (`avatar_u<id>_<timestamp>.<ext>`).
   - `data/user_storage/uploaded_attachments/`: Stores user-uploaded chat photos and PDF attachments (`att_u<id>_<timestamp>_<name>`).
-- **User Authentication (`auth_and_chat_db.py`)**:
+- **User Authentication (`src/auth_and_chat_db.py`)**:
   - Validates `username` (Name) and `password` with strict no-spaces rules.
-  - Registration includes re-enter password confirmation.
-  - Passwords hashed with `werkzeug.security`.
-  - **Admin Console & User Login Credentials**:
-    - **ID**: `df`
-    - **Password**: `df`
+  - Registration includes re-enter password confirmation. Passwords hashed with `werkzeug.security`.
+  - **Admin Credentials**: ID: `df` / Password: `df`.
   - **Guest Access Option (`POST /api/auth/guest`)**:
     - Users can click *"Continue as Guest"* on the login modal to immediately ask questions and upload photos without creating an account.
-    - Guest mode operates in a local session, with immediate access to all technical manuals and QA features.
-  - Profile picture upload support (`POST /api/user/profile-picture` and `GET /api/user/profile-picture/<filename>`).
-- **Per-User Chat Tabs & Memory Isolation**:
-  - Each user has independent chat tabs stored in SQLite (`data/user_storage/users_and_chats.db`).
+    - Guest mode operates in a local session with full manual access.
+- **Per-User Chat Tabs & Clean Deletion Lifecycle**:
+  - Each user has independent chat tabs stored in SQLite (`chat_tabs` & `chat_messages` tables).
   - Users can create new tabs (`+ New Tab`) or delete unwanted tabs (`🗑️`).
-  - **Conversational Memory**: Chatbot conditioning includes prior turns from that specific tab to seamlessly understand follow-up questions.
-- **Conversational Fast Path (Zero-Vector Latency Optimization)**:
-  - Greetings, pleasantries, small talk, and general capability queries ("Hi", "How are you", "What can you do", "I have a problem, what can I do") bypass vector embedding and ChromaDB retrieval.
-  - Instantly answered directly by Gemini with warm introduction and dynamic listing of available manuals (< 1.5s latency).
-- **Target Manual Filtering & Fast Selection Bar**:
-  - Comprehensive source manual detection in `/api/status` returning all source PDFs and ChromaDB indexed documents (even if partially embedded or missing non-content front-matter pages).
-  - Quick Manual dropdown bar placed directly above the chat input box alongside the sidebar dropdown with automatic bidirectional synchronization.
+  - **Deleting Tabs / Clearing All Chats**:
+    - Backend `auth_and_chat_db.list_user_tabs(user_id)` ensures logged-in users always have at least one tab (auto-creates a single `"New Chat"` if count is 0).
+    - When deleting the last active tab, the client cleanly consumes the returned single-tab list without executing duplicate creation requests.
+- **Conversational Memory & Fast Path**:
+  - Chat conditioning includes prior turns from that specific tab to seamlessly handle follow-up questions.
+  - Greetings and capability inquiries ("Hi", "How are you", "What can you do") bypass vector retrieval and are answered directly via fast-path prompt (< 1.5s latency).
+- **Target Manual Filtering**:
+  - Quick Manual dropdown placed directly above the chat input box and in the sidebar with automatic bidirectional synchronization.
 - **Multimodal User Attachments (Photos & PDFs - Max 5 Files)**:
   - Users can attach up to 5 images (PNG, JPG, WEBP) or PDF documents directly to any chat question.
-  - User-uploaded photos and PDF pages are loaded/rendered as PIL Images and passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.
-  - Chat transcript bubbles render attached photo thumbnails with click-to-enlarge lightbox and interactive PDF badges.
-- **Admin User Data, Chat History & Account Management (`#usersManagementSection` & `#userChatsModal`)**:
-  - **User Overview & Login Tracking**: Admin panel displays all registered users, their avatars, roles, join dates, last login timestamps, and exact **Times of Login** (`login_count`).
-  - **User Removal Capability (`DELETE /api/admin/users/<id>`)**: Admins can permanently delete user accounts alongside all their chat tabs and message histories with a single click and confirmation modal. Primary administrator account `df` is protected from accidental deletion.
-  - **Full Conversation Transcript Inspector**: Admin can click *"Inspect Chats"* on any user to open a full modal (`#userChatsModal`) allowing inspection of all that user's chat tabs, questions asked, attached photos/PDFs, assistant replies, in-text citations, and Top-K candidate sources.
-  - **Protected APIs**: Backed by `@admin_required` REST endpoints `GET /api/admin/users`, `DELETE /api/admin/users/<id>`, and `GET /api/admin/users/<id>/chats`.
-- **Compact Top-K Results Pill (`#topKModal`)**:
-  - Clean compact pill button underneath assistant response (`Top-K Result (N pages) - View more`).
-  - Click opens candidate page inspector modal without cluttering the chat stream.
-- **Interactive In-Text Citation Buttons (`/pdf-viewer`)**:
-  - Assistant attaches section/row citations in `[Manual Name, p.XX]` format.
-  - Clicking any citation opens `/pdf-viewer?file=...&page=XX` in a new browser tab directly jumped to the cited page.
+  - User-uploaded attachments are passed directly into `gemini-3.5-flash-lite`'s multimodal vision context alongside retrieved manual pages.
+  - Chat transcript bubbles render attached photo thumbnails with click-to-enlarge lightbox.
+
+### 2.3 Admin Console (`templates/admin.html`)
+- **Navigation & Header**:
+  - Minimalist top navigation with status indicators, "Switch to Chat" button, and "Lock" button.
+  - Text spans are enclosed to prevent extraneous flexbox spacing gaps between words.
+- **User Management & Chat Inspector**:
+  - Inspect user accounts, total logins (`login_count`), avatars, roles, join dates, and timestamps.
+  - Permanent account deletion with confirmation (`DELETE /api/admin/users/<id>`) protecting primary `df` admin.
+  - Inspect all user chat tabs, questions, attached files, assistant answers, and Top-K candidate sources (`#userChatsModal`).
+- **Export Transcripts**:
+  - Generate full user conversation transcripts as downloadable HTML or PDF reports (`src/report_exporter.py`).
 
 ---
 
@@ -143,98 +155,80 @@ dfchatbot/
 
 | File | Primary Role & Responsibilities |
 |---|---|
-| [`config.py`](file:///home/tinonn/df_rag_project/config.py) | Defines system paths, collection name, rendering specs, model parameters, asymmetric embedding instructions, `ADMIN_PASSWORD` (default: `"df"`), and session `SECRET_KEY`. |
-| [`run_embedding_pipeline.py`](file:///home/tinonn/df_rag_project/run_embedding_pipeline.py) | Iterates over `source/*.pdf`, checks `pipeline_state.json` to skip unchanged files, extracts native document outline (TOC) with PyMuPDF, renders pages to PNG, calls the Gemini embedder, and upserts vectors + metadata into ChromaDB. |
-| [`embedders/gemini_multimodal_embedder.py`](file:///home/tinonn/df_rag_project/embedders/gemini_multimodal_embedder.py) | Interacts with `google.genai.Client`. Provides `embed_page_image()` with resilient exponential backoff retry for rate limits and `embed_query_text()` for search queries. |
-| [`pipeline_service.py`](file:///home/tinonn/df_rag_project/pipeline_service.py) | Core pipeline engine for outline extraction, rendering, incremental per-page ChromaDB upserts, and real-time SSE progress streaming with dynamic ETA calculation. |
-| [`app.py`](file:///home/tinonn/df_rag_project/app.py) | Flask web application serving HTML interfaces and REST API endpoints (`/api/status`, `/api/chat`, `/api/admin/*`, `/api/admin/embed/stream`). Features session-based password authentication (`@admin_required`). |
-| [`templates/index.html`](file:///home/tinonn/df_rag_project/templates/index.html) | Mobile & tablet friendly chat interface featuring off-canvas slide drawer navigation, real-time index status, chat history, Markdown formatting, citation cards with similarity scores, and a high-resolution touch image lightbox. |
-| [`templates/admin.html`](file:///home/tinonn/df_rag_project/templates/admin.html) | Password-protected admin dashboard featuring login lock gate, live loading bar with real-time ETA, total/remaining page metrics, dual table/card views for mobile/desktop, PDF uploader/manager, and settings editor. |
-| [`query_test.py`](file:///home/tinonn/df_rag_project/query_test.py) | Standalone CLI utility for validating retrieval quality against ChromaDB and inspecting top-ranked page image filenames and chapters. |
+| [`src/config.py`](file:///home/tinonn/DF_application/dfchatbot/src/config.py) | Defines system paths, ChromaDB collection name, rendering specs, model parameters, asymmetric embedding instructions, `ADMIN_PASSWORD` (default: `"df"`), and session `SECRET_KEY`. |
+| [`src/app.py`](file:///home/tinonn/DF_application/dfchatbot/src/app.py) | Flask web application serving HTML interfaces and REST API endpoints (`/api/status`, `/api/chat`, `/api/admin/*`, `/api/chat/tabs/*`). Enforces `@user_required` and `@admin_required` decorators. |
+| [`src/auth_and_chat_db.py`](file:///home/tinonn/DF_application/dfchatbot/src/auth_and_chat_db.py) | SQLite manager handling users, passwords, sessions, chat tabs, messages, attachments, and profile picture avatar metadata. |
+| [`src/pipeline_service.py`](file:///home/tinonn/DF_application/dfchatbot/src/pipeline_service.py) | Core pipeline engine for outline extraction, rendering, incremental per-page ChromaDB upserts, and real-time SSE progress streaming with dynamic ETA calculation. |
+| [`src/embedders/gemini_multimodal_embedder.py`](file:///home/tinonn/DF_application/dfchatbot/src/embedders/gemini_multimodal_embedder.py) | Interacts with `google.genai.Client`. Provides `embed_page_image()` with exponential backoff retry for rate limits and `embed_query_text()` for search queries. |
+| [`src/report_exporter.py`](file:///home/tinonn/DF_application/dfchatbot/src/report_exporter.py) | Generates structured HTML and PDF transcripts of chat sessions for admin inspection. |
+| [`templates/index.html`](file:///home/tinonn/DF_application/dfchatbot/templates/index.html) | Responsive chat UI featuring tab management, file attachments, Quick Manual filtering, markdown formatting, lightbox previews, and citations. |
+| [`templates/admin.html`](file:///home/tinonn/DF_application/dfchatbot/templates/admin.html) | Admin console with login lock, live progress bar, metadata/page manager, user accounts & chat inspector table. |
+| [`templates/pdf_viewer.html`](file:///home/tinonn/DF_application/dfchatbot/templates/pdf_viewer.html) | Citation viewer for navigating directly to cited pages in technical manuals. |
 
 ---
 
-## 3. ChromaDB Schema & Data Structures
+## 4. ChromaDB Schema & Data Structures
 
-### 3.1 Collection Configuration
+### 4.1 Collection Configuration
 - **Collection Name:** `pdf_pages`
 - **Metric:** Cosine similarity (`metadata={"hnsw:space": "cosine"}`)
-- **Persistence Path:** `output/chroma_db/`
+- **Persistence Path:** `data/output/chroma_db/`
 
-### 3.2 Record Structure in ChromaDB
+### 4.2 Record Structure in ChromaDB
 | Field | Type | Description / Example |
 |---|---|---|
 | **ID** | `str` | Format: `{pdf_stem}_page_{page_num:03d}` (e.g. `DFleet 4.0 User Manual_page_008`) |
 | **Embedding** | `list[float]` | 3072-dimensional vector from `gemini-embedding-2` |
 | **Document** | `str` | Text summary: `DFleet 4.0 User Manual - Page 008 \| Chapter: Preface \| Section: Section 1: Introduction` |
-| **Metadata** | `dict` | Key/Value attributes: <br>• `pdf_stem`: `"DFleet 4.0 User Manual"`<br>• `page_image`: `"DFleet 4.0 User Manual_page_008.png"`<br>• `page_number`: `8`<br>• `chapter`: `"Preface"`<br>• `section`: `"Section 1: Introduction"`<br>• `subsection`: `"Unknown"`<br>• `is_front_matter`: `false`<br>• `model`: `"gemini-embedding-2"`<br>• `dimensions`: `3072`<br>• `elapsed_seconds`: `1.24` |
+| **Metadata** | `dict` | Attributes: `pdf_stem`, `page_image`, `page_number`, `chapter`, `section`, `subsection`, `is_front_matter`, `model`, `dimensions`, `elapsed_seconds` |
 
 ---
 
-## 4. Key Retrieval & Generation Mechanics
+## 5. Retrieval & Generation Pipeline Mechanics
 
 ### Asymmetric Retrieval Instructions
 `gemini-embedding-2` uses instruction strings to bridge query and document representation spaces:
 - **Document instruction:** `"This is a page from a technical robotics software user manual. It may contain prose, tables, UI screenshots, or diagrams with embedded text. Represent its full content for retrieval by a user's question about the manual."`
 - **Query instruction:** `"Represent this question for retrieving the most relevant manual page."`
 
-### Front-Matter Filtering in ChromaDB
-Pages classified under `"Copyright Notice"`, `"Table of Contents"`, or `"Unknown"` before the first real chapter are marked with `"is_front_matter": true`. ChromaDB's native metadata query filters these out:
-```python
-results = collection.query(
-    query_embeddings=[qvec],
-    n_results=top_k,
-    where={"is_front_matter": False},
-    include=["metadatas", "distances", "documents"]
-)
-```
-
-### Chapter-Bounded Neighbor Expansion
-A single page often contains only part of a procedure. `app.py` employs a window expansion strategy:
-1. Identify Top-$K$ seed pages via ChromaDB query.
-2. For each seed page, look outward up to radius $R = 3$ ($[-3, +3]$ pages).
-3. Query neighbor metadata via `collection.get(ids=[neighbor_id], include=["metadatas"])`.
-4. If a neighbor page belongs to a different chapter or is front-matter, **halt expansion in that direction immediately**.
-5. Pass the deduplicated, ordered sequence of page images into the generation context.
+### Front-Matter Filtering & Chapter-Bounded Neighbor Expansion
+1. **Filtering**: Non-content pages (cover, copyright, TOC) marked `"is_front_matter": true` are filtered out during ChromaDB queries.
+2. **Neighbor Expansion**: For top seed pages, adjacent pages ($\pm 3$) within the same chapter are included to supply full procedural context to `gemini-3.5-flash-lite`.
 
 ### Grounding & Hallucination Guardrail Prompt
-`app.py` enforces strict context adherence on `gemini-3.5-flash-lite`:
+Enforces strict context adherence on `gemini-3.5-flash-lite`:
 ```text
-You are an expert technical assistant for the NavWiz AMR software manual.
-Answer the user's question accurately using only the provided image pages as context.
+You are an expert technical assistant for DF Automation / technical manuals.
+Answer the user's question accurately using only the provided image pages and attachments as context.
 
 STRICT RULE: If the user's question is gibberish, meaningless text, completely unrelated to
-robotics/NavWiz software, or cannot be answered by the provided manual pages, respond EXACTLY with:
+technical manuals, or cannot be answered by the provided context, respond EXACTLY with:
 "I am not sure about that."
 ```
 
 ---
 
-## 5. Environment & Operational Runbook
+## 6. Environment & Operational Runbook
 
-### 5.1 Environment Prerequisites
-- Python 3.10+
-- Installed packages: `google-genai`, `PyMuPDF`, `chromadb`, `numpy`, `flask`, `Pillow`, `python-dotenv`
-- `GEMINI_API_KEY` configured in `.env` (automatically loaded and refreshed by `config.get_gemini_api_key()` with `override=True`)
+### 6.1 Environment Prerequisites
+- Python 3.10+ (Virtual Environment at `.venv`)
+- `GEMINI_API_KEY` configured in `.env` (automatically loaded and refreshed by `src/config.py`)
 
-### 5.2 Common Workflows
+### 6.2 Common Workflows
 
-#### A. Ingesting New or Updated PDFs
-1. Place PDF file(s) in `source/`.
-2. Run the embedding pipeline:
-   ```bash
-   python run_embedding_pipeline.py
-   ```
-3. New images are rendered to `output/rendered_pages/` and upserted to `output/chroma_db/`.
+#### A. Ingesting New or Updated PDFs (CLI)
+```bash
+/home/tinonn/DF_application/dfchatbot/.venv/bin/python scripts/run_embedding_pipeline.py
+```
 
 #### B. Running Retrieval Sanity Checks (CLI)
 ```bash
-python query_test.py "How do I configure safety zones?"
+/home/tinonn/DF_application/dfchatbot/.venv/bin/python scripts/query_test.py "How do I configure safety zones?"
 ```
 
-#### C. Launching the Interactive Web Chatbot (Flask)
+#### C. Launching the Server
 ```bash
-python app.py
+/home/tinonn/DF_application/dfchatbot/.venv/bin/python scripts/run_server.py
 ```
 Open `http://localhost:5000` in your web browser.
 

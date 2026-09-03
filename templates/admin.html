@@ -149,7 +149,7 @@
         <!-- Top Navigation -->
         <header class="bg-[#1e1f20]/90 backdrop-blur border-b border-[#282a2c] px-4 sm:px-6 py-3 sm:py-3.5 z-20 shrink-0">
             <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2.5 sm:space-x-3">
                     <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#00787c] to-[#00b5b8] p-1.5 flex items-center justify-center shadow-lg shadow-[#00b5b8]/30 shrink-0">
                         <img src="/static/df_logo_white.png" alt="DF" class="w-full h-full object-contain">
                     </div>
@@ -163,9 +163,14 @@
                 </div>
 
                 <div class="flex items-center space-x-2 sm:space-x-3 self-end sm:self-auto">
-                    <a href="/" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5 sm:gap-2">
+                    <!-- Go back to Portal Button (Top Right) -->
+                    <a href="http://localhost:8080" onclick="window.location.href='http://' + window.location.hostname + ':8080'; return false;" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5 shrink-0 shadow-sm" title="Go back to Portal">
+                        <i class="fa-solid fa-arrow-left text-[#a8c7fa] text-[11px]"></i>
+                        <span><span class="hidden xs:inline">Back to </span>Portal</span>
+                    </a>
+                    <a href="/" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5">
                         <i class="fa-solid fa-comments text-[#a8c7fa]"></i>
-                        <span class="hidden xs:inline">Switch to</span> Chat
+                        <span><span class="hidden xs:inline">Switch to </span>Chat</span>
                     </a>
                     <button onclick="logoutAdmin()" class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white text-xs font-semibold border border-rose-800/50 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-lock text-rose-400"></i>

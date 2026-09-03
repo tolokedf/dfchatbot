@@ -307,7 +307,7 @@
         
         <!-- Header Bar (Google Workspace / Gemini Minimalist Header) -->
         <header class="h-14 sm:h-16 border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between px-3.5 sm:px-6 bg-white/95 dark:bg-[#131314]/95 backdrop-blur z-10 shrink-0 shadow-sm transition-colors duration-200">
-            <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div class="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
                 <!-- Sidebar Toggle button (Visible on BOTH mobile and desktop) -->
                 <button onclick="toggleSidebar()" id="headerSidebarToggleBtn" class="w-9 h-9 rounded-full hover:bg-slate-200/70 dark:hover:bg-[#282a2c] flex items-center justify-center text-slate-600 dark:text-[#c4c7c5] hover:text-slate-900 dark:hover:text-white transition shrink-0" title="Toggle Sidebar">
                     <i id="headerSidebarToggleIcon" class="fa-solid fa-bars text-sm"></i>
@@ -356,6 +356,12 @@
                 <a href="/admin" class="transition flex items-center gap-1.5 bg-[#fef7e0] dark:bg-[#332b00] hover:bg-[#feefc3] dark:hover:bg-[#473b00] px-3 py-1.5 rounded-full border border-[#fdd663]/60 text-[#7a5900] dark:text-[#fdd663] font-bold text-xs shadow-sm">
                     <i class="fa-solid fa-sliders text-amber-600 dark:text-amber-400"></i>
                     <span class="hidden xs:inline">Admin</span>
+                </a>
+
+                <!-- Go back to Portal Button (Top Right) -->
+                <a href="http://localhost:8080" onclick="window.location.href='http://' + window.location.hostname + ':8080'; return false;" class="transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-[#1e1f20] dark:hover:bg-[#282a2c] px-3 py-1.5 rounded-full border border-slate-200 dark:border-[#282a2c] text-slate-700 dark:text-[#c4c7c5] hover:text-slate-900 dark:hover:text-white font-bold text-xs shadow-sm" title="Go back to Portal">
+                    <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                    <span>Portal</span>
                 </a>
             </div>
         </header>
@@ -1813,21 +1819,9 @@
 
         async function executeDeleteTab(tabId) {
             const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
-            if (isGuest || !currentUser || tabId === 'guest-tab' || userTabs.length <= 1) {
+            if (isGuest || !currentUser || tabId === 'guest-tab') {
                 chatMessagesHistory = [];
                 messageSeedsMap = {};
-                if (currentUser && !isGuest && tabId !== 'guest-tab') {
-                    try {
-                        const res = await fetch(`/api/chat/tabs/${encodeURIComponent(tabId)}`, { method: 'DELETE' });
-                        const data = await res.json();
-                        if (data.status === 'ok') {
-                            await createNewTab();
-                            return;
-                        }
-                    } catch (err) {
-                        console.error("Delete tab error:", err);
-                    }
-                }
                 userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: 0 }];
                 activeTabId = 'guest-tab';
                 renderTabsList();
@@ -1842,13 +1836,15 @@
                     userTabs = data.tabs || [];
                     if (userTabs.length === 0) {
                         await createNewTab();
-                    } else {
-                        if (activeTabId === tabId) {
-                            activeTabId = userTabs[0].id;
-                        }
-                        renderTabsList();
-                        await loadTabMessages(activeTabId);
+                        return;
                     }
+                    if (activeTabId === tabId || !userTabs.some(t => t.id === activeTabId)) {
+                        activeTabId = userTabs[0].id;
+                    }
+                    renderTabsList();
+                    await loadTabMessages(activeTabId);
+                } else {
+                    console.error("Delete tab failed:", data.error);
                 }
             } catch (err) {
                 console.error("Delete tab error:", err);
@@ -2383,10 +2379,10 @@
         });
 
         if (clearChatBtn) {
-            clearChatBtn.addEventListener('click', () => {
-                renderWelcomeScreen(document.getElementById('headerTabTitle').textContent);
-                closeMobileSidebar();
+            clearChatBtn.addEventListener('click', async () => {
                 closeSettingsModal();
+                closeMobileSidebar();
+                await deleteActiveChat();
             });
         }
 
