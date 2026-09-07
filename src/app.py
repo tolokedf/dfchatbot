@@ -17,10 +17,12 @@ import time
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
+from collections import defaultdict
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, Response, stream_with_context, make_response, send_file
 from werkzeug.utils import secure_filename
 from PIL import Image
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import chromadb
 
@@ -28,6 +30,17 @@ import config
 import pipeline_service
 import auth_and_chat_db
 import report_exporter
+try:
+    from embedders import gemini_multimodal_embedder as embedder
+except ImportError:
+    try:
+        from src.embedders import gemini_multimodal_embedder as embedder
+    except ImportError:
+        src_dir = Path(__file__).resolve().parent
+        if str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+        from embedders import gemini_multimodal_embedder as embedder
+
 try:
     import pymupdf as fitz
 except ImportError:
@@ -270,23 +283,16 @@ def auth_register():
 
     try:
         user_data = auth_and_chat_db.register_user(username, password, confirm_password)
-        session["user_id"] = user_data["id"]
-        session["username"] = user_data["username"]
-        session["role"] = user_data["role"]
-        if user_data["role"] == "admin":
-            session["admin_authenticated"] = True
-
-        tabs = auth_and_chat_db.list_user_tabs(user_data["id"])
         return jsonify({
             "status": "ok",
-            "message": "Account created successfully!",
+            "pending_approval": True,
+            "message": "Account created! An administrator must approve your account before you can log in.",
             "user": {
                 "id": user_data["id"],
                 "username": user_data["username"],
-                "role": user_data["role"]
-            },
-            "tabs": tabs,
-            "default_tab_id": user_data["default_tab_id"]
+                "role": user_data["role"],
+                "status": user_data["status"]
+            }
         })
     except ValueError as e:
         return jsonify({"status": "error", "error": str(e)}), 400
@@ -499,6 +505,86 @@ def is_conversational_or_meta_query(text: str) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Rate Limiting & Abuse Prevention Helpers (Strategies 2 & 3)
+# ---------------------------------------------------------------------------
+RATE_LIMIT_STORE = defaultdict(list)
+
+def check_rate_limit(client_id: str) -> bool:
+    """
+    Sliding-window rate limiter per client ID or IP address (Strategy 3).
+    Returns True if allowed, False if limit exceeded.
+    """
+    now = time.time()
+    window_seconds = 60.0
+    timestamps = [t for t in RATE_LIMIT_STORE[client_id] if now - t < window_seconds]
+    RATE_LIMIT_STORE[client_id] = timestamps
+    if len(timestamps) >= config.MAX_REQUESTS_PER_MINUTE:
+        return False
+    RATE_LIMIT_STORE[client_id].append(now)
+    return True
+
+
+def get_static_conversational_reply(text: str) -> str | None:
+    """
+    Checks if query matches common greetings or small talk and returns an instant
+    canned response without calling Gemini (Strategy 2 - 0 tokens cost).
+    """
+    clean = re.sub(r'[^\w\s]', '', text.lower()).strip()
+    if not clean:
+        return "Hello! I am DF Chatbot. How can I assist you with NavWiz, DFleet, or AGV procedures today?"
+
+    greetings = {"hi", "hello", "hey", "hola", "good morning", "good afternoon", "good evening", "greetings"}
+    if clean in greetings or clean.startswith("hello ") or clean.startswith("hi ") or clean.startswith("hey "):
+        return "Hello! I am DF Chatbot, the Multimodal Technical Assistant by DF Automation. How can I assist you with your robotics manuals today?"
+
+    identity_queries = {"who are you", "what is your name", "what are you", "who r u", "tell me about yourself"}
+    if clean in identity_queries:
+        return "I am DF Chatbot, an expert technical assistant developed by DF Automation. I can help you navigate technical manuals, calibrate sensors, troubleshoot error codes, and review AGV schematics."
+
+    capabilities_queries = {"what can you do", "what do you know", "help", "how can you help", "what manuals"}
+    if clean in capabilities_queries:
+        return (
+            "I can assist you with:\n"
+            "• Looking up procedures in NavWiz & DFleet manuals\n"
+            "• AGV navigation, docking, and safety zone configuration\n"
+            "• Sensor calibration (LiDAR, optical, sonar)\n"
+            "• Battery charging and electrical troubleshooting\n"
+            "• Error code diagnoses (e.g. E01, E04)\n\n"
+            "You can also attach screenshots, photos, or PDF schematics for visual analysis!"
+        )
+
+    gratitude_queries = {"thank you", "thanks", "thank u", "thx", "many thanks", "appreciate it"}
+    if clean in gratitude_queries:
+        return "You're very welcome! Feel free to ask if you have any more questions about DF robotics or technical procedures."
+
+    farewell_queries = {"bye", "goodbye", "see you", "cya", "have a good day"}
+    if clean in farewell_queries:
+        return "Goodbye! Have a safe and productive day."
+
+    acknowledgement_queries = {"ok", "okay", "got it", "understood", "alright", "sure"}
+    if clean in acknowledgement_queries:
+        return "Understood. Let me know what you would like to explore or troubleshoot next."
+
+    return None
+
+
+def is_obvious_gibberish(text: str) -> bool:
+    """Detects obvious character mashing or nonsensical repeated sequences."""
+    clean = text.strip().lower()
+    if len(clean) >= 5 and re.search(r'(.)\1{4,}', clean):
+        return True
+    # Common keyboard walk sequences
+    qwerty_patterns = ['asdfgh', 'sdfghj', 'dfghjk', 'qwerty', 'wertyu', 'zxcvbn']
+    if any(p in clean for p in qwerty_patterns):
+        return True
+    words = clean.split()
+    for w in words:
+        if len(w) >= 7 and not any(c in "aeiou" for c in w) and w != "rhythms":
+            return True
+    return False
+
+
 # ============================================================================
 # Chat Tabs API (Per-User Isolated Sessions & Memory)
 # ============================================================================
@@ -647,6 +733,32 @@ def chat():
     if not user_prompt and not uploaded_files:
         return jsonify({"error": "Please provide a question or attach an image/PDF."}), 400
 
+    # Strategy 3: Sliding-Window Rate Limiting (per IP or User ID)
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1").split(",")[0].strip()
+    client_id = session.get("user_id") or client_ip
+    if not check_rate_limit(client_id):
+        logger.warning(f"Rate limit exceeded for client '{client_id}'")
+        return jsonify({
+            "error": f"You are sending requests too quickly. Please wait before asking another question (limit: {config.MAX_REQUESTS_PER_MINUTE} req/min)."
+        }), 429
+
+    # Strategy 4: Strict Question Length Cap
+    if len(user_prompt) > config.MAX_PROMPT_LENGTH:
+        return jsonify({
+            "error": f"Question is too long ({len(user_prompt)} characters). Maximum allowed is {config.MAX_PROMPT_LENGTH} characters."
+        }), 400
+
+    # Strategy 4: Strict Guest Query Limit
+    user_id = session.get("user_id")
+    if not user_id or user_id == "guest":
+        guest_count = session.get("guest_query_count", 0)
+        if guest_count >= config.GUEST_MAX_QUERIES:
+            logger.warning(f"Guest quota reached ({guest_count}/{config.GUEST_MAX_QUERIES}) for client '{client_ip}'")
+            return jsonify({
+                "error": f"Guest query limit reached ({config.GUEST_MAX_QUERIES} questions). Please sign up or log in with an authorized account to continue."
+            }), 403
+        session["guest_query_count"] = guest_count + 1
+
     if not user_prompt and uploaded_files:
         user_prompt = "Please analyze the attached image(s) or document(s) and explain any findings, error messages, or instructions."
 
@@ -737,7 +849,48 @@ def chat():
                 memory_lines.append(f"{role_label}: {t['content']}")
             memory_context_str = "Prior Conversation History in this Tab:\n" + "\n".join(memory_lines) + "\n\n"
 
-        # 3. Fast Path: Conversational / Greeting / Help Queries (Zero vector search latency)
+        # 3. Abuse Defense & Fast Path (Strategies 1, 2, 4)
+        if not user_pil_images:
+            # Drop obvious character mashing immediately (0 token cost)
+            if is_obvious_gibberish(user_prompt):
+                logger.info(f"Dropped obvious gibberish prompt: '{user_prompt}'")
+                return jsonify({
+                    "answer": "I am not sure about that. Please ask a specific question regarding DF robotics manuals, software (NavWiz, DFleet), or hardware.",
+                    "seeds": [],
+                    "seed_count": 0,
+                    "expanded_count": 0,
+                    "citations": [],
+                    "attachments": saved_attachments_meta,
+                    "visual_mode": visual_mode,
+                    "visual_previews": [],
+                    "is_conversational": True
+                })
+
+            # Strategy 2: Instant Static Canned Answers for Greetings & Small Talk (0 token cost)
+            static_reply = get_static_conversational_reply(user_prompt)
+            if static_reply:
+                logger.info(f"Serving 0-token static reply for: '{user_prompt}'")
+                uid = session.get("user_id")
+                if tab_id and tab_id != "guest-tab" and uid:
+                    try:
+                        auth_and_chat_db.add_chat_message(tab_id=tab_id, role="user", content=user_prompt, attachments=saved_attachments_meta, user_id=uid)
+                        auth_and_chat_db.add_chat_message(tab_id=tab_id, role="assistant", content=static_reply, user_id=uid)
+                    except Exception as db_err:
+                        logger.warning(f"Failed to persist static greeting in DB: {db_err}")
+
+                return jsonify({
+                    "answer": static_reply,
+                    "seeds": [],
+                    "seed_count": 0,
+                    "expanded_count": 0,
+                    "citations": [],
+                    "attachments": saved_attachments_meta,
+                    "visual_mode": visual_mode,
+                    "visual_previews": [],
+                    "is_conversational": True
+                })
+
+        # Conversational / Meta-Query Fallback with Max Output Tokens Cap
         if not user_pil_images and is_conversational_or_meta_query(user_prompt):
             logger.info(f"Fast-pathing conversational query without vector search: '{user_prompt}'")
             genai_client = embedder.get_client()
@@ -757,9 +910,15 @@ def chat():
                 f"{memory_context_str}Current User Message: {user_prompt}"
             )
 
+            # Strategy 4: Enforce max_output_tokens cap on fast-path response
+            fast_path_cfg = types.GenerateContentConfig(
+                max_output_tokens=config.MAX_OUTPUT_TOKENS,
+                temperature=0.2
+            )
             response = genai_client.models.generate_content(
                 model=config.GEMINI_QA_MODEL,
-                contents=meta_prompt
+                contents=meta_prompt,
+                config=fast_path_cfg
             )
             answer_text = response.text.strip() if response.text else "Hello! How can I assist you with your DF technical manuals or robotics questions today?"
 
@@ -873,6 +1032,59 @@ def chat():
 
                 pages_to_load.add(image_name)
 
+            # Strategy 1: ChromaDB Relevance / Similarity Gating (Drop off-topic / nonsense before image loading & Gemini call)
+            top_similarity = max([s["similarity"] for s in retrieved_seed_info]) if retrieved_seed_info else 0.0
+            if top_similarity < config.RELEVANCE_SIMILARITY_THRESHOLD and not user_pil_images:
+                logger.info(
+                    f"Query rejected due to low relevance: '{user_prompt}' "
+                    f"(top similarity: {top_similarity:.4f} < threshold: {config.RELEVANCE_SIMILARITY_THRESHOLD})"
+                )
+                relevance_refusal = (
+                    "I couldn't find any relevant procedures or sections in the DF robotics manuals (NavWiz / DFleet) "
+                    "matching your question. Please rephrase or ask about AGV navigation, sensors, or maintenance."
+                )
+                uid = session.get("user_id")
+                if tab_id and tab_id != "guest-tab" and uid:
+                    try:
+                        auth_and_chat_db.add_chat_message(
+                            tab_id=tab_id,
+                            role="user",
+                            content=user_prompt,
+                            attachments=saved_attachments_meta,
+                            user_id=uid
+                        )
+                        auth_and_chat_db.add_chat_message(
+                            tab_id=tab_id,
+                            role="assistant",
+                            content=relevance_refusal,
+                            user_id=uid
+                        )
+                    except Exception as db_err:
+                        logger.warning(f"Failed to persist low-relevance refusal in DB: {db_err}")
+
+                return jsonify({
+                    "answer": relevance_refusal,
+                    "seeds": [],
+                    "seed_count": 0,
+                    "expanded_count": 0,
+                    "citations": [],
+                    "attachments": saved_attachments_meta,
+                    "visual_mode": visual_mode,
+                    "visual_previews": [],
+                    "is_conversational": True
+                })
+
+            for meta, dist in zip(metas, distances):
+                image_name = meta.get("page_image", "")
+                pdf_stem = meta.get("pdf_stem")
+                page_num = meta.get("page_number")
+                if not pdf_stem or not page_num:
+                    inferred_stem, inferred_num = parse_page_filename(image_name)
+                    pdf_stem = pdf_stem or inferred_stem
+                    page_num = page_num or inferred_num
+                page_num = int(page_num)
+                seed_chapter = str(meta.get("chapter", "Unknown")).strip()
+
                 if pdf_stem and page_num > 0:
                     # Expand strictly within the same native chapter
                     for direction in [-1, 1]:
@@ -958,9 +1170,15 @@ def chat():
         full_text_prompt = f"{system_prompt}\n\n{memory_context_str}Current User Question: {user_prompt}"
         contents = multimodal_contents + [full_text_prompt]
 
+        # Strategy 4: Enforce strict max_output_tokens cap
+        qa_cfg = types.GenerateContentConfig(
+            max_output_tokens=config.MAX_OUTPUT_TOKENS,
+            temperature=0.2
+        )
         response = genai_client.models.generate_content(
             model=config.GEMINI_QA_MODEL,
-            contents=contents
+            contents=contents,
+            config=qa_cfg
         )
 
         answer_text = response.text.strip() if response.text else "I am not sure about that."
@@ -1195,6 +1413,48 @@ def delete_admin_user(user_id: int):
         return jsonify({"status": "error", "error": str(e)}), 400
     except Exception as e:
         logger.error(f"Error deleting user {user_id}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/approve", methods=["POST"])
+@admin_required
+def approve_admin_user(user_id: int):
+    """Approves a pending user account, allowing them to log in."""
+    try:
+        updated = auth_and_chat_db.update_user_status(user_id, "approved")
+        if not updated:
+            return jsonify({"status": "error", "error": "User not found."}), 404
+        remaining = auth_and_chat_db.list_all_users_with_stats()
+        return jsonify({
+            "status": "ok",
+            "message": "User account approved successfully.",
+            "users": remaining
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error approving user {user_id}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/decline", methods=["POST"])
+@admin_required
+def decline_admin_user(user_id: int):
+    """Declines a pending user account registration."""
+    try:
+        updated = auth_and_chat_db.update_user_status(user_id, "declined")
+        if not updated:
+            return jsonify({"status": "error", "error": "User not found."}), 404
+        remaining = auth_and_chat_db.list_all_users_with_stats()
+        return jsonify({
+            "status": "ok",
+            "message": "User account registration declined.",
+            "users": remaining
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error declining user {user_id}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
 
 

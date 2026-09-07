@@ -22,7 +22,19 @@ from google.genai import types
 from dotenv import load_dotenv
 
 import config
-from embedders import gemini_multimodal_embedder as embedder
+try:
+    from embedders import gemini_multimodal_embedder as embedder
+except ImportError:
+    try:
+        from src.embedders import gemini_multimodal_embedder as embedder
+    except ImportError:
+        import sys
+        from pathlib import Path
+        src_dir = Path(__file__).resolve().parent
+        if str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+        from embedders import gemini_multimodal_embedder as embedder
+
 
 logger = logging.getLogger(__name__)
 

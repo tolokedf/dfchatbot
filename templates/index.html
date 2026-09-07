@@ -1024,6 +1024,48 @@
         const chatFileInput = document.getElementById('chatFileInput');
         const attachmentPreviewBar = document.getElementById('attachmentPreviewBar');
 
+        // Tab drafts & in-flight preservation
+        const tabDrafts = {}; // tabId -> text
+        const inFlightTabs = {}; // tabId -> { message, tempAttachments, loaderId }
+        const lastTabDraftState = {}; // tabId -> boolean (whether draft icon is currently shown)
+
+        function saveCurrentTabDraft() {
+            if (!activeTabId || !userInput) return;
+            const val = userInput.value;
+            if (val && val.trim().length > 0) {
+                tabDrafts[activeTabId] = val;
+            } else {
+                delete tabDrafts[activeTabId];
+            }
+        }
+
+        function restoreTabInput(tabId) {
+            if (!userInput) return;
+            const isWaiting = Boolean(inFlightTabs[tabId]);
+            if (isWaiting) {
+                userInput.value = '';
+                userInput.disabled = true;
+                if (sendBtn) sendBtn.disabled = true;
+            } else {
+                userInput.value = tabDrafts[tabId] || '';
+                userInput.disabled = false;
+                if (sendBtn) sendBtn.disabled = false;
+            }
+            updatePromptBarValidation();
+        }
+
+        if (userInput) {
+            userInput.addEventListener('input', () => {
+                saveCurrentTabDraft();
+                const hasDraft = Boolean(tabDrafts[activeTabId] && tabDrafts[activeTabId].trim());
+                if (lastTabDraftState[activeTabId] !== hasDraft) {
+                    lastTabDraftState[activeTabId] = hasDraft;
+                    renderTabsList();
+                }
+                updatePromptBarValidation();
+            });
+        }
+
         // =====================================================================
         // Top-K Seed Pages & Default Management
         // =====================================================================
@@ -1539,8 +1581,12 @@
             const loginForm = document.getElementById('loginForm');
             const registerForm = document.getElementById('registerForm');
             const modalTitle = document.getElementById('authModalTitle');
+            const errEl = document.getElementById('authErrorMsg');
 
-            document.getElementById('authErrorMsg').classList.add('hidden');
+            if (errEl) {
+                errEl.classList.add('hidden');
+                errEl.className = "hidden p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
+            }
 
             if (tab === 'login') {
                 tabBtnLogin.className = "flex-1 py-2 rounded-lg text-xs font-bold text-[#00787c] dark:text-[#38f2f5] bg-white dark:bg-slate-850 shadow-sm transition";
@@ -1567,6 +1613,7 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Logging in...';
             errEl.classList.add('hidden');
+            errEl.className = "hidden p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
 
             try {
                 const res = await fetch('/api/auth/login', {
@@ -1581,10 +1628,12 @@
                     closeAuthModal();
                     await loadTabs();
                 } else {
+                    errEl.className = "p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
                     errEl.textContent = data.error || "Login failed.";
                     errEl.classList.remove('hidden');
                 }
             } catch (err) {
+                errEl.className = "p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
                 errEl.textContent = `Network error: ${err.message}`;
                 errEl.classList.remove('hidden');
             } finally {
@@ -1602,6 +1651,7 @@
             const btn = document.getElementById('regSubmitBtn');
 
             if (password !== confirm_password) {
+                errEl.className = "p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
                 errEl.textContent = "Passwords do not match. Please re-enter to confirm.";
                 errEl.classList.remove('hidden');
                 return;
@@ -1610,6 +1660,7 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Creating account...';
             errEl.classList.add('hidden');
+            errEl.className = "hidden p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
 
             try {
                 const res = await fetch('/api/auth/register', {
@@ -1619,15 +1670,30 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.status === 'ok') {
+                    if (data.pending_approval) {
+                        switchAuthTab('login');
+                        const loginUsernameEl = document.getElementById('loginUsername');
+                        const loginPasswordEl = document.getElementById('loginPassword');
+                        if (loginUsernameEl) loginUsernameEl.value = username;
+                        if (loginPasswordEl) loginPasswordEl.value = '';
+                        document.getElementById('regPassword').value = '';
+                        document.getElementById('regConfirmPassword').value = '';
+                        errEl.className = "p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-200 text-xs font-medium";
+                        errEl.innerHTML = '<i class="fa-solid fa-clock mr-1.5"></i> ' + escapeHtml(data.message || "Account created! Waiting for administrator approval before you can log in.");
+                        errEl.classList.remove('hidden');
+                        return;
+                    }
                     currentUser = data.user;
                     updateUserUI();
                     closeAuthModal();
                     await loadTabs(data.default_tab_id);
                 } else {
+                    errEl.className = "p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
                     errEl.textContent = data.error || "Registration failed.";
                     errEl.classList.remove('hidden');
                 }
             } catch (err) {
+                errEl.className = "p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium";
                 errEl.textContent = `Network error: ${err.message}`;
                 errEl.classList.remove('hidden');
             } finally {
@@ -1635,6 +1701,7 @@
                 btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> <span>Create Account</span>';
             }
         }
+
 
         async function handleGuestLogin() {
             const errEl = document.getElementById('authErrorMsg');
@@ -1699,6 +1766,7 @@
                 userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: chatMessagesHistory.length }];
                 activeTabId = 'guest-tab';
                 renderTabsList();
+                restoreTabInput(activeTabId);
                 if (chatMessagesHistory.length === 0) {
                     renderWelcomeScreen(isGuest ? "Guest Session" : "Local Session");
                 }
@@ -1720,6 +1788,7 @@
                         activeTabId = userTabs[0].id;
                     }
                     renderTabsList();
+                    restoreTabInput(activeTabId);
                     await loadTabMessages(activeTabId);
                 }
             } catch (err) {
@@ -1739,6 +1808,8 @@
 
             container.innerHTML = userTabs.map(t => {
                 const isActive = (t.id === activeTabId);
+                const hasDraft = Boolean(tabDrafts[t.id] && tabDrafts[t.id].trim());
+                const isWaiting = Boolean(inFlightTabs[t.id]);
                 return `
                     <div class="group flex items-center justify-between rounded-full px-3 py-2 text-xs transition cursor-pointer ${
                         isActive 
@@ -1746,8 +1817,17 @@
                             : 'text-slate-700 dark:text-[#c4c7c5] hover:bg-slate-200/60 dark:hover:bg-[#282a2c] hover:text-slate-900 dark:hover:text-white font-medium'
                     }" onclick="switchTab('${t.id}')">
                         <div class="flex items-center space-x-2.5 min-w-0 flex-1">
-                            <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : 'text-slate-400 dark:text-slate-500'} shrink-0"></i>
+                            ${isWaiting ? `
+                                <i class="fa-solid fa-spinner fa-spin text-[11px] text-[#0b57d0] dark:text-[#a8c7fa] shrink-0" title="Waiting for reply..."></i>
+                            ` : `
+                                <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : 'text-slate-400 dark:text-slate-500'} shrink-0"></i>
+                            `}
                             <span class="truncate font-semibold" title="${escapeHtml(t.title)}">${escapeHtml(t.title || 'New Chat')}</span>
+                            ${hasDraft ? `
+                                <span class="inline-flex items-center text-amber-500 dark:text-amber-400 shrink-0" title="Draft: ${escapeAttr(tabDrafts[t.id])}">
+                                    <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                </span>
+                            ` : ''}
                         </div>
                         <button onclick="deleteTab('${t.id}', event)" class="${isActive ? 'text-[#001d35]/60 hover:text-rose-600 dark:text-[#c2e7ff]/60 dark:hover:text-rose-400' : 'text-slate-400 hover:text-rose-500'} p-1 transition rounded-full hover:bg-black/10 shrink-0" title="Delete chat tab">
                             <i class="fa-solid fa-trash-can text-[10px]"></i>
@@ -1758,6 +1838,7 @@
         }
 
         async function createNewTab() {
+            saveCurrentTabDraft();
             const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
             if (isGuest || !currentUser) {
                 chatMessagesHistory = [];
@@ -1765,6 +1846,7 @@
                 userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: 0 }];
                 activeTabId = 'guest-tab';
                 renderTabsList();
+                restoreTabInput(activeTabId);
                 renderWelcomeScreen(isGuest ? "Guest Session" : "Local Session");
                 closeMobileSidebar();
                 return;
@@ -1779,6 +1861,7 @@
                 const data = await res.json();
                 if (data.status === 'ok') {
                     await loadTabs(data.tab.id);
+                    restoreTabInput(data.tab.id);
                 }
             } catch (err) {
                 console.error("Create tab error:", err);
@@ -1787,8 +1870,10 @@
 
         async function switchTab(tabId) {
             if (activeTabId === tabId) return;
+            saveCurrentTabDraft();
             activeTabId = tabId;
             renderTabsList();
+            restoreTabInput(tabId);
             await loadTabMessages(tabId);
             closeMobileSidebar();
         }
@@ -1818,6 +1903,10 @@
         }
 
         async function executeDeleteTab(tabId) {
+            delete tabDrafts[tabId];
+            delete inFlightTabs[tabId];
+            delete lastTabDraftState[tabId];
+
             const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest);
             if (isGuest || !currentUser || tabId === 'guest-tab') {
                 chatMessagesHistory = [];
@@ -1825,6 +1914,7 @@
                 userTabs = [{ id: 'guest-tab', title: isGuest ? 'Guest Session' : 'Local Session', message_count: 0 }];
                 activeTabId = 'guest-tab';
                 renderTabsList();
+                restoreTabInput(activeTabId);
                 renderWelcomeScreen(userTabs[0].title);
                 return;
             }
@@ -1842,6 +1932,7 @@
                         activeTabId = userTabs[0].id;
                     }
                     renderTabsList();
+                    restoreTabInput(activeTabId);
                     await loadTabMessages(activeTabId);
                 } else {
                     console.error("Delete tab failed:", data.error);
@@ -1863,7 +1954,30 @@
             `;
 
             if (!currentUser || tabId === 'guest-tab') {
-                renderWelcomeScreen(title);
+                const inFlight = inFlightTabs[tabId];
+                if (chatMessagesHistory.length === 0 && !inFlight) {
+                    renderWelcomeScreen(title);
+                } else {
+                    chatContainer.innerHTML = '';
+                    chatMessagesHistory.forEach(m => {
+                        if (m.role === 'user') {
+                            appendUserMessage(m.content, m.attachments || []);
+                        } else {
+                            appendAssistantResponse({
+                                answer: m.content || m.answer,
+                                seeds: m.top_k || m.seeds || [],
+                                expanded_count: m.expanded_count || 0,
+                                citations: m.citations || []
+                            });
+                        }
+                    });
+                    if (inFlight) {
+                        appendUserMessage(inFlight.message, inFlight.tempAttachments || []);
+                        const newLoaderId = appendAssistantLoader();
+                        inFlight.loaderId = newLoaderId;
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                }
                 return;
             }
 
@@ -1873,7 +1987,8 @@
                 if (data.status === 'ok') {
                     const messages = data.messages || [];
                     chatContainer.innerHTML = '';
-                    if (messages.length === 0) {
+                    const inFlight = inFlightTabs[tabId];
+                    if (messages.length === 0 && !inFlight) {
                         renderWelcomeScreen(title);
                     } else {
                         messages.forEach(m => {
@@ -1888,6 +2003,12 @@
                                 });
                             }
                         });
+                        if (inFlight) {
+                            appendUserMessage(inFlight.message, inFlight.tempAttachments || []);
+                            const newLoaderId = appendAssistantLoader();
+                            inFlight.loaderId = newLoaderId;
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }
                     }
                 }
             } catch (err) {
@@ -1895,6 +2016,7 @@
                 renderWelcomeScreen(title);
             }
         }
+
 
         function renderWelcomeScreen(title = "New Chat") {
             chatContainer.innerHTML = `
@@ -2061,6 +2183,8 @@
 
         function setQueryAndClose(text) {
             userInput.value = text;
+            saveCurrentTabDraft();
+            renderTabsList();
             closeMobileSidebar();
             closeSettingsModal();
             userInput.focus();
@@ -2433,6 +2557,10 @@
                 return;
             }
 
+            const sendingTabId = activeTabId;
+            delete tabDrafts[sendingTabId];
+            delete lastTabDraftState[sendingTabId];
+
             const filesToSend = [...attachedFiles];
             
             // Create temporary attachment objects for immediate visual rendering
@@ -2445,8 +2573,20 @@
                 };
             });
 
-            // Render user bubble immediately
-            appendUserMessage(message || "(Attached files)", tempAttachments);
+            // If in guest mode, keep in memory
+            const isGuest = currentUser && (currentUser.role === 'guest' || currentUser.is_guest || currentUser.username.toLowerCase() === 'guest');
+            if (!currentUser || isGuest || sendingTabId === 'guest-tab') {
+                chatMessagesHistory.push({
+                    role: 'user',
+                    content: message || "(Attached files)",
+                    attachments: tempAttachments
+                });
+            }
+
+            // Render user bubble immediately if currently viewing this tab
+            if (activeTabId === sendingTabId) {
+                appendUserMessage(message || "(Attached files)", tempAttachments);
+            }
 
             userInput.value = '';
             userInput.disabled = true;
@@ -2457,14 +2597,25 @@
             // Clear attachments from input bar
             clearAllAttachments();
 
-            // Render assistant loader
-            const loaderId = appendAssistantLoader();
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // Render assistant loader if on active tab
+            let loaderId = null;
+            if (activeTabId === sendingTabId) {
+                loaderId = appendAssistantLoader();
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Record in inFlightTabs
+            inFlightTabs[sendingTabId] = {
+                message: message || "(Attached files)",
+                tempAttachments: tempAttachments,
+                loaderId: loaderId
+            };
+            renderTabsList();
 
             try {
                 const formData = new FormData();
                 formData.append('message', message);
-                formData.append('tab_id', activeTabId || '');
+                formData.append('tab_id', sendingTabId || '');
                 formData.append('top_k', topKSlider.value);
                 formData.append('visual_mode', visualMode);
                 
@@ -2488,37 +2639,81 @@
                 });
 
                 const data = await response.json();
-                removeElement(loaderId);
+                const inFlight = inFlightTabs[sendingTabId];
+                delete inFlightTabs[sendingTabId];
+                renderTabsList();
 
-                if (!response.ok) {
-                    appendErrorMessage(data.error || "An error occurred during retrieval.");
-                } else {
-                    appendAssistantResponse(data);
-                    // Refresh tabs to update title if changed
-                    if (currentUser) {
-                        const tabsRes = await fetch('/api/chat/tabs');
-                        const tabsData = await tabsRes.json();
-                        if (tabsData.status === 'ok') {
-                            userTabs = tabsData.tabs || [];
-                            renderTabsList();
-                            const curr = userTabs.find(t => t.id === activeTabId);
-                            if (curr) document.getElementById('headerTabTitle').textContent = `Tab: ${curr.title}`;
+                if (!currentUser || isGuest || sendingTabId === 'guest-tab') {
+                    if (response.ok) {
+                        chatMessagesHistory.push({
+                            role: 'assistant',
+                            answer: data.answer,
+                            seeds: data.seeds || [],
+                            expanded_count: data.expanded_count || 0,
+                            citations: data.citations || []
+                        });
+                    }
+                }
+
+                if (activeTabId === sendingTabId) {
+                    if (inFlight && inFlight.loaderId) {
+                        removeElement(inFlight.loaderId);
+                    }
+                    if (!response.ok) {
+                        appendErrorMessage(data.error || "An error occurred during retrieval.");
+                    } else {
+                        appendAssistantResponse(data);
+                        // Refresh tabs to update title if changed
+                        if (currentUser && !isGuest) {
+                            const tabsRes = await fetch('/api/chat/tabs');
+                            const tabsData = await tabsRes.json();
+                            if (tabsData.status === 'ok') {
+                                userTabs = tabsData.tabs || [];
+                                renderTabsList();
+                                const curr = userTabs.find(t => t.id === activeTabId);
+                                if (curr) document.getElementById('headerTabTitle').textContent = `Tab: ${curr.title}`;
+                            }
                         }
+                    }
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else {
+                    // User is currently viewing another tab
+                    if (currentUser && !isGuest) {
+                        fetch('/api/chat/tabs')
+                            .then(r => r.json())
+                            .then(tabsData => {
+                                if (tabsData.status === 'ok') {
+                                    userTabs = tabsData.tabs || [];
+                                    renderTabsList();
+                                }
+                            })
+                            .catch(() => {});
                     }
                 }
             } catch (err) {
-                removeElement(loaderId);
-                appendErrorMessage("Network error: Failed to connect to server.");
+                const inFlight = inFlightTabs[sendingTabId];
+                delete inFlightTabs[sendingTabId];
+                renderTabsList();
+
+                if (activeTabId === sendingTabId) {
+                    if (inFlight && inFlight.loaderId) {
+                        removeElement(inFlight.loaderId);
+                    }
+                    appendErrorMessage("Network error: Failed to connect to server.");
+                }
                 console.error(err);
             } finally {
-                userInput.disabled = false;
-                sendBtn.disabled = false;
-                if (attachBtn) attachBtn.disabled = false;
-                updatePromptBarValidation();
-                userInput.focus();
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+                // If user is currently viewing the tab that just finished, restore controls
+                if (activeTabId === sendingTabId) {
+                    userInput.disabled = false;
+                    sendBtn.disabled = false;
+                    if (attachBtn) attachBtn.disabled = false;
+                    updatePromptBarValidation();
+                    userInput.focus();
+                }
             }
         });
+
 
         function appendUserMessage(text, attachments = []) {
             const div = document.createElement('div');

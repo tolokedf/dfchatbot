@@ -69,6 +69,15 @@ GEMINI_QA_MODEL = os.environ.get("GEMINI_QA_MODEL", "gemini-3.5-flash-lite")
 EMBED_OUTPUT_DIMENSIONALITY = 3072
 
 # ---------------------------------------------------------------------------
+# Abuse Prevention & Token Defense Settings (Strategies 1, 2, 3, 4)
+# ---------------------------------------------------------------------------
+RELEVANCE_SIMILARITY_THRESHOLD = float(os.environ.get("RELEVANCE_SIMILARITY_THRESHOLD", "0.45"))
+MAX_REQUESTS_PER_MINUTE = int(os.environ.get("MAX_REQUESTS_PER_MINUTE", "10"))
+MAX_PROMPT_LENGTH = int(os.environ.get("MAX_PROMPT_LENGTH", "800"))
+MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "800"))
+GUEST_MAX_QUERIES = int(os.environ.get("GUEST_MAX_QUERIES", "10"))
+
+# ---------------------------------------------------------------------------
 # Security & Authentication
 # ---------------------------------------------------------------------------
 ADMIN_ID = os.environ.get("ADMIN_ID", "df")

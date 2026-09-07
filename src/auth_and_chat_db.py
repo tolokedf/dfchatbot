@@ -30,13 +30,14 @@ def init_db():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # 1. Users Table (with profile_pic, login_count, and last_login_at support)
+        # 1. Users Table (with profile_pic, login_count, last_login_at, and approval status support)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
+                status TEXT NOT NULL DEFAULT 'approved',
                 profile_pic TEXT DEFAULT '',
                 login_count INTEGER DEFAULT 0,
                 last_login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +45,7 @@ def init_db():
             );
         """)
 
-        # Gracefully add profile_pic, login_count, last_login_at columns if table was created earlier
+        # Gracefully add profile_pic, login_count, last_login_at, status columns if table was created earlier
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN profile_pic TEXT DEFAULT '';")
         except sqlite3.OperationalError:
@@ -55,6 +56,10 @@ def init_db():
             pass
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'approved';")
         except sqlite3.OperationalError:
             pass
 
@@ -105,7 +110,7 @@ def init_db():
         # Ensure no legacy 'admin' user alias exists and only 'df' has admin role
         cursor.execute("DELETE FROM users WHERE username = 'admin'")
         cursor.execute("UPDATE users SET role = 'user' WHERE username != 'df'")
-        cursor.execute("UPDATE users SET role = 'admin' WHERE username = 'df'")
+        cursor.execute("UPDATE users SET role = 'admin', status = 'approved' WHERE username = 'df'")
         
         conn.commit()
 
@@ -124,7 +129,7 @@ def validate_no_spaces(val: str, field_name: str = "Field"):
 
 
 def register_user(username: str, password: str, confirm_password: str) -> dict:
-    """Registers a new user account with no-space validation and password confirmation."""
+    """Registers a new user account with pending admin approval status."""
     username = (username or "").strip()
     password = password or ""
     confirm_password = confirm_password or ""
@@ -143,13 +148,14 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
 
     pw_hash = generate_password_hash(password)
     role = "user"
+    status = "pending"  # Newly registered users require administrator approval
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)",
-                (username, pw_hash, role, "")
+                "INSERT INTO users (username, password_hash, role, status, profile_pic, login_count, last_login_at) VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)",
+                (username, pw_hash, role, status, "")
             )
             user_id = cursor.lastrowid
             
@@ -165,8 +171,9 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
                 "id": user_id,
                 "username": username,
                 "role": role,
+                "status": status,
                 "profile_pic": "",
-                "login_count": 1,
+                "login_count": 0,
                 "default_tab_id": tab_id
             }
         except sqlite3.IntegrityError:
@@ -174,7 +181,7 @@ def register_user(username: str, password: str, confirm_password: str) -> dict:
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
-    """Authenticates a user by username (Name) and password. Tracks login counts and timestamps."""
+    """Authenticates a user by username and password. Checks approval status."""
     username = (username or "").strip()
     password = password or ""
 
@@ -197,13 +204,14 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                         "id": user_id,
                         "username": "df",
                         "role": "admin",
+                        "status": "approved",
                         "profile_pic": row["profile_pic"] or "",
                         "login_count": new_count
                     }
                 else:
                     pw_hash = generate_password_hash("df")
                     cursor.execute(
-                        "INSERT INTO users (username, password_hash, role, profile_pic, login_count, last_login_at) VALUES ('df', ?, 'admin', '', 1, CURRENT_TIMESTAMP)",
+                        "INSERT INTO users (username, password_hash, role, status, profile_pic, login_count, last_login_at) VALUES ('df', ?, 'admin', 'approved', '', 1, CURRENT_TIMESTAMP)",
                         (pw_hash,)
                     )
                     conn.commit()
@@ -211,6 +219,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                         "id": cursor.lastrowid,
                         "username": "df",
                         "role": "admin",
+                        "status": "approved",
                         "profile_pic": "",
                         "login_count": 1
                     }
@@ -224,6 +233,12 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
             return None
 
         if check_password_hash(row["password_hash"], password):
+            user_status = row["status"] if "status" in row.keys() else "approved"
+            if user_status == "pending":
+                raise ValueError("Your account is pending approval from the administrator. Please wait until an admin accepts your registration.")
+            if user_status == "declined":
+                raise ValueError("Your account registration was declined by the administrator. Please contact your system admin.")
+
             user_id = row["id"]
             new_count = (row["login_count"] or 0) + 1
             cursor.execute("UPDATE users SET login_count = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (new_count, user_id))
@@ -232,6 +247,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                 "id": user_id,
                 "username": row["username"],
                 "role": row["role"],
+                "status": user_status,
                 "profile_pic": row["profile_pic"] or "",
                 "login_count": new_count
             }
@@ -241,7 +257,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
 def get_user_by_id(user_id: int) -> Optional[dict]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -251,11 +267,31 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
 def get_user_by_username(username: str) -> Optional[dict]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE username = ?", (username.lower(),))
+        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE username = ?", (username.lower(),))
         row = cursor.fetchone()
         if row:
             return dict(row)
         return None
+
+
+def update_user_status(user_id: int, new_status: str) -> bool:
+    """Updates user approval status ('approved', 'declined', 'pending')."""
+    if new_status not in ["approved", "declined", "pending"]:
+        raise ValueError(f"Invalid status '{new_status}'. Allowed: 'approved', 'declined', 'pending'.")
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+
+        if row["username"].lower() == "df":
+            raise ValueError("The administrator account ('df') is always approved.")
+
+        cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
+        conn.commit()
+        return cursor.rowcount > 0
 
 
 def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Optional[dict]:
@@ -264,7 +300,7 @@ def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Opti
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET profile_pic = ? WHERE id = ?", (profile_pic_filename, user_id))
         conn.commit()
-        cursor.execute("SELECT id, username, role, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -304,7 +340,7 @@ def delete_user(user_id: int) -> bool:
 # ============================================================================
 
 def list_all_users_with_stats() -> List[dict]:
-    """Returns all users with login counts, tab counts, message counts, and timestamps for Admin Console."""
+    """Returns all users with login counts, tab counts, message counts, status, and timestamps for Admin Console."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -312,6 +348,7 @@ def list_all_users_with_stats() -> List[dict]:
                 u.id, 
                 u.username, 
                 u.role, 
+                u.status,
                 u.profile_pic, 
                 u.login_count, 
                 u.created_at, 
@@ -330,6 +367,7 @@ def list_all_users_with_stats() -> List[dict]:
         for r in rows:
             item = dict(r)
             item["login_count"] = item.get("login_count") or 0
+            item["status"] = item.get("status") or "approved"
             users.append(item)
         return users
 
