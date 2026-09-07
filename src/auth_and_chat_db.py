@@ -421,6 +421,11 @@ def get_multiple_users_full_chat_history(user_ids: Optional[List[int]] = None) -
 
 def list_user_tabs(user_id: int) -> List[dict]:
     """Returns all tabs for a specific user, ordered by most recently updated."""
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return []
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -444,6 +449,11 @@ def list_user_tabs(user_id: int) -> List[dict]:
 
 
 def create_tab(user_id: int, title: str = "New Chat") -> dict:
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid user_id: {user_id}")
+
     tab_id = str(uuid.uuid4())
     title = (title or "New Chat").strip()[:60]
     with get_db_connection() as conn:
@@ -462,6 +472,11 @@ def create_tab(user_id: int, title: str = "New Chat") -> dict:
 
 def delete_tab(tab_id: str, user_id: int) -> bool:
     """Deletes a chat tab and all its messages. Verifies user ownership."""
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return False
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM chat_tabs WHERE id = ? AND user_id = ?", (tab_id, user_id))
@@ -493,6 +508,11 @@ def touch_tab(tab_id: str) -> None:
 
 def get_tab_messages(tab_id: str, user_id: int) -> List[dict]:
     """Retrieves full message history for a tab, ensuring user ownership."""
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return []
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         # Verify ownership

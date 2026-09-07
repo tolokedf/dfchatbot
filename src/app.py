@@ -28,8 +28,10 @@ import config
 import pipeline_service
 import auth_and_chat_db
 import report_exporter
-from embedders import gemini_multimodal_embedder as embedder
-import fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -392,6 +394,9 @@ def auth_me():
 def upload_profile_picture():
     """Uploads and saves user profile picture inside the 'data/user_storage/profile_pictures' directory."""
     user_id = session.get("user_id")
+    if user_id == "guest":
+        return jsonify({"status": "error", "error": "Guest accounts cannot update profile pictures. Please register or log in."}), 403
+
     if "file" not in request.files:
         return jsonify({"status": "error", "error": "No file uploaded."}), 400
 
@@ -503,6 +508,11 @@ def get_user_tabs():
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"status": "ok", "tabs": []})
+    if user_id == "guest":
+        return jsonify({
+            "status": "ok",
+            "tabs": [{"id": "guest-tab", "title": "Guest Session", "message_count": 0}]
+        })
     tabs = auth_and_chat_db.list_user_tabs(user_id)
     return jsonify({"status": "ok", "tabs": tabs})
 
@@ -511,6 +521,11 @@ def get_user_tabs():
 @user_required
 def create_user_tab():
     user_id = session.get("user_id")
+    if user_id == "guest":
+        return jsonify({
+            "status": "error",
+            "error": "Guest session does not support multiple persistent tabs. Please register or log in."
+        }), 403
     data = request.get_json(force=True, silent=True) or {}
     title = data.get("title", "New Chat")
     new_tab = auth_and_chat_db.create_tab(user_id, title)
@@ -521,6 +536,12 @@ def create_user_tab():
 @user_required
 def delete_user_tab(tab_id: str):
     user_id = session.get("user_id")
+    if user_id == "guest":
+        return jsonify({
+            "status": "ok",
+            "message": "Guest tab reset.",
+            "tabs": [{"id": "guest-tab", "title": "Guest Session", "message_count": 0}]
+        })
     deleted = auth_and_chat_db.delete_tab(tab_id, user_id)
     if not deleted:
         return jsonify({"status": "error", "error": "Tab not found or unauthorized."}), 404
@@ -532,6 +553,8 @@ def delete_user_tab(tab_id: str):
 @user_required
 def get_tab_message_history(tab_id: str):
     user_id = session.get("user_id")
+    if user_id == "guest" or tab_id == "guest-tab":
+        return jsonify({"status": "ok", "messages": []})
     messages = auth_and_chat_db.get_tab_messages(tab_id, user_id)
     return jsonify({"status": "ok", "messages": messages})
 
@@ -1090,8 +1113,8 @@ def admin_auth_status():
 @app.route("/api/admin/login", methods=["POST"])
 def admin_login():
     data = request.get_json(force=True, silent=True) or {}
-    admin_id = str(data.get("id") or data.get("username") or "").strip()
-    password = str(data.get("password", "")).strip()
+    admin_id = str(data.get("id") or data.get("username") or data.get("admin_id") or "").strip()
+    password = str(data.get("password") or data.get("admin_password") or "").strip()
 
     if admin_id.lower() == "df" and (password == "df" or config.verify_admin_password(password)):
         session["admin_authenticated"] = True

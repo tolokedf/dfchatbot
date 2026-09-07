@@ -12,7 +12,10 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz  # PyMuPDF
+except ImportError:
+    import fitz
 import chromadb
 from google import genai
 from google.genai import types
