@@ -141,7 +141,56 @@ def get_all_pdfs_status() -> list[dict]:
             "missing_page_numbers": missing_pages,
             "is_modified": is_modified,
             "has_toc": has_toc,
-            "status": status
+            "status": status,
+            "file_type": "pdf"
+        })
+
+    xlsx_files = sorted(config.SOURCE_DIR.glob("*.xlsx"))
+    for xlsx_path in xlsx_files:
+        filename = xlsx_path.name
+        stem = xlsx_path.stem
+        file_size = xlsx_path.stat().st_size
+        modified_ts = xlsx_path.stat().st_mtime
+        modified_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(modified_ts))
+
+        try:
+            db_records = collection.get(where={"pdf_stem": stem}, include=[])
+            db_ids = set(db_records["ids"]) if db_records and db_records["ids"] else set()
+            db_chunk_count = len(db_ids)
+        except Exception:
+            db_ids = set()
+            db_chunk_count = 0
+
+        last_embedded_at = state.get(filename, {}).get("embedded_at", 0)
+        last_size = state.get(filename, {}).get("size")
+        expected_chunks = state.get(filename, {}).get("chunks_count", 0)
+
+        is_modified = bool(last_embedded_at and modified_ts > last_embedded_at + 1.0) or (filename in state and last_size != file_size)
+        is_recorded_in_state = (filename in state and last_size == file_size and not is_modified)
+
+        if db_chunk_count > 0 and is_recorded_in_state:
+            status = "embedded"
+        elif is_modified:
+            status = "outdated"
+        else:
+            status = "pending"
+
+        total_units = expected_chunks if expected_chunks > 0 else db_chunk_count
+
+        results.append({
+            "filename": filename,
+            "stem": stem,
+            "size_bytes": file_size,
+            "size_formatted": format_bytes(file_size),
+            "modified_at": modified_str,
+            "total_pdf_pages": total_units,
+            "embedded_pages_count": db_chunk_count,
+            "missing_pages_count": 0 if status == "embedded" else 1,
+            "missing_page_numbers": [],
+            "is_modified": is_modified,
+            "has_toc": False,
+            "status": status,
+            "file_type": "xlsx"
         })
 
     return results
@@ -653,6 +702,95 @@ def process_and_embed_pdf(
         "stem": pdf_path.stem,
         "pages_embedded": final_count,
         "newly_embedded": newly_embedded_count
+    }
+
+
+def process_and_embed_xlsx(
+    xlsx_path: Path,
+    log_fn: Optional[Callable[[str], None]] = None,
+    mode: str = "required",
+    force: bool = False
+) -> dict:
+    """
+    Parses, color-enriches, embeds, and updates ChromaDB for an Excel workbook.
+    """
+    def log(msg: str):
+        logger.info(msg)
+        if log_fn:
+            log_fn(msg)
+
+    api_key = config.get_gemini_api_key()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set or empty in .env.")
+
+    is_full = (mode == "all" or force)
+    log(f"Processing Excel workbook '{xlsx_path.name}' ({format_bytes(xlsx_path.stat().st_size)})...")
+
+    try:
+        import xlsx_service
+    except ImportError:
+        from src import xlsx_service
+
+    chunks = xlsx_service.parse_xlsx_to_chunks(xlsx_path)
+    log(f"Generated {len(chunks)} structured Markdown chunks with cell color annotations across sheets.")
+
+    collection = get_chroma_collection()
+    existing_records = collection.get(where={"pdf_stem": xlsx_path.stem}, include=["metadatas"])
+    existing_ids = set(existing_records["ids"]) if existing_records and existing_records["ids"] else set()
+
+    state = load_pipeline_state()
+    last_embedded_at = state.get(xlsx_path.name, {}).get("embedded_at", 0)
+    last_size = state.get(xlsx_path.name, {}).get("size")
+    is_modified = bool(last_embedded_at and xlsx_path.stat().st_mtime > last_embedded_at + 1.0) or (xlsx_path.name in state and last_size != xlsx_path.stat().st_size)
+
+    client = embedder.get_client()
+    embedded_count = 0
+
+    for idx, c in enumerate(chunks, 1):
+        cid = c["chunk_id"]
+        if not is_full and not is_modified and cid in existing_ids:
+            continue
+
+        log(f"  Embedding chunk {idx}/{len(chunks)}: [{c['sheet_name']} Rows {c['row_start']}-{c['row_end']}]...")
+        res = embedder.embed_text_chunk(client, c["text"], log_fn=log)
+        
+        collection.upsert(
+            ids=[cid],
+            embeddings=[res["vector"]],
+            documents=[c["text"]],
+            metadatas=[{
+                "pdf_stem": c["file_stem"],
+                "source_file": c["source_file"],
+                "sheet_name": c["sheet_name"],
+                "section": c["section"],
+                "row_start": int(c["row_start"]),
+                "row_end": int(c["row_end"]),
+                "doc_type": "xlsx",
+                "page_number": int(c["row_start"]),
+                "chapter": c["sheet_name"],
+                "is_front_matter": bool(c["is_front_matter"]),
+                "model": str(res["model"]),
+                "dimensions": int(res["dimensions"]),
+            }]
+        )
+        existing_ids.add(cid)
+        embedded_count += 1
+        time.sleep(config.EMBED_INTER_PAGE_DELAY)
+
+    # Save state
+    state[xlsx_path.name] = {
+        "size": xlsx_path.stat().st_size,
+        "embedded_at": time.time(),
+        "chunks_count": len(chunks)
+    }
+    save_pipeline_state(state)
+
+    log(f"✅ Finished indexing '{xlsx_path.name}': {len(chunks)} chunks active in ChromaDB ({embedded_count} embedded this run).")
+    return {
+        "filename": xlsx_path.name,
+        "stem": xlsx_path.stem,
+        "chunks_total": len(chunks),
+        "chunks_embedded": embedded_count
     }
 
 

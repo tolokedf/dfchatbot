@@ -96,3 +96,4 @@ websocket-client==1.9.2
 websockets==16.1.1
 Werkzeug==3.1.8
 yarl==1.24.5
+openpyxl>=3.1.5

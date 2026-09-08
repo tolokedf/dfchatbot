@@ -127,7 +127,7 @@ def find_best_matching_pdf(target_name: str) -> Path | None:
     if not config.SOURCE_DIR.exists():
         return None
 
-    all_pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
+    all_pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")) + list(config.SOURCE_DIR.glob("*.xlsx")))
     if not all_pdfs:
         return None
 
@@ -135,9 +135,9 @@ def find_best_matching_pdf(target_name: str) -> Path | None:
         return all_pdfs[0]
 
     clean_target = target_name.strip()
-    # Strip brackets, quotes, and .pdf extension
+    # Strip brackets, quotes, and .pdf/.xlsx extension
     clean_target = re.sub(r"^[\[\"']|[\]\"']$", "", clean_target).strip()
-    clean_target_no_ext = clean_target[:-4] if clean_target.lower().endswith(".pdf") else clean_target
+    clean_target_no_ext = re.sub(r"\.(pdf|xlsx)$", "", clean_target, flags=re.IGNORECASE)
 
     # 1. Exact match (case-insensitive) on filename or stem
     for f in all_pdfs:
@@ -150,7 +150,7 @@ def find_best_matching_pdf(target_name: str) -> Path | None:
 
     # Helper for alphanumeric normalization
     def normalize_str(s: str) -> str:
-        s_low = s.lower().replace("copy of", "").replace(".pdf", "")
+        s_low = s.lower().replace("copy of", "").replace(".pdf", "").replace(".xlsx", "")
         return re.sub(r"[^a-z0-9]", "", s_low)
 
     target_norm = normalize_str(clean_target)
@@ -161,6 +161,11 @@ def find_best_matching_pdf(target_name: str) -> Path | None:
 
     # 2. Key brand/product keyword matching
     target_lower = clean_target.lower()
+    if "muar" in target_lower or "arv" in target_lower.split():
+        for f in all_pdfs:
+            if "muar" in f.name.lower():
+                return f
+
     if "navwiz" in target_lower or "nav wiz" in target_lower or "nav" in target_lower.split():
         for f in all_pdfs:
             if "navwiz" in f.name.lower():
@@ -1002,35 +1007,68 @@ def chat():
 
             metas = query_res["metadatas"][0] if query_res.get("metadatas") else []
             distances = query_res["distances"][0] if query_res.get("distances") else []
+            docs = query_res["documents"][0] if query_res.get("documents") else []
 
             NEIGHBOR_RADIUS = 3
             pages_to_load = set()
+            xlsx_chunks_to_load = []
 
-            for meta, dist in zip(metas, distances):
+            for idx, (meta, dist) in enumerate(zip(metas, distances)):
                 sim = float(1.0 - dist)
-                image_name = meta.get("page_image", "")
+                doc_type = meta.get("doc_type", "pdf")
+                doc_text = docs[idx] if idx < len(docs) else ""
 
-                pdf_stem = meta.get("pdf_stem")
-                page_num = meta.get("page_number")
-                if not pdf_stem or not page_num:
-                    inferred_stem, inferred_num = parse_page_filename(image_name)
-                    pdf_stem = pdf_stem or inferred_stem
-                    page_num = page_num or inferred_num
+                if doc_type == "xlsx":
+                    sheet_name = meta.get("sheet_name", "Spreadsheet")
+                    row_start = int(meta.get("row_start", 1))
+                    row_end = int(meta.get("row_end", 1))
+                    source_file = meta.get("source_file", meta.get("pdf_stem", "Spreadsheet"))
+                    retrieved_seed_info.append({
+                        "page_image": "",
+                        "image_url": "",
+                        "similarity": sim,
+                        "chapter": sheet_name,
+                        "section": str(meta.get("section", sheet_name)).strip(),
+                        "page_number": row_start,
+                        "row_start": row_start,
+                        "row_end": row_end,
+                        "pdf_stem": meta.get("pdf_stem", source_file),
+                        "source_file": source_file,
+                        "doc_type": "xlsx",
+                        "text": doc_text
+                    })
+                    xlsx_chunks_to_load.append({
+                        "source_file": source_file,
+                        "sheet_name": sheet_name,
+                        "row_start": row_start,
+                        "row_end": row_end,
+                        "text": doc_text
+                    })
+                else:
+                    image_name = meta.get("page_image", "")
+                    pdf_stem = meta.get("pdf_stem")
+                    page_num = meta.get("page_number")
+                    if not pdf_stem or not page_num:
+                        inferred_stem, inferred_num = parse_page_filename(image_name)
+                        pdf_stem = pdf_stem or inferred_stem
+                        page_num = page_num or inferred_num
 
-                page_num = int(page_num)
-                seed_chapter = str(meta.get("chapter", "Unknown")).strip()
+                    page_num = int(page_num)
+                    seed_chapter = str(meta.get("chapter", "Unknown")).strip()
 
-                retrieved_seed_info.append({
-                    "page_image": image_name,
-                    "image_url": f"/rendered_pages/{image_name}",
-                    "similarity": sim,
-                    "chapter": seed_chapter,
-                    "section": str(meta.get("section", "Unknown")).strip(),
-                    "page_number": page_num,
-                    "pdf_stem": pdf_stem
-                })
+                    retrieved_seed_info.append({
+                        "page_image": image_name,
+                        "image_url": f"/rendered_pages/{image_name}",
+                        "similarity": sim,
+                        "chapter": seed_chapter,
+                        "section": str(meta.get("section", "Unknown")).strip(),
+                        "page_number": page_num,
+                        "pdf_stem": pdf_stem,
+                        "doc_type": "pdf"
+                    })
 
-                pages_to_load.add(image_name)
+                    if image_name:
+                        pages_to_load.add(image_name)
 
             # Strategy 1: ChromaDB Relevance / Similarity Gating (Drop off-topic / nonsense before image loading & Gemini call)
             top_similarity = max([s["similarity"] for s in retrieved_seed_info]) if retrieved_seed_info else 0.0
@@ -1075,6 +1113,8 @@ def chat():
                 })
 
             for meta, dist in zip(metas, distances):
+                if meta.get("doc_type") == "xlsx":
+                    continue
                 image_name = meta.get("page_image", "")
                 pdf_stem = meta.get("pdf_stem")
                 page_num = meta.get("page_number")
@@ -1113,7 +1153,7 @@ def chat():
 
             sorted_pages = sorted(list(pages_to_load), key=sort_key)
 
-        # 5. Build Interleaved Multimodal Input with Explicit PDF Page Labels
+        # 5. Build Interleaved Multimodal Input with Explicit PDF Page Labels and Structured Spreadsheets
         multimodal_contents = []
 
         if user_pil_images:
@@ -1128,12 +1168,18 @@ def chat():
                 img_path = config.IMAGE_CACHE_DIR / page_file
                 if img_path.exists():
                     stem, p_num = parse_page_filename(page_file)
-                    # Critical: Explicit label associating the image with its physical PDF document page number
                     multimodal_contents.append(
                         f"[DOCUMENT SOURCE: \"{stem}\" | EXACT PDF PAGE NUMBER: {p_num} (File: {page_file})]"
                     )
                     with Image.open(img_path) as img:
                         multimodal_contents.append(img.copy())
+
+        if xlsx_chunks_to_load:
+            multimodal_contents.append("=== GROUNDING TECHNICAL SPREADSHEETS & SPECIFICATION TABLES ===")
+            for xchunk in xlsx_chunks_to_load:
+                multimodal_contents.append(
+                    f"[SPREADSHEET SOURCE: \"{xchunk['source_file']}\" | SHEET: \"{xchunk['sheet_name']}\" | ROWS: {xchunk['row_start']}-{xchunk['row_end']}]\n{xchunk['text']}"
+                )
 
         # 6. Build System Prompt with Exact Manual Titles & Citations Guidance
         attachment_notice = ""
@@ -1144,25 +1190,24 @@ def chat():
                 "verify configurations, and relate them to the manual instructions.\n"
             )
 
-        # Dynamic exact list of indexed source manuals
-        active_source_pdfs = sorted(list(config.SOURCE_DIR.glob("*.pdf")))
-        manual_names_bullet_list = "\n".join([f'- "{p.stem}"' for p in active_source_pdfs]) if active_source_pdfs else '- "DFleet 4.0 User Manual"\n- "NavWiz 4.0 User Manual 1.0"'
+        # Dynamic exact list of indexed source manuals and spreadsheets
+        active_source_docs = sorted(list(config.SOURCE_DIR.glob("*.pdf")) + list(config.SOURCE_DIR.glob("*.xlsx")))
+        manual_names_bullet_list = "\n".join([f'- "{p.stem}"' for p in active_source_docs]) if active_source_docs else '- "DFleet 4.0 User Manual"\n- "NavWiz 4.0 User Manual 1.0"'
 
         system_prompt = (
-            "You are DF Chatbot, the expert technical assistant for NavWiz, DFleet, and Field Deployment technical manuals by DF Automation.\n"
-            "Answer the user's question accurately, thoroughly, and concisely using the provided manual page images and user uploads.\n\n"
+            "You are DF Chatbot, the expert technical assistant for NavWiz, DFleet, Field Deployment, and Project Site Engineering documentation by DF Automation.\n"
+            "Answer the user's question accurately, thoroughly, and concisely using the provided manual page images, spreadsheet tables, and user uploads.\n\n"
             f"{attachment_notice}"
             "CRITICAL CITATION RULES:\n"
-            "- In each section, row, or step referencing the manual, attach direct citations indicating the exact manual and PDF page number.\n"
-            "- Always use the EXACT PDF PAGE NUMBER provided in the `[DOCUMENT SOURCE: \"<Manual>\" | EXACT PDF PAGE NUMBER: N]` label directly preceding each page image above.\n"
-            "- DO NOT use the printed page number written inside the page text or footer (e.g. if the footer says '22' but the document label says 'EXACT PDF PAGE NUMBER: 23', you MUST cite page 23).\n"
-            "- Format every citation strictly as: `[Exact Manual Title, p.N]` (e.g. `[NavWiz 4.0 User Manual 1.0, p.23]`, `[DFleet 4.0 User Manual, p.45]`, `[Copy of Field Deployment Handbook, p.8]`).\n"
-            "- Available manual titles:\n"
+            "- For technical manual pages: cite as `[Exact Manual Title, p.N]` using the EXACT PDF PAGE NUMBER provided in the document label.\n"
+            "- For spreadsheet/Excel documentation: cite as `[Exact Document Title, Sheet: SheetName, Rows: X-Y]` (or `Row: X`).\n"
+            "- In spreadsheets, note cell status annotations: `[🟢 Active/Tested/Recoverable]`, `[🔴 Cannot Recover/Critical]`, `[🟠 Discrepancy/Notice/Teaching]`, `[🟡 Pending]`, etc.\n"
+            "- Available source documents:\n"
             f"{manual_names_bullet_list}\n\n"
             "CONVERSATION MEMORY:\n"
             "- Use the prior conversation history in this tab for context.\n\n"
             "STRICT GUARDRAIL: If the user's question is gibberish, meaningless text, or completely unrelated to "
-            "robotics/manual software, and cannot be answered by the provided images, respond EXACTLY with:\n"
+            "robotics/manual software/site documentation, and cannot be answered by the provided documents, respond EXACTLY with:\n"
             "\"I am not sure about that.\""
         )
 
@@ -1194,25 +1239,46 @@ def chat():
                 structured_citations.append({
                     "manual": canonical_stem,
                     "page_number": p_num,
+                    "type": "pdf",
                     "url": f"/pdf-viewer?file={encodeURIComponent(canonical_stem)}&page={p_num}"
                 })
             except Exception:
                 pass
 
+        xlsx_matches = re.findall(r"\[([^\[\]]+?),\s*Sheet:\s*([^,]+?),\s*Row(?:s)?:\s*([^\]]+?)\]", answer_text, re.IGNORECASE)
+        for wb_title, sheet_title, row_str in xlsx_matches:
+            structured_citations.append({
+                "manual": wb_title.strip(),
+                "sheet": sheet_title.strip(),
+                "rows": row_str.strip(),
+                "type": "xlsx"
+            })
+
         if not structured_citations and retrieved_seed_info:
             for s in retrieved_seed_info[:3]:
-                structured_citations.append({
-                    "manual": s["pdf_stem"],
-                    "page_number": s["page_number"],
-                    "url": f"/pdf-viewer?file={s['pdf_stem']}&page={s['page_number']}"
-                })
+                if s.get("doc_type") == "xlsx":
+                    structured_citations.append({
+                        "manual": s.get("source_file", s["pdf_stem"]),
+                        "sheet": s.get("chapter", "Spreadsheet"),
+                        "rows": f"{s.get('row_start', 1)}-{s.get('row_end', 1)}",
+                        "type": "xlsx"
+                    })
+                else:
+                    structured_citations.append({
+                        "manual": s["pdf_stem"],
+                        "page_number": s["page_number"],
+                        "type": "pdf",
+                        "url": f"/pdf-viewer?file={s['pdf_stem']}&page={s['page_number']}"
+                    })
 
         # 8. Build Visual Preview Cards based on User's Visual Mode
         visual_previews = []
         if visual_mode == "strict":
-            # Show photo if available: preview pages directly cited in the answer
+            # Show photo if available: preview pages directly cited in the answer (PDF only)
             seen_previews = set()
             for cit in structured_citations:
+                if cit.get("type") == "xlsx":
+                    continue
                 c_manual = cit.get("manual", "")
                 c_page = cit.get("page_number", 1)
                 key = (c_manual, c_page)
@@ -1233,19 +1299,22 @@ def chat():
             # Fallback to top seed if no direct citation image exists
             if not visual_previews and retrieved_seed_info:
                 top_s = retrieved_seed_info[0]
-                visual_previews.append({
-                    "manual": top_s["pdf_stem"],
-                    "page_number": top_s["page_number"],
-                    "page_image": top_s["page_image"],
-                    "image_url": top_s["image_url"],
-                    "caption": f"Top Match: {top_s['pdf_stem']}, Page {top_s['page_number']}",
-                    "similarity": top_s.get("similarity", 0.0),
-                    "is_direct_citation": False
-                })
+                if top_s.get("doc_type") != "xlsx" and top_s.get("page_image"):
+                    visual_previews.append({
+                        "manual": top_s["pdf_stem"],
+                        "page_number": top_s["page_number"],
+                        "page_image": top_s["page_image"],
+                        "image_url": top_s["image_url"],
+                        "caption": f"Top Match: {top_s['pdf_stem']}, Page {top_s['page_number']}",
+                        "similarity": top_s.get("similarity", 0.0),
+                        "is_direct_citation": False
+                    })
         elif visual_mode == "nearest":
-            # Show photo as near as possible (might have hallucination): include all candidate seeds
+            # Show photo as near as possible (might have hallucination): include all candidate seeds (PDF only)
             seen_previews = set()
             for s in retrieved_seed_info:
+                if s.get("doc_type") == "xlsx" or not s.get("page_image"):
+                    continue
                 key = (s["pdf_stem"], s["page_number"])
                 if key not in seen_previews:
                     seen_previews.add(key)

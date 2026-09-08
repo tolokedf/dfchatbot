@@ -31,15 +31,20 @@ def main() -> None:
     print()
 
     for p in pdfs_info:
-        pdf_path = config.SOURCE_DIR / p["filename"]
+        file_path = config.SOURCE_DIR / p["filename"]
+        unit_label = "chunks" if p.get("file_type") == "xlsx" else "pages"
         if p["status"] == "embedded":
-            print(f"⏭️  Skipping '{p['filename']}' (Already embedded with {p['embedded_pages_count']} pages)")
+            print(f"⏭️  Skipping '{p['filename']}' (Already embedded with {p['embedded_pages_count']} {unit_label})")
             continue
 
         print(f"⚙️  Embedding '{p['filename']}'...")
         try:
-            res = pipeline_service.process_and_embed_pdf(pdf_path, log_fn=lambda msg: print(f"    {msg}"))
-            print(f"✅ Finished '{p['filename']}': {res['pages_embedded']} pages indexed.\n")
+            if p.get("file_type") == "xlsx" or p["filename"].endswith(".xlsx"):
+                res = pipeline_service.process_and_embed_xlsx(file_path, log_fn=lambda msg: print(f"    {msg}"))
+                print(f"✅ Finished '{p['filename']}': {res['chunks_total']} chunks indexed.\n")
+            else:
+                res = pipeline_service.process_and_embed_pdf(file_path, log_fn=lambda msg: print(f"    {msg}"))
+                print(f"✅ Finished '{p['filename']}': {res['pages_embedded']} pages indexed.\n")
         except Exception as e:
             print(f"❌ Error processing '{p['filename']}': {e}\n")
 

@@ -150,6 +150,56 @@ def embed_page_image(
             delay = min(config.EMBED_MAX_BACKOFF, delay * config.EMBED_BACKOFF_FACTOR)
 
 
+def embed_text_chunk(
+    client: genai.Client,
+    chunk_text: str,
+    max_retries: int = config.EMBED_MAX_RETRIES,
+    log_fn: Optional[Callable[[str], None]] = None
+) -> dict:
+    """
+    Embed one structured text/markdown document chunk.
+    Uses EMBED_INSTRUCTION_DOCUMENT with automatic exponential backoff retry.
+    """
+    delay = config.EMBED_INITIAL_BACKOFF
+    attempt = 0
+
+    while True:
+        attempt += 1
+        try:
+            start = time.monotonic()
+            response = client.models.embed_content(
+                model=config.GEMINI_EMBED_MODEL,
+                contents=[
+                    config.EMBED_INSTRUCTION_DOCUMENT,
+                    chunk_text,
+                ],
+                config=types.EmbedContentConfig(
+                    output_dimensionality=config.EMBED_OUTPUT_DIMENSIONALITY,
+                ),
+            )
+            elapsed = time.monotonic() - start
+            vector = response.embeddings[0].values
+
+            return {
+                "model": config.GEMINI_EMBED_MODEL,
+                "dimensions": len(vector),
+                "elapsed_seconds": round(elapsed, 2),
+                "vector": vector,
+                "attempts": attempt,
+                "error": None,
+            }
+        except Exception as e:
+            if is_fatal_client_error(e):
+                raise RuntimeError(f"Fatal Gemini API error: {e}") from e
+            if not is_retryable_error(e) or attempt >= max_retries:
+                raise RuntimeError(f"Failed to embed text chunk after {attempt} attempts: {e}") from e
+            sleep_duration = min(config.EMBED_MAX_BACKOFF, delay + random.uniform(0.5, 2.0))
+            if log_fn:
+                log_fn(f"  ⏳ [Rate Limit] Pausing {sleep_duration:.1f}s before retry (Attempt {attempt}/{max_retries})...")
+            time.sleep(sleep_duration)
+            delay = min(config.EMBED_MAX_BACKOFF, delay * config.EMBED_BACKOFF_FACTOR)
+
+
 def embed_query_text(
     client: genai.Client,
     query: str,

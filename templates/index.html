@@ -2782,13 +2782,23 @@
             if (!rawAnswer) return "";
             
             // Regex to match [Manual Name, p.XX] or [Manual Name - Page XX]
-            const regex = /\[(.*?)(?:,\s*p\.?|\s*-\s*page)\s*(\d+)\]/gi;
-            
-            return rawAnswer.replace(regex, (match, manualTitle, pageNum) => {
+            const pdfRegex = /\[(.*?)(?:,\s*p\.?|\s*-\s*page)\s*(\d+)\]/gi;
+            let formatted = rawAnswer.replace(pdfRegex, (match, manualTitle, pageNum) => {
                 const cleanManual = manualTitle.trim();
                 const cleanPage = pageNum.trim();
                 return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-[#edf2fa] dark:bg-[#282a2c] hover:bg-[#d3e3fd] dark:hover:bg-[#37393b] text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#37393b] text-xs font-semibold font-mono transition cursor-pointer shadow-sm no-underline" title="Open ${cleanManual} at Page ${cleanPage} in new tab"><i class="fa-solid fa-file-pdf text-rose-500"></i> <span>${cleanManual}, p.${cleanPage}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i></a>`;
             });
+
+            // Regex to match [Workbook Name, Sheet: SheetName, Row(s): X-Y]
+            const xlsxRegex = /\[([^\[\]]+?),\s*Sheet:\s*([^,]+?),\s*Row(?:s)?:\s*([^\]]+?)\]/gi;
+            formatted = formatted.replace(xlsxRegex, (match, wbTitle, sheetTitle, rowRange) => {
+                const cleanWb = wbTitle.trim();
+                const cleanSheet = sheetTitle.trim();
+                const cleanRows = rowRange.trim();
+                return `<span class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold font-mono shadow-sm" title="${cleanWb} → Sheet: ${cleanSheet}, Rows: ${cleanRows}"><i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> <span>${cleanSheet} (r.${cleanRows})</span></span>`;
+            });
+
+            return formatted;
         }
 
         function appendAssistantResponse(data) {
