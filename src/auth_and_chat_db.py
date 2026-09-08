@@ -19,8 +19,9 @@ DB_PATH = config.USER_DB_PATH
 
 def get_db_connection() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
@@ -267,7 +268,7 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
 def get_user_by_username(username: str) -> Optional[dict]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE username = ?", (username.lower(),))
+        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE username = ? COLLATE NOCASE", (username,))
         row = cursor.fetchone()
         if row:
             return dict(row)
