@@ -185,7 +185,7 @@
             <div class="max-w-7xl mx-auto space-y-5 sm:space-y-6">
 
                 <!-- Stat Cards Bar -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                     <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition">
                         <div class="w-10 h-10 rounded-xl bg-[#c2e7ff]/20 text-[#a8c7fa] flex items-center justify-center text-base sm:text-lg shrink-0">
                             <i class="fa-solid fa-file-pdf"></i>
@@ -223,6 +223,16 @@
                         <div class="min-w-0">
                             <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Total Logins</p>
                             <p id="statLoginCount" class="text-base sm:text-lg font-bold text-white truncate">...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1e1f20] border border-[#282a2c] rounded-2xl p-4 flex items-center space-x-3 shadow-sm hover:border-[#37393b] transition cursor-pointer" onclick="scrollToFeedbackSection()" title="Click to view Feedback reports">
+                        <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-base sm:text-lg shrink-0">
+                            <i class="fa-regular fa-flag"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] sm:text-xs text-[#9aa0a6] truncate">Feedback</p>
+                            <p id="statFeedbackCount" class="text-base sm:text-lg font-bold text-white truncate">0 <span class="text-xs font-normal text-amber-400 font-mono" id="statPendingFeedback">(0)</span></p>
                         </div>
                     </div>
 
@@ -507,6 +517,57 @@
                         </div>
                     </div>
 
+                </div>
+
+                <!-- Section 4: User Feedback & Model Learning Management -->
+                <div class="bg-[#1e1f20] border border-[#282a2c] rounded-[24px] overflow-hidden shadow-sm" id="feedbackManagementSection">
+                    <div class="p-4 sm:p-5 border-b border-[#282a2c] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-regular fa-flag text-amber-400"></i>
+                                User Feedback & Model Learning (<span id="feedbackCountBadge">0</span>)
+                            </h2>
+                            <p class="text-xs text-[#9aa0a6] mt-0.5">Review issues reported by Technicians & Team Leads. Approve to immediately learn verified corrections into vector memory, or delete invalid feedback.</p>
+                        </div>
+
+                        <div class="flex items-center flex-wrap gap-2">
+                            <!-- Filter Buttons -->
+                            <div class="flex items-center bg-[#131314] border border-[#37393b] rounded-full p-1 text-xs font-semibold">
+                                <button type="button" onclick="setFeedbackFilter('all')" id="fbFilterAll" class="px-3 py-1 rounded-full bg-[#0b57d0] text-white transition">All</button>
+                                <button type="button" onclick="setFeedbackFilter('pending')" id="fbFilterPending" class="px-3 py-1 rounded-full text-[#9aa0a6] hover:text-white transition">Pending (<span id="badgePendingCount">0</span>)</button>
+                                <button type="button" onclick="setFeedbackFilter('approved')" id="fbFilterApproved" class="px-3 py-1 rounded-full text-[#9aa0a6] hover:text-white transition">Learned</button>
+                                <button type="button" onclick="setFeedbackFilter('rejected')" id="fbFilterRejected" class="px-3 py-1 rounded-full text-[#9aa0a6] hover:text-white transition">Rejected</button>
+                            </div>
+
+                            <button onclick="fetchFeedback()" class="px-4 py-1.5 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-[#e3e3e3] hover:text-white text-xs font-semibold border border-[#37393b] transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-rotate"></i>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-[#e3e3e3]">
+                            <thead class="bg-[#131314] text-[#9aa0a6] font-semibold border-b border-[#282a2c] uppercase tracking-wider text-[11px]">
+                                <tr>
+                                    <th class="px-4 py-3.5">Date / Submitter</th>
+                                    <th class="px-4 py-3.5">Category & Issue Details</th>
+                                    <th class="px-4 py-3.5">Question & AI Answer</th>
+                                    <th class="px-4 py-3.5">Verified Correction</th>
+                                    <th class="px-4 py-3.5">Status</th>
+                                    <th class="px-5 py-3.5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="feedbackTableBody" class="divide-y divide-[#282a2c] font-normal">
+                                <tr>
+                                    <td colspan="6" class="px-5 py-8 text-center text-[#9aa0a6]">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading feedback records...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>
@@ -934,6 +995,60 @@
         </div>
     </div>
 
+    <!-- Modal: Edit / Review Feedback -->
+    <div id="editFeedbackModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="relative max-w-lg w-full bg-[#1e1f20] border border-[#37393b] rounded-[28px] overflow-hidden shadow-2xl">
+            <div class="p-4 bg-[#1e1f20] border-b border-[#282a2c] flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Review & Edit Correction</h3>
+                        <p class="text-[11px] text-[#9aa0a6]">Fine-tune ground truth answer before or after learning</p>
+                    </div>
+                </div>
+                <button onclick="closeEditFeedbackModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveEditFeedback(event)" class="p-5 space-y-4">
+                <input type="hidden" id="editFbId" value="">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">User Question / Context</label>
+                    <div id="editFbQuery" class="bg-[#131314] border border-[#282a2c] rounded-xl p-2.5 text-xs text-slate-300 break-words">...</div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">User Notes / Problem Description</label>
+                    <textarea id="editFbNotes" rows="2" class="w-full bg-[#131314] border border-[#37393b] rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-[#0b57d0] resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Verified Accurate Answer / Solution <span class="text-amber-400">*</span></label>
+                    <textarea id="editFbAnswer" rows="3" required placeholder="Ground truth answer to be injected into Gemini when this question is asked..." class="w-full bg-[#131314] border border-[#37393b] rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-[#0b57d0] resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Verified Citations / References</label>
+                    <input type="text" id="editFbCitations" placeholder="[NavWiz 4.0 User Manual 1.0, p.58]" class="w-full bg-[#131314] border border-[#37393b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0b57d0] font-mono">
+                </div>
+
+                <div class="flex items-center justify-end space-x-2 pt-2 border-t border-[#282a2c]">
+                    <button type="button" onclick="closeEditFeedbackModal()" class="px-4 py-2 rounded-full bg-[#282a2c] hover:bg-[#37393b] text-slate-300 text-xs font-semibold transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="editFbSaveBtn" class="px-5 py-2 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold shadow-md shadow-[#0b57d0]/25 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Notification Box -->
     <div id="toast" class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#1e1f20] border border-[#37393b] text-[#e3e3e3] px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
         <div id="toastIcon" class="text-base text-[#a8c7fa] shrink-0"></div>
@@ -1001,6 +1116,7 @@
             fetchConfig();
             fetchFiles();
             fetchUsers();
+            fetchFeedback();
         }
 
         async function handleAdminLogin(event) {
@@ -1096,9 +1212,281 @@
                         statKeyStatus.innerHTML = '<span class="text-rose-400 font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i>Missing Key</span>';
                         apiKeyInput.placeholder = "Enter your GEMINI_API_KEY here...";
                     }
+
+                    const statFb = document.getElementById("statFeedbackCount");
+                    if (statFb) {
+                        const totalFb = data.total_feedback || 0;
+                        const pendingFb = data.pending_feedback || 0;
+                        statFb.innerHTML = `${totalFb} <span class="text-xs font-normal text-amber-400 font-mono">(${pendingFb} pending)</span>`;
+                    }
                 }
             } catch (err) {
                 console.error("Config fetch error:", err);
+            }
+        }
+
+        // =====================================================================
+        // Feedback & Active Learning Operations
+        // =====================================================================
+        let currentFeedbackList = [];
+        let activeFeedbackFilter = 'all';
+
+        async function fetchFeedback(filter = activeFeedbackFilter) {
+            activeFeedbackFilter = filter;
+            try {
+                const res = await fetch(`/api/admin/feedback?status=${encodeURIComponent(filter)}`);
+                if (res.status === 401) {
+                    showLoginGate();
+                    return;
+                }
+                const data = await res.json();
+                if (data.status === "ok") {
+                    currentFeedbackList = data.feedback || [];
+                    renderFeedbackTable(currentFeedbackList);
+                }
+            } catch (err) {
+                console.error("Error fetching feedback:", err);
+            }
+        }
+
+        function setFeedbackFilter(filter) {
+            activeFeedbackFilter = filter;
+            ['all', 'pending', 'approved', 'rejected'].forEach(f => {
+                const btn = document.getElementById('fbFilter' + f.charAt(0).toUpperCase() + f.slice(1));
+                if (btn) {
+                    if (f === filter) {
+                        btn.className = 'px-3 py-1 rounded-full bg-[#0b57d0] text-white transition';
+                    } else {
+                        btn.className = 'px-3 py-1 rounded-full text-[#9aa0a6] hover:text-white transition';
+                    }
+                }
+            });
+            fetchFeedback(filter);
+        }
+
+        function renderFeedbackTable(list) {
+            const tbody = document.getElementById("feedbackTableBody");
+            const badge = document.getElementById("feedbackCountBadge");
+            const pendingBadge = document.getElementById("badgePendingCount");
+            
+            if (badge) badge.textContent = list.length;
+            
+            const pendingCount = list.filter(item => item.status === 'pending').length;
+            if (pendingBadge) pendingBadge.textContent = pendingCount;
+
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-5 py-8 text-center text-[#9aa0a6]">
+                            <i class="fa-regular fa-clipboard mr-2"></i> No feedback reports found for this filter.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(item => {
+                const isTeamLead = item.user_role === 'team_lead';
+                const roleBadge = isTeamLead
+                    ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold"><i class="fa-solid fa-user-shield text-[9px]"></i> Team Lead</span>`
+                    : item.user_role === 'admin'
+                    ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-bold"><i class="fa-solid fa-crown text-[9px]"></i> Admin</span>`
+                    : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 border border-slate-600/50 text-[10px] font-medium"><i class="fa-solid fa-wrench text-[9px]"></i> Technician</span>`;
+
+                let statusBadge = '';
+                if (item.status === 'approved') {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold"><i class="fa-solid fa-circle-check text-[9px]"></i> Learned</span>`;
+                } else if (item.status === 'rejected') {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-bold"><i class="fa-solid fa-circle-xmark text-[9px]"></i> Rejected</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-bold animate-pulse"><i class="fa-solid fa-clock text-[9px]"></i> Pending Review</span>`;
+                }
+
+                const catLabels = {
+                    "incorrect_citation": "Incorrect Citation / Page",
+                    "unclear_source": "Unclear / Inaccurate Source",
+                    "wrong_answer": "Wrong Procedure / Answer",
+                    "outdated_procedure": "Outdated SOP / Spec",
+                    "other": "General Feedback"
+                };
+                const catText = catLabels[item.feedback_type] || item.feedback_type;
+
+                return `
+                    <tr class="hover:bg-[#282a2c]/40 transition group">
+                        <td class="px-4 py-3 align-top whitespace-nowrap">
+                            <div class="font-bold text-white">${escapeHtml(item.username)}</div>
+                            <div class="mt-1">${roleBadge}</div>
+                            <div class="text-[10px] text-[#9aa0a6] mt-1 font-mono">${escapeHtml(item.created_at || "")}</div>
+                        </td>
+                        <td class="px-4 py-3 align-top max-w-xs">
+                            <div class="font-semibold text-[#a8c7fa] flex items-center gap-1">
+                                <i class="fa-solid fa-tag text-[10px]"></i>
+                                <span>${escapeHtml(catText)}</span>
+                            </div>
+                            <div class="text-xs text-[#e3e3e3] mt-1 line-clamp-3" title="${escapeAttr(item.user_notes || "")}">
+                                ${escapeHtml(item.user_notes || "No extra notes")}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 align-top max-w-xs">
+                            <div class="text-[11px] font-semibold text-slate-300 bg-[#131314] rounded-lg p-2 border border-[#282a2c] mb-1.5 line-clamp-2" title="${escapeAttr(item.query_text)}">
+                                <span class="text-slate-500 font-bold">Q:</span> ${escapeHtml(item.query_text)}
+                            </div>
+                            <div class="text-[11px] text-[#9aa0a6] line-clamp-2" title="${escapeAttr(item.ai_response)}">
+                                <span class="text-slate-500 font-bold">AI:</span> ${escapeHtml(item.ai_response)}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 align-top max-w-xs">
+                            ${item.correct_answer ? `
+                                <div class="text-xs font-medium text-emerald-300 bg-emerald-950/20 border border-emerald-900/40 rounded-lg p-2 mb-1 line-clamp-3" title="${escapeAttr(item.correct_answer)}">
+                                    ${escapeHtml(item.correct_answer)}
+                                </div>
+                            ` : `<span class="text-slate-500 italic text-[11px]">(None proposed)</span>`}
+                            ${item.verified_citations ? `
+                                <div class="text-[10px] font-mono text-cyan-300 mt-1 truncate" title="${escapeAttr(item.verified_citations)}">
+                                    <i class="fa-solid fa-bookmark mr-1"></i>${escapeHtml(item.verified_citations)}
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="px-4 py-3 align-top whitespace-nowrap">
+                            ${statusBadge}
+                            ${item.reviewed_by ? `<div class="text-[10px] text-slate-500 mt-1 font-mono">By: ${escapeHtml(item.reviewed_by)}</div>` : ''}
+                        </td>
+                        <td class="px-5 py-3 align-top text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end space-x-1.5">
+                                ${item.status !== 'approved' ? `
+                                    <button onclick="approveFeedback(${item.id})" class="px-2.5 py-1 rounded-lg bg-emerald-950/50 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 text-[11px] font-bold transition flex items-center gap-1 shadow-sm" title="Approve & Learn into ChromaDB">
+                                        <i class="fa-solid fa-brain text-[10px]"></i>
+                                        <span>Learn</span>
+                                    </button>
+                                ` : `
+                                    <button onclick="approveFeedback(${item.id})" class="px-2 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] text-slate-300 text-[11px] font-semibold transition" title="Re-embed & update ChromaDB">
+                                        <i class="fa-solid fa-rotate text-[10px]"></i>
+                                    </button>
+                                `}
+                                <button onclick="openEditFeedbackModal(${item.id})" class="p-1.5 rounded-lg bg-[#282a2c] hover:bg-[#37393b] text-slate-300 hover:text-white transition" title="Edit Correction">
+                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                </button>
+                                <button onclick="deleteFeedback(${item.id})" class="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-800/40 transition" title="Delete specific feedback">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function approveFeedback(id) {
+            const item = currentFeedbackList.find(f => f.id === id);
+            if (!item) return;
+
+            let answer = item.correct_answer;
+            if (!answer) {
+                answer = prompt("Please provide or confirm the verified accurate answer to learn into vector memory:", item.user_notes || "");
+                if (answer === null) return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/feedback/${id}/approve`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        correct_answer: answer,
+                        verified_citations: item.verified_citations || ""
+                    })
+                });
+                const data = await res.json();
+                if (data.status === "ok") {
+                    showToast(`Feedback #${id} learned into vector database!`, "success");
+                    fetchFeedback();
+                    fetchConfig();
+                } else {
+                    alert(data.error || "Failed to approve feedback.");
+                }
+            } catch (err) {
+                alert("Network error: failed to approve feedback.");
+            }
+        }
+
+        async function deleteFeedback(id) {
+            if (!confirm(`Are you sure you want to permanently delete Feedback #${id}?\n\nIf this feedback was previously approved and learned, it will also be purged from ChromaDB active memory.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/feedback/${id}`, {
+                    method: "DELETE"
+                });
+                const data = await res.json();
+                if (data.status === "ok") {
+                    showToast(`Feedback #${id} permanently deleted.`, "info");
+                    fetchFeedback();
+                    fetchConfig();
+                } else {
+                    alert(data.error || "Failed to delete feedback.");
+                }
+            } catch (err) {
+                alert("Network error: failed to delete feedback.");
+            }
+        }
+
+        function openEditFeedbackModal(id) {
+            const item = currentFeedbackList.find(f => f.id === id);
+            if (!item) return;
+
+            document.getElementById('editFbId').value = id;
+            document.getElementById('editFbQuery').textContent = item.query_text || "Query";
+            document.getElementById('editFbNotes').value = item.user_notes || "";
+            document.getElementById('editFbAnswer').value = item.correct_answer || "";
+            document.getElementById('editFbCitations').value = item.verified_citations || "";
+            document.getElementById('editFeedbackModal').classList.remove('hidden');
+        }
+
+        function closeEditFeedbackModal() {
+            document.getElementById('editFeedbackModal').classList.add('hidden');
+        }
+
+        async function handleSaveEditFeedback(e) {
+            e.preventDefault();
+            const id = document.getElementById('editFbId').value;
+            const notes = document.getElementById('editFbNotes').value.trim();
+            const answer = document.getElementById('editFbAnswer').value.trim();
+            const citations = document.getElementById('editFbCitations').value.trim();
+            const saveBtn = document.getElementById('editFbSaveBtn');
+
+            saveBtn.disabled = true;
+            try {
+                const res = await fetch(`/api/admin/feedback/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_notes: notes,
+                        correct_answer: answer,
+                        verified_citations: citations
+                    })
+                });
+                const data = await res.json();
+                if (data.status === "ok") {
+                    showToast("Feedback updated successfully.", "success");
+                    closeEditFeedbackModal();
+                    fetchFeedback();
+                    fetchConfig();
+                } else {
+                    alert(data.error || "Failed to update feedback.");
+                }
+            } catch (err) {
+                alert("Network error: failed to update feedback.");
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        function scrollToFeedbackSection() {
+            const section = document.getElementById("feedbackManagementSection");
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
             }
         }
 

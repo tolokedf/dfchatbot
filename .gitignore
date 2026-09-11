@@ -32,3 +32,6 @@ data/
 .DS_Store
 *token*.txt
 
+# Temporary / Reference Files
+reference_photo/
+

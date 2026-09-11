@@ -781,6 +781,35 @@
                             </button>
                         </div>
 
+                        <!-- Role & Feedback Authority Selection -->
+                        <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                                    <i class="fa-solid fa-id-badge text-[#0b57d0] dark:text-[#a8c7fa] mr-1"></i>
+                                    Role & Feedback Authority
+                                </label>
+                                <span class="text-[10px] text-slate-400">Determines feedback badge in review</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <button type="button" onclick="setUserRoleSelection('technician')" id="roleBtnTechnician"
+                                        class="p-2.5 rounded-xl border border-[#0b57d0] bg-[#0b57d0]/10 text-[#0b57d0] dark:text-[#a8c7fa] font-bold text-left flex items-center gap-2 transition shadow-sm">
+                                    <i class="fa-solid fa-wrench text-xs"></i>
+                                    <div>
+                                        <div class="font-bold">Technician</div>
+                                        <div class="text-[10px] opacity-75 font-normal">Operator / Field Engineer</div>
+                                    </div>
+                                </button>
+                                <button type="button" onclick="setUserRoleSelection('team_lead')" id="roleBtnTeamLead"
+                                        class="p-2.5 rounded-xl border border-[#e0e3e7] dark:border-[#37393b] text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white font-medium text-left flex items-center gap-2 transition">
+                                    <i class="fa-solid fa-user-shield text-amber-500 text-xs"></i>
+                                    <div>
+                                        <div class="font-bold">Team Lead</div>
+                                        <div class="text-[10px] opacity-75 font-normal">Verified Correction Authority</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
                             <span class="text-xs text-slate-500 dark:text-[#9aa0a6]">Manage account authentication</span>
                             <div class="flex items-center space-x-2">
@@ -981,6 +1010,96 @@
         </div>
     </div>
 
+    <!-- Modal: Feedback & Issue Reporting (For Technicians & Team Leads) -->
+    <div id="feedbackModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="relative max-w-lg w-full bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl">
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 bg-white dark:bg-[#1e1f20] border-b border-[#e0e3e7] dark:border-[#282a2c] flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-sm font-bold">
+                        <i class="fa-regular fa-flag"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Report Inaccurate Answer / Source</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6]">Help improve DF Chatbot accuracy and ground truth</p>
+                    </div>
+                </div>
+                <button onclick="closeFeedbackModal()" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#282a2c] flex items-center justify-center transition" title="Close">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form onsubmit="submitFeedbackForm(event)" class="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
+                <!-- Hidden fields -->
+                <input type="hidden" id="fbMsgKey" value="">
+
+                <!-- Query / Context Preview Box -->
+                <div class="bg-[#f0f4f9] dark:bg-[#131314] rounded-2xl p-3 border border-[#e0e3e7] dark:border-[#282a2c] text-xs space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Context Query</span>
+                        <span id="fbSubmitterBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]">Technician</span>
+                    </div>
+                    <p id="fbQueryPreview" class="text-slate-800 dark:text-slate-200 font-semibold line-clamp-2">...</p>
+                </div>
+
+                <!-- Issue Category -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Issue Type / Category <span class="text-rose-500">*</span>
+                    </label>
+                    <select id="fbCategorySelect" class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-[#e3e3e3] focus:outline-none focus:border-[#0b57d0]">
+                        <option value="incorrect_citation">Incorrect citation / wrong page number</option>
+                        <option value="unclear_source">Unclear or inaccurate source document</option>
+                        <option value="wrong_answer">Factually incorrect answer / procedure</option>
+                        <option value="outdated_procedure">Outdated information / superseded SOP</option>
+                        <option value="other">Other issue</option>
+                    </select>
+                </div>
+
+                <!-- Description / Notes -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        What is inaccurate or unclear? <span class="text-rose-500">*</span>
+                    </label>
+                    <textarea id="fbNotesInput" rows="2" placeholder="e.g. The answer cites page 35 for battery charging, but it is actually on page 58..." required
+                              class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl p-2.5 text-xs text-slate-800 dark:text-[#e3e3e3] placeholder-slate-400 focus:outline-none focus:border-[#0b57d0] resize-none"></textarea>
+                </div>
+
+                <!-- Suggested Correction (Especially valuable for Team Leads) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                        <span>Correct Answer / Solution <span class="text-[10px] text-slate-400 font-normal">(Optional for technicians, encouraged for Team Leads)</span></span>
+                    </label>
+                    <textarea id="fbCorrectionInput" rows="2" placeholder="Provide the verified procedure or correct text..."
+                              class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl p-2.5 text-xs text-slate-800 dark:text-[#e3e3e3] placeholder-slate-400 focus:outline-none focus:border-[#0b57d0] resize-none"></textarea>
+                </div>
+
+                <!-- Verified Manual Citations -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Correct Citation Reference <span class="text-[10px] text-slate-400 font-normal">(e.g. NavWiz 4.0 User Manual 1.0, p.58)</span>
+                    </label>
+                    <input type="text" id="fbCitationsInput" placeholder="[NavWiz 4.0 User Manual 1.0, p.58]"
+                           class="w-full bg-[#f0f4f9] dark:bg-[#131314] border border-[#e0e3e7] dark:border-[#37393b] rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-[#e3e3e3] placeholder-slate-400 focus:outline-none focus:border-[#0b57d0] font-mono">
+                </div>
+
+                <div id="fbStatusMsg" class="hidden p-2.5 rounded-xl text-xs font-medium"></div>
+
+                <!-- Footer Buttons -->
+                <div class="flex items-center justify-end space-x-2 pt-2 border-t border-[#e0e3e7] dark:border-[#282a2c]">
+                    <button type="button" onclick="closeFeedbackModal()" class="px-4 py-2 rounded-full bg-slate-200 dark:bg-[#282a2c] hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="fbSubmitBtn" class="px-5 py-2 rounded-full bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-bold shadow-md shadow-[#0b57d0]/25 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                        <span>Submit Feedback</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal: Full Image Preview Lightbox -->
     <div id="imageModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4" onclick="closeImageModal()">
         <div class="relative max-w-5xl w-full max-h-[92vh] bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#37393b] rounded-[28px] overflow-hidden flex flex-col shadow-2xl" onclick="event.stopPropagation()">
@@ -1004,6 +1123,8 @@
         let activeTabId = null;
         let chatMessagesHistory = []; // Current active tab messages
         let messageSeedsMap = {}; // msgId -> seeds array
+        let messageDataMap = {}; // msgKey -> { query, answer, message_id, tab_id, seeds }
+        let lastUserPromptByTab = {}; // tabId -> last query string
         let attachedFiles = []; // Currently attached files (max 5 photos/PDFs)
         let availableSources = []; // List of all indexed PDF stems
         let selectedManualFilters = []; // Selected manual stems (empty array means none selected)
@@ -1447,7 +1568,16 @@
                     }
                 } else {
                     if (setUsernameEl) setUsernameEl.textContent = currentUser.username;
-                    if (setUserRoleEl) setUserRoleEl.textContent = currentUser.role === 'admin' ? 'Administrator' : 'Verified User';
+                    if (setUserRoleEl) {
+                        if (currentUser.role === 'admin') {
+                            setUserRoleEl.innerHTML = '<span class="text-purple-400 font-bold"><i class="fa-solid fa-crown mr-1"></i> Administrator</span>';
+                        } else if (currentUser.role === 'team_lead') {
+                            setUserRoleEl.innerHTML = '<span class="text-amber-500 font-bold"><i class="fa-solid fa-user-shield mr-1"></i> Team Lead / Engineer</span>';
+                        } else {
+                            setUserRoleEl.innerHTML = '<span class="text-[#0b57d0] dark:text-[#a8c7fa] font-bold"><i class="fa-solid fa-wrench mr-1"></i> Technician / Operator</span>';
+                        }
+                    }
+                    updateRoleButtonsUI(currentUser.role || 'technician');
 
                     // Render avatar image or initial in Settings Modal
                     if (currentUser.profile_pic) {
@@ -1490,6 +1620,152 @@
                         </button>
                     `;
                 }
+            }
+        }
+
+        async function setUserRoleSelection(role) {
+            if (!currentUser || currentUser.role === 'guest' || currentUser.is_guest) {
+                alert("Please log in to set or change your account role.");
+                return;
+            }
+            try {
+                const res = await fetch('/api/user/role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role })
+                });
+                const data = await res.json();
+                if (data.status === 'ok' && data.user) {
+                    currentUser = data.user;
+                    updateUserUI();
+                    updateRoleButtonsUI(role);
+                } else {
+                    alert(data.error || "Failed to update role.");
+                }
+            } catch (err) {
+                console.error("Error setting role:", err);
+            }
+        }
+
+        function updateRoleButtonsUI(role) {
+            const btnTech = document.getElementById('roleBtnTechnician');
+            const btnLead = document.getElementById('roleBtnTeamLead');
+            if (!btnTech || !btnLead) return;
+
+            if (role === 'team_lead') {
+                btnLead.className = 'p-2.5 rounded-xl border border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold text-left flex items-center gap-2 transition shadow-sm';
+                btnTech.className = 'p-2.5 rounded-xl border border-[#e0e3e7] dark:border-[#37393b] text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white font-medium text-left flex items-center gap-2 transition';
+            } else {
+                btnTech.className = 'p-2.5 rounded-xl border border-[#0b57d0] bg-[#0b57d0]/15 text-[#0b57d0] dark:text-[#a8c7fa] font-bold text-left flex items-center gap-2 transition shadow-sm';
+                btnLead.className = 'p-2.5 rounded-xl border border-[#e0e3e7] dark:border-[#37393b] text-slate-600 dark:text-[#9aa0a6] hover:text-slate-900 dark:hover:text-white font-medium text-left flex items-center gap-2 transition';
+            }
+        }
+
+        function openFeedbackModal(msgKey) {
+            const data = messageDataMap[msgKey] || {};
+            document.getElementById('fbMsgKey').value = msgKey;
+            
+            const queryPreview = document.getElementById('fbQueryPreview');
+            if (queryPreview) {
+                queryPreview.textContent = data.query || "Context query";
+            }
+            
+            const submitterBadge = document.getElementById('fbSubmitterBadge');
+            if (submitterBadge) {
+                const userRole = (currentUser && currentUser.role) ? currentUser.role : 'technician';
+                if (userRole === 'team_lead') {
+                    submitterBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40';
+                    submitterBadge.innerHTML = '<i class="fa-solid fa-user-shield mr-1"></i> Team Lead';
+                } else if (userRole === 'admin') {
+                    submitterBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800/40';
+                    submitterBadge.innerHTML = '<i class="fa-solid fa-crown mr-1"></i> Admin';
+                } else {
+                    submitterBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]';
+                    submitterBadge.innerHTML = '<i class="fa-solid fa-wrench mr-1"></i> Technician';
+                }
+            }
+            
+            document.getElementById('fbNotesInput').value = '';
+            document.getElementById('fbCorrectionInput').value = '';
+            document.getElementById('fbCitationsInput').value = '';
+            document.getElementById('fbCategorySelect').value = 'incorrect_citation';
+            
+            const msgEl = document.getElementById('fbStatusMsg');
+            if (msgEl) {
+                msgEl.className = 'hidden';
+                msgEl.textContent = '';
+            }
+
+            document.getElementById('feedbackModal').classList.remove('hidden');
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.add('hidden');
+        }
+
+        async function submitFeedbackForm(e) {
+            e.preventDefault();
+            const msgKey = document.getElementById('fbMsgKey').value;
+            const data = messageDataMap[msgKey] || {};
+            const category = document.getElementById('fbCategorySelect').value;
+            const notes = document.getElementById('fbNotesInput').value.trim();
+            const correction = document.getElementById('fbCorrectionInput').value.trim();
+            const citations = document.getElementById('fbCitationsInput').value.trim();
+            const submitBtn = document.getElementById('fbSubmitBtn');
+            const msgEl = document.getElementById('fbStatusMsg');
+
+            if (!notes) {
+                if (msgEl) {
+                    msgEl.className = 'p-2.5 rounded-xl text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 block';
+                    msgEl.textContent = 'Please describe what was inaccurate or unclear.';
+                }
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Submitting...';
+
+            const userRole = (currentUser && currentUser.role) ? currentUser.role : 'technician';
+
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query_text: data.query || "",
+                        ai_response: data.answer || "",
+                        feedback_type: category,
+                        user_notes: notes,
+                        correct_answer: correction,
+                        verified_citations: citations,
+                        tab_id: data.tab_id || activeTabId,
+                        message_id: data.message_id || null,
+                        user_role: userRole
+                    })
+                });
+                const result = await res.json();
+                if (result.status === 'ok') {
+                    if (msgEl) {
+                        msgEl.className = 'p-2.5 rounded-xl text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 block';
+                        msgEl.textContent = '✅ Feedback submitted! Team leads & admins will review it.';
+                    }
+                    setTimeout(() => {
+                        closeFeedbackModal();
+                    }, 1200);
+                } else {
+                    if (msgEl) {
+                        msgEl.className = 'p-2.5 rounded-xl text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 block';
+                        msgEl.textContent = result.error || 'Failed to submit feedback.';
+                    }
+                }
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.className = 'p-2.5 rounded-xl text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 block';
+                    msgEl.textContent = 'Network error: could not connect to server.';
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs mr-1"></i><span>Submit Feedback</span>';
             }
         }
 
@@ -1959,16 +2235,20 @@
                     renderWelcomeScreen(title);
                 } else {
                     chatContainer.innerHTML = '';
+                    let lastUserMsg = "";
                     chatMessagesHistory.forEach(m => {
                         if (m.role === 'user') {
+                            lastUserMsg = m.content || "";
                             appendUserMessage(m.content, m.attachments || []);
                         } else {
                             appendAssistantResponse({
                                 answer: m.content || m.answer,
                                 seeds: m.top_k || m.seeds || [],
                                 expanded_count: m.expanded_count || 0,
-                                citations: m.citations || []
-                            });
+                                citations: m.citations || [],
+                                message_id: m.message_id || null,
+                                tab_id: tabId
+                            }, lastUserMsg);
                         }
                     });
                     if (inFlight) {
@@ -1987,20 +2267,26 @@
                 if (data.status === 'ok') {
                     const messages = data.messages || [];
                     chatContainer.innerHTML = '';
+                    messageSeedsMap = {};
+                    messageDataMap = {};
                     const inFlight = inFlightTabs[tabId];
                     if (messages.length === 0 && !inFlight) {
                         renderWelcomeScreen(title);
                     } else {
+                        let lastUserMsg = "";
                         messages.forEach(m => {
                             if (m.role === 'user') {
+                                lastUserMsg = m.content || "";
                                 appendUserMessage(m.content, m.attachments || []);
                             } else {
                                 appendAssistantResponse({
                                     answer: m.content,
                                     seeds: m.top_k || [],
                                     expanded_count: m.expanded_count || 0,
-                                    citations: m.citations || []
-                                });
+                                    citations: m.citations || [],
+                                    message_id: m.id || null,
+                                    tab_id: tabId
+                                }, lastUserMsg);
                             }
                         });
                         if (inFlight) {
@@ -2455,31 +2741,64 @@
             if (seeds.length === 0) {
                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 dark:text-[#9aa0a6] text-xs">No seed candidates recorded for this response.</div>`;
             } else {
-                grid.innerHTML = seeds.map(s => `
-                    <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#282a2c] hover:border-[#0b57d0] dark:hover:border-[#a8c7fa] rounded-2xl p-3 transition flex flex-col justify-between space-y-2 shadow-sm">
-                        <div>
-                            <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-xl overflow-hidden relative cursor-pointer group border border-[#e0e3e7] dark:border-[#282a2c]" onclick="openImageModal('${s.image_url}', '${escapeAttr(s.page_image)}')">
-                                <img src="${s.image_url}" alt="Page" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" loading="lazy">
-                                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                    <span class="text-[10px] font-bold bg-[#0b57d0] text-white px-3 py-1 rounded-full shadow-md">Inspect Preview</span>
+                grid.innerHTML = seeds.map(s => {
+                    const isXlsx = (s.doc_type === 'xlsx');
+                    if (isXlsx) {
+                        return `
+                            <div class="bg-white dark:bg-[#1e1f20] border border-emerald-200 dark:border-emerald-800/40 hover:border-emerald-500 rounded-2xl p-3 transition flex flex-col justify-between space-y-2 shadow-sm">
+                                <div>
+                                    <div class="aspect-[4/3] bg-emerald-50/70 dark:bg-emerald-950/20 rounded-xl overflow-hidden relative p-3 border border-emerald-100 dark:border-emerald-900/30 flex flex-col justify-between">
+                                        <div class="flex items-center justify-between">
+                                            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                                <i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> Spreadsheet Data
+                                            </span>
+                                            ${showScores && s.similarity ? `<span class="bg-white/95 dark:bg-[#131314]/90 text-emerald-700 dark:text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-emerald-200 dark:border-emerald-800/40 shadow-sm">${s.similarity.toFixed(3)}</span>` : ''}
+                                        </div>
+                                        <div class="text-[11px] font-mono text-slate-700 dark:text-slate-300 overflow-hidden line-clamp-4 leading-relaxed bg-white/80 dark:bg-black/40 p-2 rounded-lg my-auto">
+                                            ${escapeHtml(s.text || 'Structured table row chunk')}
+                                        </div>
+                                        <div class="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold truncate">
+                                            Sheet: ${escapeHtml(s.chapter || s.sheet_name || 'General')} | Rows: ${s.row_start || 1}-${s.row_end || s.row_start || 1}
+                                        </div>
+                                    </div>
+                                    <div class="mt-2.5">
+                                        <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3] truncate" title="${escapeHtml(s.source_file || s.pdf_stem)}">${escapeHtml(s.source_file || s.pdf_stem)}</p>
+                                        <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium truncate">${escapeHtml(s.section || s.chapter || 'Table Chunk')}</p>
+                                    </div>
                                 </div>
-                                ${showScores ? `
-                                    <span class="absolute bottom-1 right-1 bg-white/95 dark:bg-[#131314]/90 text-[#0b57d0] dark:text-[#a8c7fa] text-[10px] px-2 py-0.5 rounded-full font-mono border border-[#e0e3e7] dark:border-[#37393b] shadow-sm">
-                                        ${s.similarity.toFixed(3)}
-                                    </span>
-                                ` : ''}
+                                <div class="w-full py-1.5 px-3 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-table text-[10px]"></i>
+                                    <span>Rows ${s.row_start || 1} - ${s.row_end || 1}</span>
+                                </div>
                             </div>
-                            <div class="mt-2.5">
-                                <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3] truncate" title="${escapeHtml(s.page_image)}">${escapeHtml(s.page_image)}</p>
-                                <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium truncate">Ch: ${escapeHtml(s.chapter || 'General')}</p>
+                        `;
+                    }
+                    return `
+                        <div class="bg-white dark:bg-[#1e1f20] border border-[#e0e3e7] dark:border-[#282a2c] hover:border-[#0b57d0] dark:hover:border-[#a8c7fa] rounded-2xl p-3 transition flex flex-col justify-between space-y-2 shadow-sm">
+                            <div>
+                                <div class="aspect-[4/3] bg-slate-100 dark:bg-black rounded-xl overflow-hidden relative cursor-pointer group border border-[#e0e3e7] dark:border-[#282a2c]" onclick="openImageModal('${s.image_url}', '${escapeAttr(s.page_image)}')">
+                                    <img src="${s.image_url}" alt="Page" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" loading="lazy">
+                                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                        <span class="text-[10px] font-bold bg-[#0b57d0] text-white px-3 py-1 rounded-full shadow-md">Inspect Preview</span>
+                                    </div>
+                                    ${showScores ? `
+                                        <span class="absolute bottom-1 right-1 bg-white/95 dark:bg-[#131314]/90 text-[#0b57d0] dark:text-[#a8c7fa] text-[10px] px-2 py-0.5 rounded-full font-mono border border-[#e0e3e7] dark:border-[#37393b] shadow-sm">
+                                            ${s.similarity.toFixed(3)}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                <div class="mt-2.5">
+                                    <p class="text-xs font-bold text-slate-800 dark:text-[#e3e3e3] truncate" title="${escapeHtml(s.page_image)}">${escapeHtml(s.page_image)}</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium truncate">Ch: ${escapeHtml(s.chapter || 'General')}</p>
+                                </div>
                             </div>
+                            <a href="/pdf-viewer?file=${encodeURIComponent(s.pdf_stem)}&page=${s.page_number}" target="_blank" class="w-full py-2 px-3 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 hover:bg-[#b0d8f5] text-[#001d35] dark:text-[#c2e7ff] border border-[#c2e7ff] dark:border-[#004a77] text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                <span>Open PDF Page ${s.page_number}</span>
+                            </a>
                         </div>
-                        <a href="/pdf-viewer?file=${encodeURIComponent(s.pdf_stem)}&page=${s.page_number}" target="_blank" class="w-full py-2 px-3 rounded-full bg-[#c2e7ff] dark:bg-[#004a77]/50 hover:bg-[#b0d8f5] text-[#001d35] dark:text-[#c2e7ff] border border-[#c2e7ff] dark:border-[#004a77] text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
-                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                            <span>Open PDF Page ${s.page_number}</span>
-                        </a>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
 
             document.getElementById('topKModal').classList.remove('hidden');
@@ -2778,19 +3097,22 @@
             return id;
         }
 
-        function formatInTextCitationButtons(rawAnswer) {
-            if (!rawAnswer) return "";
+        function formatInTextCitationButtons(textOrHtml) {
+            if (!textOrHtml) return "";
             
-            // Regex to match [Manual Name, p.XX] or [Manual Name - Page XX]
-            const pdfRegex = /\[(.*?)(?:,\s*p\.?|\s*-\s*page)\s*(\d+)\]/gi;
-            let formatted = rawAnswer.replace(pdfRegex, (match, manualTitle, pageNum) => {
+            // 1. Strip any backticks around citation brackets: `[Manual, p.X]` -> [Manual, p.X]
+            let formatted = textOrHtml.replace(/`\s*(\[[^`\]]+?\])\s*`/g, '$1');
+
+            // 2. Regex to match [Manual Name, p.XX] or [Manual Name - Page XX], including if already wrapped in <code>...</code>
+            const pdfRegex = /(?:<code>\s*)?\[(.*?)(?:,\s*p\.?|\s*-\s*page)\s*(\d+)\](?:\s*<\/code>)?/gi;
+            formatted = formatted.replace(pdfRegex, (match, manualTitle, pageNum) => {
                 const cleanManual = manualTitle.trim();
                 const cleanPage = pageNum.trim();
                 return `<a href="/pdf-viewer?file=${encodeURIComponent(cleanManual)}&page=${encodeURIComponent(cleanPage)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-[#edf2fa] dark:bg-[#282a2c] hover:bg-[#d3e3fd] dark:hover:bg-[#37393b] text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#37393b] text-xs font-semibold font-mono transition cursor-pointer shadow-sm no-underline" title="Open ${cleanManual} at Page ${cleanPage} in new tab"><i class="fa-solid fa-file-pdf text-rose-500"></i> <span>${cleanManual}, p.${cleanPage}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i></a>`;
             });
 
-            // Regex to match [Workbook Name, Sheet: SheetName, Row(s): X-Y]
-            const xlsxRegex = /\[([^\[\]]+?),\s*Sheet:\s*([^,]+?),\s*Row(?:s)?:\s*([^\]]+?)\]/gi;
+            // 3. Regex to match [Workbook Name, Sheet: SheetName, Row(s): X-Y], including if wrapped in <code>...</code>
+            const xlsxRegex = /(?:<code>\s*)?\[([^\[\]]+?),\s*Sheet:\s*([^,]+?),\s*Row(?:s)?:\s*([^\]]+?)\](?:\s*<\/code>)?/gi;
             formatted = formatted.replace(xlsxRegex, (match, wbTitle, sheetTitle, rowRange) => {
                 const cleanWb = wbTitle.trim();
                 const cleanSheet = sheetTitle.trim();
@@ -2798,22 +3120,78 @@
                 return `<span class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold font-mono shadow-sm" title="${cleanWb} → Sheet: ${cleanSheet}, Rows: ${cleanRows}"><i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> <span>${cleanSheet} (r.${cleanRows})</span></span>`;
             });
 
+            // 4. Unescape any escaped raw HTML like <code>&lt;a href=&quot;/pdf-viewer...</code> from past corrupted renders
+            formatted = formatted.replace(/<code>&lt;a href=&quot;(\/pdf-viewer\?[^&]+?)&quot;[^&]*?&gt;.*?p\.?(\d+).*?&lt;\/a&gt;<\/code>/gi, (match, url, page) => {
+                return `<a href="${url}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 mx-1 my-0.5 rounded-full bg-[#edf2fa] dark:bg-[#282a2c] hover:bg-[#d3e3fd] dark:hover:bg-[#37393b] text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#37393b] text-xs font-semibold font-mono transition cursor-pointer shadow-sm no-underline"><i class="fa-solid fa-file-pdf text-rose-500"></i> <span>p.${page}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i></a>`;
+            });
+
             return formatted;
         }
 
-        function appendAssistantResponse(data) {
+        function appendAssistantResponse(data, queryText = "") {
             const msgKey = 'msg_' + Date.now() + '_' + Math.floor(Math.random()*1000);
             messageSeedsMap[msgKey] = data.seeds || [];
 
-            // Convert in-text citations to interactive buttons
-            const formattedText = formatInTextCitationButtons(data.answer || "");
-            const parsedHtml = marked.parse(formattedText);
+            // Store message context for feedback reporting
+            const effectiveQuery = queryText || (lastUserPromptByTab[activeTabId] || "");
+            messageDataMap[msgKey] = {
+                query: effectiveQuery,
+                answer: data.answer || "",
+                message_id: data.message_id || null,
+                tab_id: data.tab_id || activeTabId,
+                seeds: data.seeds || []
+            };
+
+            // 1. Strip backticks around citation brackets in raw answer before markdown parsing
+            let cleanAnswer = (data.answer || "").replace(/`\s*(\[[^`\]]+?\])\s*`/g, '$1');
+            // 2. Parse Markdown to HTML
+            let parsedHtml = marked.parse(cleanAnswer);
+            // 3. Convert citations to interactive buttons in the HTML
+            parsedHtml = formatInTextCitationButtons(parsedHtml);
 
             const hasSeeds = data.seeds && data.seeds.length > 0;
             const seedCount = data.seeds ? data.seeds.length : 0;
-            const previews = data.visual_previews || [];
+            let previews = data.visual_previews || [];
+            if (previews.length === 0 && data.seeds && data.seeds.length > 0) {
+                const seenPreviews = new Set();
+                data.seeds.forEach(s => {
+                    if (s.doc_type !== 'xlsx' && s.page_image && s.image_url) {
+                        const key = `${s.pdf_stem}_${s.page_number}`;
+                        if (!seenPreviews.has(key)) {
+                            seenPreviews.add(key);
+                            previews.push({
+                                manual: s.pdf_stem,
+                                page_number: s.page_number,
+                                page_image: s.page_image,
+                                image_url: s.image_url,
+                                caption: `${s.pdf_stem}, Page ${s.page_number}`,
+                                is_direct_citation: false
+                            });
+                        }
+                    }
+                });
+            }
             const hasVisuals = (previews.length > 0);
             const isNearest = (data.visual_mode === 'nearest');
+
+            // Fallback citation buttons if model produced no in-text citation tags
+            let fallbackCitationsHtml = '';
+            const citationsList = data.citations || [];
+            const hasInTextCitations = /\[.*?,\s*p\.?\s*\d+\]/i.test(data.answer || "") || /\[.*?,\s*Sheet:\s*.*?\]/i.test(data.answer || "");
+            if (!hasInTextCitations && citationsList.length > 0) {
+                fallbackCitationsHtml = `
+                    <div class="mt-2.5 pt-2 border-t border-[#e0e3e7]/70 dark:border-[#37393b]/70 flex flex-wrap items-center gap-1.5">
+                        <span class="text-[11px] font-semibold text-slate-500 dark:text-[#9aa0a6] mr-1">Candidate references:</span>
+                        ${citationsList.map(c => {
+                            if (c.type === 'xlsx') {
+                                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 text-[11px] font-mono font-medium"><i class="fa-solid fa-file-excel text-emerald-600"></i> ${escapeHtml(c.manual)} (r.${c.rows})</span>`;
+                            } else {
+                                return `<a href="/pdf-viewer?file=${encodeURIComponent(c.manual)}&page=${c.page_number}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#edf2fa] dark:bg-[#282a2c] hover:bg-[#d3e3fd] text-[#0b57d0] dark:text-[#a8c7fa] border border-[#c2e7ff] dark:border-[#37393b] text-[11px] font-mono font-medium transition"><i class="fa-solid fa-file-pdf text-rose-500"></i> ${escapeHtml(c.manual)}, p.${c.page_number} <i class="fa-solid fa-arrow-up-right-from-square text-[8px] opacity-70"></i></a>`;
+                            }
+                        }).join('')}
+                    </div>
+                `;
+            }
 
             let visualsHtml = '';
             if (hasVisuals) {
@@ -2880,19 +3258,29 @@
                         ${parsedHtml}
                     </div>
 
+                    ${fallbackCitationsHtml}
+
                     ${visualsHtml}
 
-                    <!-- Bottom Action Controls: Top-K Result Button -->
-                    ${hasSeeds ? `
-                        <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] flex flex-wrap items-center justify-between gap-2">
-                            <button onclick="openTopKModal('${msgKey}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] hover:border-[#0b57d0] text-slate-700 dark:text-slate-200 text-xs border border-[#e0e3e7] dark:border-[#37393b] font-bold shadow-sm transition">
-                                <i class="fa-solid fa-layer-group text-[#0b57d0] dark:text-[#a8c7fa]"></i>
-                                <span>Top-K Matches (${seedCount} candidate pages)</span>
-                                <span class="text-[#0b57d0] dark:text-[#a8c7fa] font-extrabold ml-1">Inspect <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                    <!-- Bottom Action Controls: Feedback Button & Top-K Matches -->
+                    <div class="pt-3 border-t border-[#e0e3e7] dark:border-[#282a2c] flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center flex-wrap gap-2">
+                            ${hasSeeds ? `
+                                <button onclick="openTopKModal('${msgKey}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-[#c2e7ff]/40 dark:hover:bg-[#282a2c] hover:border-[#0b57d0] text-slate-700 dark:text-slate-200 text-xs border border-[#e0e3e7] dark:border-[#37393b] font-bold shadow-sm transition">
+                                    <i class="fa-solid fa-layer-group text-[#0b57d0] dark:text-[#a8c7fa]"></i>
+                                    <span>Top-K Matches (${seedCount})</span>
+                                    <span class="text-[#0b57d0] dark:text-[#a8c7fa] font-extrabold ml-1">Inspect <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                                </button>
+                            ` : ''}
+                            <button onclick="openFeedbackModal('${msgKey}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#f0f4f9] dark:bg-[#131314] hover:bg-amber-100/50 dark:hover:bg-amber-950/40 hover:border-amber-500 text-slate-700 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 text-xs border border-[#e0e3e7] dark:border-[#37393b] font-medium shadow-sm transition" title="Report inaccurate citation, wrong answer or unclear source">
+                                <i class="fa-regular fa-flag text-amber-500 text-[11px]"></i>
+                                <span>Feedback</span>
                             </button>
-                            <span class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium">Expanded ${data.expanded_count} continuous pages</span>
                         </div>
-                    ` : ''}
+                        ${hasSeeds ? `
+                            <span class="text-[11px] text-slate-500 dark:text-[#9aa0a6] font-medium">Expanded ${data.expanded_count} continuous pages</span>
+                        ` : ''}
+                    </div>
                 </div>
             `;
             chatContainer.appendChild(div);

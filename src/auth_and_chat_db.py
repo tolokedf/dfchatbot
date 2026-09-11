@@ -98,6 +98,29 @@ def init_db():
         except sqlite3.OperationalError:
             pass
         
+        # 4. Feedback Reports Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER,
+                tab_id TEXT,
+                user_id INTEGER,
+                username TEXT NOT NULL,
+                user_role TEXT NOT NULL DEFAULT 'technician',
+                query_text TEXT NOT NULL,
+                ai_response TEXT NOT NULL,
+                feedback_type TEXT NOT NULL,
+                user_notes TEXT DEFAULT '',
+                correct_answer TEXT DEFAULT '',
+                verified_citations TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pending',
+                reviewed_by TEXT DEFAULT '',
+                reviewed_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+        """)
+
         # Seed default admin user 'df' (ID: df, Password: df)
         cursor.execute("SELECT id FROM users WHERE username = 'df'")
         if not cursor.fetchone():
@@ -108,9 +131,9 @@ def init_db():
             )
             logger.info("Initialized default admin user 'df' (password: 'df') in User database.")
 
-        # Ensure no legacy 'admin' user alias exists and only 'df' has admin role
+        # Ensure only 'df' has admin role, protect existing team_lead or technician roles
         cursor.execute("DELETE FROM users WHERE username = 'admin'")
-        cursor.execute("UPDATE users SET role = 'user' WHERE username != 'df'")
+        cursor.execute("UPDATE users SET role = 'technician' WHERE username != 'df' AND (role = 'admin' OR role = 'user')")
         cursor.execute("UPDATE users SET role = 'admin', status = 'approved' WHERE username = 'df'")
         
         conn.commit()
@@ -293,6 +316,31 @@ def update_user_status(user_id: int, new_status: str) -> bool:
         cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
         conn.commit()
         return cursor.rowcount > 0
+
+
+def update_user_role(user_id: int, new_role: str) -> Optional[dict]:
+    """Updates user role/designation ('technician', 'team_lead', 'admin')."""
+    new_role = (new_role or "").strip().lower()
+    if new_role not in ["technician", "team_lead", "admin", "user"]:
+        raise ValueError(f"Invalid role '{new_role}'. Allowed: 'technician', 'team_lead', 'admin'.")
+    if new_role == "user":
+        new_role = "technician"
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        if row["username"].lower() == "df" and new_role != "admin":
+            raise ValueError("The administrator account ('df') must retain the admin role.")
+
+        cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        conn.commit()
+        cursor.execute("SELECT id, username, role, status, profile_pic, login_count, last_login_at, created_at FROM users WHERE id = ?", (user_id,))
+        updated_row = cursor.fetchone()
+        return dict(updated_row) if updated_row else None
 
 
 def update_user_profile_picture(user_id: int, profile_pic_filename: str) -> Optional[dict]:
@@ -664,6 +712,128 @@ def get_tab_conversation_memory(tab_id: str, max_turns: int = 6) -> List[Dict[st
         # Reverse to chronological order (oldest to newest)
         chronological = list(reversed([dict(r) for r in rows]))
         return chronological
+
+
+# ============================================================================
+# Feedback & Active Learning Database Operations
+# ============================================================================
+
+def submit_feedback(
+    user_id: Optional[int],
+    username: str,
+    user_role: str,
+    tab_id: Optional[str],
+    message_id: Optional[int],
+    query_text: str,
+    ai_response: str,
+    feedback_type: str,
+    user_notes: str = "",
+    correct_answer: str = "",
+    verified_citations: str = ""
+) -> int:
+    """Inserts a new feedback/issue report from a user or team lead."""
+    username = (username or "Guest").strip()
+    user_role = (user_role or "technician").strip().lower()
+    query_text = (query_text or "").strip()
+    ai_response = (ai_response or "").strip()
+    feedback_type = (feedback_type or "other").strip()
+    user_notes = (user_notes or "").strip()
+    correct_answer = (correct_answer or "").strip()
+    verified_citations = (verified_citations or "").strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO feedback_reports (
+                message_id, tab_id, user_id, username, user_role,
+                query_text, ai_response, feedback_type, user_notes,
+                correct_answer, verified_citations, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        """, (
+            message_id, tab_id, user_id, username, user_role,
+            query_text, ai_response, feedback_type, user_notes,
+            correct_answer, verified_citations
+        ))
+        conn.commit()
+        return cursor.lastrowid
+
+
+def get_all_feedback(status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Fetches feedback reports, optionally filtered by status ('pending', 'approved', 'rejected')."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if status and status.lower() != "all":
+            cursor.execute("""
+                SELECT * FROM feedback_reports
+                WHERE status = ?
+                ORDER BY id DESC
+            """, (status.lower(),))
+        else:
+            cursor.execute("""
+                SELECT * FROM feedback_reports
+                ORDER BY id DESC
+            """)
+        rows = cursor.fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_feedback_by_id(feedback_id: int) -> Optional[Dict[str, Any]]:
+    """Fetches a single feedback report by ID."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM feedback_reports WHERE id = ?", (feedback_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def update_feedback(
+    feedback_id: int,
+    status: Optional[str] = None,
+    correct_answer: Optional[str] = None,
+    verified_citations: Optional[str] = None,
+    user_notes: Optional[str] = None,
+    reviewed_by: Optional[str] = None
+) -> bool:
+    """Updates feedback report status, correct answer, citations, notes, and reviewer info."""
+    fields = []
+    values = []
+
+    if status is not None:
+        fields.append("status = ?")
+        values.append(status.strip().lower())
+    if correct_answer is not None:
+        fields.append("correct_answer = ?")
+        values.append(correct_answer.strip())
+    if verified_citations is not None:
+        fields.append("verified_citations = ?")
+        values.append(verified_citations.strip())
+    if user_notes is not None:
+        fields.append("user_notes = ?")
+        values.append(user_notes.strip())
+    if reviewed_by is not None:
+        fields.append("reviewed_by = ?")
+        values.append(reviewed_by.strip())
+        fields.append("reviewed_at = CURRENT_TIMESTAMP")
+
+    if not fields:
+        return False
+
+    values.append(feedback_id)
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        sql = f"UPDATE feedback_reports SET {', '.join(fields)} WHERE id = ?"
+        cursor.execute(sql, tuple(values))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def delete_feedback(feedback_id: int) -> bool:
+    """Permanently deletes a feedback report from the database."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM feedback_reports WHERE id = ?", (feedback_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
 
 # Automatically initialize DB tables on import

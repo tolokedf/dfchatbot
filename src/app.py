@@ -457,6 +457,98 @@ def serve_user_upload(filename: str):
     return send_from_directory(config.USER_UPLOADS_DIR, filename)
 
 
+@app.route("/api/user/role", methods=["POST"])
+@user_required
+def update_role():
+    """Updates the user's role designation ('technician' or 'team_lead')."""
+    user_id = session.get("user_id")
+    if user_id == "guest":
+        return jsonify({"status": "error", "error": "Guest accounts cannot change role. Please log in."}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_role = str(data.get("role", "")).strip().lower()
+    if new_role not in ["technician", "team_lead"]:
+        return jsonify({"status": "error", "error": "Invalid role. Choose 'technician' or 'team_lead'."}), 400
+
+    try:
+        updated_user = auth_and_chat_db.update_user_role(int(user_id), new_role)
+        if not updated_user:
+            return jsonify({"status": "error", "error": "User not found."}), 404
+        session["user_role"] = updated_user["role"]
+        return jsonify({
+            "status": "ok",
+            "message": f"Role successfully updated to {new_role}.",
+            "user": updated_user
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+
+
+@app.route("/api/feedback", methods=["POST"])
+def submit_feedback_report():
+    """Submits a user or team lead feedback report on an AI response."""
+    data = request.get_json(silent=True) or {}
+
+    query_text = str(data.get("query_text") or data.get("query") or "").strip()
+    ai_response = str(data.get("ai_response") or data.get("answer") or "").strip()
+    feedback_type = str(data.get("feedback_type") or "other").strip()
+    user_notes = str(data.get("user_notes") or data.get("notes") or "").strip()
+    correct_answer = str(data.get("correct_answer") or "").strip()
+    verified_citations = str(data.get("verified_citations") or "").strip()
+    tab_id = str(data.get("tab_id") or "").strip() or None
+    message_id = data.get("message_id")
+    try:
+        message_id = int(message_id) if message_id is not None else None
+    except (ValueError, TypeError):
+        message_id = None
+
+    if not query_text and not ai_response:
+        return jsonify({"status": "error", "error": "Question or AI response is required for feedback."}), 400
+
+    # Determine user identity and role
+    user_id = session.get("user_id")
+    username = session.get("username") or "Guest"
+    user_role = "technician"
+
+    if user_id and user_id != "guest":
+        try:
+            u_info = auth_and_chat_db.get_user_by_id(int(user_id))
+            if u_info:
+                username = u_info.get("username", username)
+                user_role = u_info.get("role", "technician")
+        except Exception:
+            pass
+    elif "submitter_role" in data and str(data["submitter_role"]).lower() in ["team_lead", "technician"]:
+        user_role = str(data["submitter_role"]).lower()
+
+    # If client explicitly specifies role override (e.g. from profile selection)
+    if "user_role" in data and str(data["user_role"]).lower() in ["team_lead", "technician"]:
+        user_role = str(data["user_role"]).lower()
+
+    report_id = auth_and_chat_db.submit_feedback(
+        user_id=int(user_id) if (user_id and user_id != "guest") else None,
+        username=username,
+        user_role=user_role,
+        tab_id=tab_id,
+        message_id=message_id,
+        query_text=query_text,
+        ai_response=ai_response,
+        feedback_type=feedback_type,
+        user_notes=user_notes,
+        correct_answer=correct_answer,
+        verified_citations=verified_citations
+    )
+
+    logger.info(f"Feedback report #{report_id} submitted by {username} ({user_role}): type={feedback_type}")
+
+    return jsonify({
+        "status": "ok",
+        "message": "Thank you! Your feedback has been submitted for review.",
+        "feedback_id": report_id,
+        "user_role": user_role
+    })
+
+
 # ============================================================================
 # Conversational / Direct Intent Classifier (Zero-Vector Latency Optimization)
 # ============================================================================
@@ -969,45 +1061,120 @@ def chat():
 
         retrieved_seed_info = []
         sorted_pages = []
+        verified_corrections = []
 
         if total_indexed > 0:
+            # Check for active verified corrections / team lead overrides
+            try:
+                verified_corrections = pipeline_service.query_verified_corrections(user_prompt)
+                if verified_corrections:
+                    logger.info(f"Found {len(verified_corrections)} verified correction(s) for user prompt.")
+            except Exception as vc_err:
+                logger.warning(f"Failed to query verified corrections: {vc_err}")
+
             # Embed query with Gemini Embedding 2
             embedder_client = embedder.get_client()
             embed_res = embedder.embed_query_text(embedder_client, user_prompt)
             qvec = embed_res["vector"]
 
-            # Build ChromaDB filter with Multi-Manual support
+            # Build ChromaDB filter with Multi-Manual and Multi-Modal balanced support
+            all_pdf_stems = [p.stem for p in config.SOURCE_DIR.glob("*.pdf")]
+            all_xlsx_stems = [p.stem for p in config.SOURCE_DIR.glob("*.xlsx")]
+
+            target_pdf_stems = []
+            target_xlsx_stems = []
+
             if selected_stems and not is_search_all:
-                if len(selected_stems) == 1:
-                    where_clause = {
-                        "$and": [
-                            {"is_front_matter": False},
-                            {"pdf_stem": selected_stems[0]}
-                        ]
-                    }
-                else:
-                    where_clause = {
-                        "$and": [
-                            {"is_front_matter": False},
-                            {"pdf_stem": {"$in": selected_stems}}
-                        ]
-                    }
+                for s in selected_stems:
+                    if s in all_xlsx_stems:
+                        target_xlsx_stems.append(s)
+                    elif s in all_pdf_stems:
+                        target_pdf_stems.append(s)
+                    else:
+                        matched = find_best_matching_pdf(s)
+                        if matched and matched.suffix.lower() == ".xlsx":
+                            target_xlsx_stems.append(matched.stem)
+                        else:
+                            target_pdf_stems.append(matched.stem if matched else s)
             else:
-                where_clause = {"is_front_matter": False}
+                target_pdf_stems = all_pdf_stems
+                target_xlsx_stems = all_xlsx_stems
 
-            logger.info(f"Querying ChromaDB with where_clause: {where_clause}")
+            metas = []
+            distances = []
+            docs = []
 
-            # Query ChromaDB
-            query_res = collection.query(
-                query_embeddings=[qvec],
-                n_results=top_k,
-                where=where_clause,
-                include=["metadatas", "distances", "documents"]
-            )
+            # Execute balanced retrieval: query PDF manuals and XLSX tables with dedicated quotas
+            # so that raw spreadsheet text embeddings do not drown out PDF manual image embeddings.
+            if target_pdf_stems and target_xlsx_stems:
+                if len(target_pdf_stems) == 1:
+                    where_pdf = {"$and": [{"is_front_matter": False}, {"pdf_stem": target_pdf_stems[0]}]}
+                else:
+                    where_pdf = {"$and": [{"is_front_matter": False}, {"pdf_stem": {"$in": target_pdf_stems}}]}
+                
+                res_pdf = collection.query(
+                    query_embeddings=[qvec],
+                    n_results=top_k,
+                    where=where_pdf,
+                    include=["metadatas", "distances", "documents"]
+                )
 
-            metas = query_res["metadatas"][0] if query_res.get("metadatas") else []
-            distances = query_res["distances"][0] if query_res.get("distances") else []
-            docs = query_res["documents"][0] if query_res.get("documents") else []
+                if len(target_xlsx_stems) == 1:
+                    where_xlsx = {"$and": [{"is_front_matter": False}, {"pdf_stem": target_xlsx_stems[0]}]}
+                else:
+                    where_xlsx = {"$and": [{"is_front_matter": False}, {"pdf_stem": {"$in": target_xlsx_stems}}]}
+                
+                res_xlsx = collection.query(
+                    query_embeddings=[qvec],
+                    n_results=min(2, top_k),
+                    where=where_xlsx,
+                    include=["metadatas", "distances", "documents"]
+                )
+
+                metas = (res_pdf.get("metadatas", [[]])[0]) + (res_xlsx.get("metadatas", [[]])[0])
+                distances = (res_pdf.get("distances", [[]])[0]) + (res_xlsx.get("distances", [[]])[0])
+                docs = (res_pdf.get("documents", [[]])[0]) + (res_xlsx.get("documents", [[]])[0])
+
+            elif target_pdf_stems:
+                if len(target_pdf_stems) == 1:
+                    where_clause = {"$and": [{"is_front_matter": False}, {"pdf_stem": target_pdf_stems[0]}]}
+                else:
+                    where_clause = {"$and": [{"is_front_matter": False}, {"pdf_stem": {"$in": target_pdf_stems}}]}
+                res = collection.query(
+                    query_embeddings=[qvec],
+                    n_results=top_k,
+                    where=where_clause,
+                    include=["metadatas", "distances", "documents"]
+                )
+                metas = res.get("metadatas", [[]])[0]
+                distances = res.get("distances", [[]])[0]
+                docs = res.get("documents", [[]])[0]
+
+            elif target_xlsx_stems:
+                if len(target_xlsx_stems) == 1:
+                    where_clause = {"$and": [{"is_front_matter": False}, {"pdf_stem": target_xlsx_stems[0]}]}
+                else:
+                    where_clause = {"$and": [{"is_front_matter": False}, {"pdf_stem": {"$in": target_xlsx_stems}}]}
+                res = collection.query(
+                    query_embeddings=[qvec],
+                    n_results=top_k,
+                    where=where_clause,
+                    include=["metadatas", "distances", "documents"]
+                )
+                metas = res.get("metadatas", [[]])[0]
+                distances = res.get("distances", [[]])[0]
+                docs = res.get("documents", [[]])[0]
+
+            else:
+                res = collection.query(
+                    query_embeddings=[qvec],
+                    n_results=top_k,
+                    where={"is_front_matter": False},
+                    include=["metadatas", "distances", "documents"]
+                )
+                metas = res.get("metadatas", [[]])[0]
+                distances = res.get("distances", [[]])[0]
+                docs = res.get("documents", [[]])[0]
 
             NEIGHBOR_RADIUS = 3
             pages_to_load = set()
@@ -1194,21 +1361,42 @@ def chat():
         active_source_docs = sorted(list(config.SOURCE_DIR.glob("*.pdf")) + list(config.SOURCE_DIR.glob("*.xlsx")))
         manual_names_bullet_list = "\n".join([f'- "{p.stem}"' for p in active_source_docs]) if active_source_docs else '- "DFleet 4.0 User Manual"\n- "NavWiz 4.0 User Manual 1.0"'
 
+        corrections_notice = ""
+        if verified_corrections:
+            c_items = []
+            for idx, c in enumerate(verified_corrections, 1):
+                role_label = "Team Lead / Engineer" if c.get("user_role") == "team_lead" else "Verified Technical"
+                c_items.append(
+                    f"[{role_label} Override #{idx}]\n"
+                    f"- Topic: {c.get('query_text')}\n"
+                    f"- Verified Ground-Truth Answer: {c.get('correct_answer')}\n"
+                    f"- Verified Citations: {c.get('verified_citations')}"
+                )
+            corrections_notice = (
+                "\n=== VERIFIED EXPERT CORRECTIONS & OVERRIDES (HIGHEST PRIORITY) ===\n"
+                "The following facts and procedures were verified by DF Team Leads and Administrators. "
+                "You MUST prioritize these verified answers and citations over any conflicting text in older manual pages:\n\n"
+                + "\n\n".join(c_items) +
+                "\n====================================================================\n\n"
+            )
+
         system_prompt = (
             "You are DF Chatbot, the expert technical assistant for NavWiz, DFleet, Field Deployment, and Project Site Engineering documentation by DF Automation.\n"
             "Answer the user's question accurately, thoroughly, and concisely using the provided manual page images, spreadsheet tables, and user uploads.\n\n"
+            f"{corrections_notice}"
             f"{attachment_notice}"
             "CRITICAL CITATION RULES:\n"
-            "- For technical manual pages: cite as `[Exact Manual Title, p.N]` using the EXACT PDF PAGE NUMBER provided in the document label.\n"
-            "- For spreadsheet/Excel documentation: cite as `[Exact Document Title, Sheet: SheetName, Rows: X-Y]` (or `Row: X`).\n"
+            "- For technical manual pages: cite as [Exact Manual Title, p.N] without markdown backticks (e.g. [NavWiz 4.0 User Manual 1.0, p.35]) using the EXACT PDF PAGE NUMBER provided in the document label.\n"
+            "- For spreadsheet/Excel documentation: cite as [Exact Document Title, Sheet: SheetName, Rows: X-Y] without markdown backticks (or Row: X).\n"
             "- In spreadsheets, note cell status annotations: `[🟢 Active/Tested/Recoverable]`, `[🔴 Cannot Recover/Critical]`, `[🟠 Discrepancy/Notice/Teaching]`, `[🟡 Pending]`, etc.\n"
             "- Available source documents:\n"
             f"{manual_names_bullet_list}\n\n"
             "CONVERSATION MEMORY:\n"
             "- Use the prior conversation history in this tab for context.\n\n"
-            "STRICT GUARDRAIL: If the user's question is gibberish, meaningless text, or completely unrelated to "
-            "robotics/manual software/site documentation, and cannot be answered by the provided documents, respond EXACTLY with:\n"
-            "\"I am not sure about that.\""
+            "GUARDRAILS & ANSWERING RULES:\n"
+            "- If the question is gibberish, meaningless text, or completely unrelated to robotics, DF software, or site engineering, respond with: \"I am not sure about that.\"\n"
+            "- If the question is related to DF robotics, manuals, or software, synthesize the best explanation from the provided manual pages and spreadsheets, and ALWAYS cite the specific manual pages in brackets `[Exact Manual Title, p.N]`.\n"
+            "- If the exact step-by-step procedure is not fully detailed in the provided materials, explain what related settings or parameters are available and cite the closest candidate pages so the user can inspect them."
         )
 
         genai_client = embedder.get_client()
@@ -1254,7 +1442,9 @@ def chat():
                 "type": "xlsx"
             })
 
-        if not structured_citations and retrieved_seed_info:
+        is_refusal = (answer_text.strip().rstrip(".").lower() == "i am not sure about that")
+
+        if not is_refusal and not structured_citations and retrieved_seed_info:
             for s in retrieved_seed_info[:3]:
                 if s.get("doc_type") == "xlsx":
                     structured_citations.append({
@@ -1273,7 +1463,7 @@ def chat():
 
         # 8. Build Visual Preview Cards based on User's Visual Mode
         visual_previews = []
-        if visual_mode == "strict":
+        if not is_refusal and visual_mode == "strict":
             # Show photo if available: preview pages directly cited in the answer (PDF only)
             seen_previews = set()
             for cit in structured_citations:
@@ -1296,20 +1486,23 @@ def chat():
                             "caption": f"Cited: {c_manual}, Page {c_page}",
                             "is_direct_citation": True
                         })
-            # Fallback to top seed if no direct citation image exists
+            # Fallback to top matching PDF seeds if no direct citation image exists
             if not visual_previews and retrieved_seed_info:
-                top_s = retrieved_seed_info[0]
-                if top_s.get("doc_type") != "xlsx" and top_s.get("page_image"):
-                    visual_previews.append({
-                        "manual": top_s["pdf_stem"],
-                        "page_number": top_s["page_number"],
-                        "page_image": top_s["page_image"],
-                        "image_url": top_s["image_url"],
-                        "caption": f"Top Match: {top_s['pdf_stem']}, Page {top_s['page_number']}",
-                        "similarity": top_s.get("similarity", 0.0),
-                        "is_direct_citation": False
-                    })
-        elif visual_mode == "nearest":
+                for s in retrieved_seed_info:
+                    if s.get("doc_type") != "xlsx" and s.get("page_image"):
+                        img_path = config.IMAGE_CACHE_DIR / s["page_image"]
+                        if img_path.exists():
+                            visual_previews.append({
+                                "manual": s["pdf_stem"],
+                                "page_number": s["page_number"],
+                                "page_image": s["page_image"],
+                                "image_url": s["image_url"],
+                                "caption": f"Top Match: {s['pdf_stem']}, Page {s['page_number']}",
+                                "similarity": s.get("similarity", 0.0),
+                                "is_direct_citation": False
+                            })
+                            break
+        elif not is_refusal and visual_mode == "nearest":
             # Show photo as near as possible (might have hallucination): include all candidate seeds (PDF only)
             seen_previews = set()
             for s in retrieved_seed_info:
@@ -1330,6 +1523,7 @@ def chat():
 
         # 9. Persist messages in database if tab_id & user session exists
         uid = session.get("user_id")
+        asst_msg_id = None
         if tab_id and tab_id != "guest-tab" and uid:
             try:
                 auth_and_chat_db.add_chat_message(
@@ -1339,7 +1533,7 @@ def chat():
                     attachments=saved_attachments_meta,
                     user_id=uid
                 )
-                auth_and_chat_db.add_chat_message(
+                asst_msg_id = auth_and_chat_db.add_chat_message(
                     tab_id=tab_id,
                     role="assistant",
                     content=answer_text,
@@ -1368,16 +1562,11 @@ def chat():
             "citations": structured_citations,
             "attachments": saved_attachments_meta,
             "visual_mode": visual_mode,
-            "visual_previews": visual_previews
+            "visual_previews": visual_previews,
+            "message_id": asst_msg_id,
+            "tab_id": tab_id,
+            "verified_corrections": verified_corrections
         })
-
-    except Exception as e:
-        logger.error(f"Error processing chat: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-    except Exception as e:
-        logger.error(f"Error processing chat: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         logger.error(f"Error processing chat: {e}", exc_info=True)
@@ -1673,6 +1862,175 @@ def export_admin_multi_users_zip():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
+# ============================================================================
+# Admin Feedback & Active Learning APIs
+# ============================================================================
+
+@app.route("/api/admin/feedback", methods=["GET"])
+@admin_required
+def admin_get_feedback():
+    """Retrieves all feedback reports, optionally filtered by status ('pending', 'approved', 'rejected', 'all')."""
+    status_filter = request.args.get("status", "all").strip()
+    reports = auth_and_chat_db.get_all_feedback(status=status_filter)
+    return jsonify({
+        "status": "ok",
+        "feedback": reports,
+        "count": len(reports)
+    })
+
+
+@app.route("/api/admin/feedback/<int:feedback_id>/approve", methods=["POST"])
+@admin_required
+def admin_approve_feedback(feedback_id: int):
+    """
+    Approves a feedback report and indexes the verified correction into ChromaDB.
+    Enables active learning: chatbot retrieves this correction for future similar queries.
+    """
+    report = auth_and_chat_db.get_feedback_by_id(feedback_id)
+    if not report:
+        return jsonify({"status": "error", "error": "Feedback report not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    correct_answer = str(data.get("correct_answer") or report.get("correct_answer") or "").strip()
+    verified_citations = str(data.get("verified_citations") or report.get("verified_citations") or "").strip()
+    user_notes = str(data.get("user_notes") or report.get("user_notes") or "").strip()
+    admin_user = session.get("username") or "df"
+
+    if not correct_answer:
+        correct_answer = user_notes or "Verified correction verified by system administrator."
+
+    # Update SQLite record
+    auth_and_chat_db.update_feedback(
+        feedback_id=feedback_id,
+        status="approved",
+        correct_answer=correct_answer,
+        verified_citations=verified_citations,
+        user_notes=user_notes,
+        reviewed_by=admin_user
+    )
+
+    # Ingest into ChromaDB df_verified_corrections
+    try:
+        pipeline_service.upsert_verified_correction(
+            feedback_id=feedback_id,
+            query_text=report.get("query_text", ""),
+            correct_answer=correct_answer,
+            verified_citations=verified_citations,
+            user_role=report.get("user_role", "technician"),
+            username=report.get("username", "User"),
+            approved_by=admin_user
+        )
+        logger.info(f"Admin '{admin_user}' approved & learned feedback #{feedback_id}")
+    except Exception as e:
+        logger.error(f"Failed to embed correction #{feedback_id} into ChromaDB: {e}")
+        return jsonify({
+            "status": "ok",
+            "warning": f"Feedback status approved, but vector embedding failed: {e}",
+            "feedback_id": feedback_id
+        })
+
+    return jsonify({
+        "status": "ok",
+        "message": f"Feedback #{feedback_id} approved and learned into vector database.",
+        "feedback_id": feedback_id
+    })
+
+
+@app.route("/api/admin/feedback/<int:feedback_id>/reject", methods=["POST"])
+@admin_required
+def admin_reject_feedback(feedback_id: int):
+    """Marks a feedback report as rejected, and deletes from ChromaDB if it was previously learned."""
+    report = auth_and_chat_db.get_feedback_by_id(feedback_id)
+    if not report:
+        return jsonify({"status": "error", "error": "Feedback report not found."}), 404
+
+    admin_user = session.get("username") or "df"
+    auth_and_chat_db.update_feedback(
+        feedback_id=feedback_id,
+        status="rejected",
+        reviewed_by=admin_user
+    )
+    # Remove from ChromaDB if previously approved
+    pipeline_service.delete_verified_correction(feedback_id)
+
+    logger.info(f"Admin '{admin_user}' rejected feedback #{feedback_id}")
+    return jsonify({
+        "status": "ok",
+        "message": f"Feedback #{feedback_id} marked as rejected.",
+        "feedback_id": feedback_id
+    })
+
+
+@app.route("/api/admin/feedback/<int:feedback_id>", methods=["PUT"])
+@admin_required
+def admin_update_feedback(feedback_id: int):
+    """Updates/edits the contents of a feedback report."""
+    report = auth_and_chat_db.get_feedback_by_id(feedback_id)
+    if not report:
+        return jsonify({"status": "error", "error": "Feedback report not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    correct_answer = data.get("correct_answer")
+    verified_citations = data.get("verified_citations")
+    user_notes = data.get("user_notes")
+    status = data.get("status")
+    admin_user = session.get("username") or "df"
+
+    auth_and_chat_db.update_feedback(
+        feedback_id=feedback_id,
+        status=status,
+        correct_answer=correct_answer,
+        verified_citations=verified_citations,
+        user_notes=user_notes,
+        reviewed_by=admin_user
+    )
+
+    # If it is approved, update the ChromaDB embedding as well
+    updated_report = auth_and_chat_db.get_feedback_by_id(feedback_id)
+    if updated_report and updated_report.get("status") == "approved":
+        pipeline_service.upsert_verified_correction(
+            feedback_id=feedback_id,
+            query_text=updated_report.get("query_text", ""),
+            correct_answer=updated_report.get("correct_answer", ""),
+            verified_citations=updated_report.get("verified_citations", ""),
+            user_role=updated_report.get("user_role", "technician"),
+            username=updated_report.get("username", "User"),
+            approved_by=admin_user
+        )
+
+    return jsonify({
+        "status": "ok",
+        "message": f"Feedback #{feedback_id} updated successfully.",
+        "feedback": updated_report
+    })
+
+
+@app.route("/api/admin/feedback/<int:feedback_id>", methods=["DELETE"])
+@admin_required
+def admin_delete_feedback(feedback_id: int):
+    """
+    Permanently deletes a specific feedback report from SQLite,
+    and purges any associated vector embedding from ChromaDB.
+    """
+    report = auth_and_chat_db.get_feedback_by_id(feedback_id)
+    if not report:
+        return jsonify({"status": "error", "error": "Feedback report not found."}), 404
+
+    # 1. Delete from ChromaDB if it was indexed
+    pipeline_service.delete_verified_correction(feedback_id)
+
+    # 2. Delete from SQLite
+    deleted = auth_and_chat_db.delete_feedback(feedback_id)
+    if not deleted:
+        return jsonify({"status": "error", "error": "Failed to delete feedback from database."}), 500
+
+    admin_user = session.get("username") or "df"
+    logger.info(f"Admin '{admin_user}' deleted feedback #{feedback_id}")
+    return jsonify({
+        "status": "ok",
+        "message": f"Feedback #{feedback_id} has been permanently deleted."
+    })
+
 
 # ============================================================================
 # Admin & Source File Management APIs
@@ -1961,6 +2319,8 @@ def get_admin_config():
             has_key = False
 
         collection = pipeline_service.get_chroma_collection()
+        all_fb = auth_and_chat_db.get_all_feedback()
+        pending_fb = [f for f in all_fb if f.get("status") == "pending"]
 
         return jsonify({
             "status": "ok",
@@ -1969,7 +2329,9 @@ def get_admin_config():
             "qa_model": config.GEMINI_QA_MODEL,
             "embed_model": config.GEMINI_EMBED_MODEL,
             "total_indexed_pages": collection.count(),
-            "render_dpi": config.RENDER_DPI
+            "render_dpi": config.RENDER_DPI,
+            "total_feedback": len(all_fb),
+            "pending_feedback": len(pending_fb)
         })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500

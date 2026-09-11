@@ -65,6 +65,131 @@ def get_chroma_collection():
     )
 
 
+def get_corrections_collection():
+    """Returns persistent ChromaDB collection for human-verified corrections."""
+    client = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
+    return client.get_or_create_collection(
+        name="df_verified_corrections",
+        metadata={"hnsw:space": "cosine"}
+    )
+
+
+def upsert_verified_correction(
+    feedback_id: int,
+    query_text: str,
+    correct_answer: str,
+    verified_citations: str = "",
+    user_role: str = "technician",
+    username: str = "User",
+    approved_by: str = "df"
+) -> dict:
+    """
+    Embeds and indexes a human-verified correction into df_verified_corrections.
+    Allows the chatbot to immediately learn from past mistakes and ground on verified facts.
+    """
+    collection = get_corrections_collection()
+    client = embedder.get_client()
+
+    doc_text = (
+        f"Topic / Query: {query_text.strip()}\n"
+        f"Verified Correction: {correct_answer.strip()}\n"
+        f"Verified Citations: {verified_citations.strip()}"
+    )
+
+    embed_res = embedder.embed_text_chunk(client, doc_text)
+    vector = embed_res["vector"]
+
+    record_id = f"correction_{feedback_id}"
+    metadata = {
+        "feedback_id": feedback_id,
+        "query_text": query_text.strip()[:1000],
+        "correct_answer": correct_answer.strip()[:2000],
+        "verified_citations": verified_citations.strip()[:500],
+        "user_role": user_role,
+        "username": username,
+        "approved_by": approved_by,
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    collection.upsert(
+        ids=[record_id],
+        embeddings=[vector],
+        documents=[doc_text],
+        metadatas=[metadata]
+    )
+
+    logger.info(f"Ingested verified correction {record_id} into ChromaDB.")
+    return {"id": record_id, "feedback_id": feedback_id}
+
+
+def delete_verified_correction(feedback_id: int) -> bool:
+    """Deletes a verified correction from the ChromaDB collection."""
+    try:
+        collection = get_corrections_collection()
+        record_id = f"correction_{feedback_id}"
+        existing = collection.get(ids=[record_id])
+        if existing and existing.get("ids"):
+            collection.delete(ids=[record_id])
+            logger.info(f"Deleted verified correction {record_id} from ChromaDB.")
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"Error deleting correction_{feedback_id} from ChromaDB: {e}")
+        return False
+
+
+def query_verified_corrections(
+    query_text: str,
+    max_results: int = 3,
+    distance_threshold: float = 0.35
+) -> list[dict]:
+    """
+    Queries df_verified_corrections to find any approved corrections relevant to the user's prompt.
+    Returns matched corrections sorted by similarity.
+    """
+    try:
+        collection = get_corrections_collection()
+        if collection.count() == 0:
+            return []
+
+        client = embedder.get_client()
+        query_embed_res = embedder.embed_query_text(client, query_text)
+        query_vector = query_embed_res["vector"]
+
+        results = collection.query(
+            query_embeddings=[query_vector],
+            n_results=min(max_results, collection.count()),
+            include=["documents", "metadatas", "distances"]
+        )
+
+        matches = []
+        if results and results.get("ids") and results["ids"][0]:
+            ids = results["ids"][0]
+            docs = results.get("documents", [[]])[0]
+            metas = results.get("metadatas", [[]])[0]
+            distances = results.get("distances", [[]])[0]
+
+            for i in range(len(ids)):
+                dist = distances[i] if i < len(distances) else 1.0
+                if dist <= distance_threshold:
+                    meta = metas[i] if i < len(metas) else {}
+                    sim_score = round(1.0 - dist, 3)
+                    matches.append({
+                        "id": ids[i],
+                        "feedback_id": meta.get("feedback_id"),
+                        "query_text": meta.get("query_text", ""),
+                        "correct_answer": meta.get("correct_answer", ""),
+                        "verified_citations": meta.get("verified_citations", ""),
+                        "user_role": meta.get("user_role", "technician"),
+                        "similarity_score": sim_score,
+                        "document": docs[i] if i < len(docs) else ""
+                    })
+        return matches
+    except Exception as e:
+        logger.error(f"Error querying verified corrections: {e}")
+        return []
+
+
 def format_bytes(size_bytes: int) -> str:
     if size_bytes < 1024:
         return f"{size_bytes} B"
